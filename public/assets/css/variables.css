@@ -1,0 +1,31 @@
+:root {
+    --brand-red: #d20a16;
+    --brand-red-dark: #a90710;
+    --brand-black: #080808;
+    --brand-charcoal: #202020;
+    --brand-gold: #aa8a46;
+    --brand-cream: #faf7f1;
+    --brand-stone: #f2eee7;
+    --green-950: var(--brand-black);
+    --green-900: #111;
+    --green-800: var(--brand-red);
+    --green-700: var(--brand-red);
+    --green-600: #eb2632;
+    --lime: #ead9b0;
+    --lime-soft: #f7f0df;
+    --cream: var(--brand-cream);
+    --sand: #ece6dc;
+    --white: #fff;
+    --ink: #101010;
+    --muted: #6c6965;
+    --line: #e1ddd6;
+    --danger: #a83e3e;
+    --success: #29734a;
+    --warning: #9a691c;
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 24px;
+    --radius-xl: 36px;
+    --shadow: 0 14px 40px rgba(22, 48, 35, .1);
+    --container: 1320px;
+}

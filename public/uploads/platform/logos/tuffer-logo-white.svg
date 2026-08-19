@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 58" role="img" aria-labelledby="title">
+  <title id="title">Tuffer</title>
+  <path fill="#d20a16" d="M6 9h45L38 22H25L13 50H2l12-28H0z"/>
+  <path fill="#fff" d="M45 20h10l-8 19c-2 5 0 8 5 8 6 0 9-3 11-8l8-19h10l-8 20C69 51 61 57 49 57 37 57 32 51 36 40zm38 0h28l-3 8H90l-2 7h17l-3 8H85l-5 13H70zm31 0h28l-3 8h-18l-3 8h17l-3 8h-17l-5 12h-10zm31 0h30l-3 8h-20l-2 6h18l-3 8h-18l-3 7h21l-3 7h-31zm35 0h18c12 0 18 5 14 15-2 6-7 10-13 12l7 9h-12l-6-8h-4l-3 8h-10zm7 8-5 13h7c6 0 10-2 12-7 1-4-1-6-7-6z"/>
+  <text x="213" y="15" fill="#bbb" font-family="Arial" font-size="8">®</text>
+</svg>

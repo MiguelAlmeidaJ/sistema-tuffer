@@ -1,0 +1,16 @@
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^logos/(.*)$ platform/logos/$1 [L]
+    RewriteRule ^banners/(.*)$ platform/banners/$1 [L]
+    RewriteRule ^favicon/(.*)$ platform/favicon/$1 [L]
+</IfModule>
+
+<FilesMatch "\.(php|phtml|phar|cgi|pl|py|sh|exe|bat|cmd)$">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+</IfModule>

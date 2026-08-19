@@ -1,0 +1,220 @@
+.metric-chart {
+    display: grid;
+    grid-template-columns: repeat(14, minmax(22px, 1fr));
+    align-items: end;
+    gap: 8px;
+    height: 250px;
+    padding: 28px 4px 0;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(#fff, #f7f8f5)
+}
+
+.metric-chart__column {
+    display: grid;
+    grid-template-rows: 18px minmax(0, 1fr) 22px;
+    align-items: end;
+    height: 100%;
+    min-width: 0;
+    text-align: center
+}
+
+.metric-chart__column>span {
+    overflow: hidden;
+    color: var(--muted);
+    font-size: .52rem;
+    text-overflow: ellipsis;
+    white-space: nowrap
+}
+
+.metric-chart__column>i {
+    display: block;
+    width: 100%;
+    min-height: 3px;
+    border-radius: 6px 6px 0 0;
+    background: linear-gradient(180deg, var(--green-600), var(--green-800))
+}
+
+.metric-chart__column>small {
+    padding-top: 6px;
+    color: var(--muted);
+    font-size: .55rem
+}
+
+.chart-total {
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: #f2f5ec;
+    color: var(--green-800);
+    font-size: .68rem;
+    font-weight: 800
+}
+
+.newsletter {
+    display: grid;
+    grid-template-columns: minmax(0, .8fr) minmax(420px, 1.2fr);
+    gap: 50px;
+    align-items: center;
+    margin-top: 35px;
+    margin-bottom: 50px;
+    padding: 38px;
+    border-radius: 24px;
+    background: #f1eee8
+}
+
+.newsletter h2 {
+    margin: 8px 0;
+    font-size: clamp(1.7rem, 3vw, 2.7rem)
+}
+
+.newsletter p {
+    color: var(--muted);
+    font-size: .78rem;
+    line-height: 1.6
+}
+
+.newsletter form {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px
+}
+
+.newsletter form>label:first-of-type span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0)
+}
+
+.newsletter-consent {
+    display: flex;
+    grid-column: 1/-1;
+    align-items: flex-start;
+    gap: 9px;
+    font-size: .68rem;
+    font-weight: 550;
+    line-height: 1.5
+}
+
+.newsletter-consent input {
+    width: auto;
+    margin-top: 3px;
+    accent-color: var(--brand-red)
+}
+
+.newsletter-consent a {
+    color: var(--brand-red);
+    text-decoration: underline
+}
+
+.newsletter-status {
+    min-height: 55vh;
+    padding-top: 90px;
+    padding-bottom: 90px;
+    text-align: center
+}
+
+.newsletter-status h1 {
+    margin: 12px 0;
+    font-size: clamp(2.3rem, 5vw, 4rem)
+}
+
+.newsletter-status p {
+    max-width: 650px;
+    margin: 0 auto 25px;
+    color: var(--muted);
+    line-height: 1.7
+}
+
+@media(max-width:800px) {
+    .metric-chart {
+        gap: 4px;
+        overflow-x: auto
+    }
+
+    .metric-chart__column {
+        min-width: 28px
+    }
+
+    .newsletter {
+        grid-template-columns: 1fr;
+        gap: 24px
+    }
+
+    .newsletter form {
+        grid-template-columns: 1fr
+    }
+
+    .newsletter form .button {
+        grid-column: 1
+    }
+}
+
+.monitor-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px
+}
+
+.monitor-card {
+    display: grid;
+    gap: 6px;
+    padding: 17px;
+    border: 1px solid var(--line);
+    border-left: 4px solid #777;
+    border-radius: 12px
+}
+
+.monitor-card>span {
+    font-size: .58rem;
+    font-weight: 900;
+    letter-spacing: .1em
+}
+
+.monitor-card>small,
+.backup-row small,
+.monitoring-columns td small {
+    display: block;
+    color: var(--muted);
+    font-size: .64rem
+}
+
+.monitor-card--ok {
+    border-left-color: #27825a
+}
+
+.monitor-card--degraded {
+    border-left-color: #c48a24
+}
+
+.monitor-card--down {
+    border-left-color: #b83737
+}
+
+.monitoring-columns {
+    grid-template-columns: 2fr 1fr;
+    margin: 18px 0
+}
+
+.backup-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line)
+}
+
+.backup-row>div {
+    display: grid;
+    gap: 3px
+}
+
+@media(max-width:900px) {
+    .monitor-grid {
+        grid-template-columns: 1fr 1fr
+    }
+
+    .monitoring-columns {
+        grid-template-columns: 1fr
+    }
+}

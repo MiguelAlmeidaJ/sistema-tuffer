@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 220" role="img" aria-label="Loja oficial Tuffer">
+  <rect width="400" height="220" rx="22" fill="#090909"/><path fill="#d20a16" d="M25 22h28L45 30h-8l-7 18H20l8-18H17z"/><text x="45" y="43" fill="#fff" font-family="Arial" font-size="15" font-weight="900" font-style="italic">UFFER</text>
+  <text x="24" y="95" fill="#fff" font-family="Arial" font-size="28" font-weight="900">Loja oficial</text><text x="24" y="120" fill="#ddd" font-family="Arial" font-size="12">Para todos os estilos.</text><text x="24" y="139" fill="#d20a16" font-family="Arial" font-size="12" font-weight="700">Para todos os dias.</text><rect x="24" y="158" width="110" height="28" rx="4" fill="#d20a16"/><text x="36" y="176" fill="#fff" font-family="Arial" font-size="9" font-weight="700">Comprar agora →</text>
+  <g transform="translate(246 133)"><rect width="22" height="58" rx="5" fill="#263b55"/><rect x="26" width="22" height="58" rx="5" fill="#812b39"/><rect x="52" width="22" height="58" rx="5" fill="#626b70"/><rect x="78" width="22" height="58" rx="5" fill="#9b2432"/><rect x="104" width="22" height="58" rx="5" fill="#263f31"/></g>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 220" role="img" aria-label="Descontos exclusivos Tuffer">
+  <defs><linearGradient id="b"><stop stop-color="#f6f5f3"/><stop offset="1" stop-color="#dedede"/></linearGradient></defs><rect width="400" height="220" rx="22" fill="url(#b)"/>
+  <path fill="#d20a16" d="M25 22h28L45 30h-8l-7 18H20l8-18H17z"/><text x="45" y="43" font-family="Arial" font-size="15" font-weight="900" font-style="italic">UFFER</text>
+  <text x="24" y="86" font-family="Arial" font-size="27" font-weight="900">Aproveite</text><text x="24" y="113" font-family="Arial" font-size="27" font-weight="900" fill="#d20a16">descontos exclusivos</text><text x="24" y="137" font-family="Arial" font-size="11" fill="#555">Condições especiais para todos os estilos.</text>
+  <rect x="24" y="154" width="128" height="27" rx="4" fill="#d20a16"/><text x="35" y="172" fill="#fff" font-family="Arial" font-size="9" font-weight="700">Confira as ofertas →</text>
+  <g transform="translate(260 132)"><rect width="23" height="61" rx="6" fill="#263b55"/><rect x="27" width="23" height="61" rx="6" fill="#812b39"/><rect x="54" width="23" height="61" rx="6" fill="#626b70"/><rect x="81" width="23" height="61" rx="6" fill="#20584f"/><rect x="108" width="23" height="61" rx="6" fill="#292929"/></g>
+</svg>

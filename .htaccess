@@ -1,0 +1,19 @@
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Impede que uma configuração incorreta com DocumentRoot no diretório do
+    # projeto exponha segredos, código-fonte, logs, backups e dumps.
+    RewriteRule ^\.well-known(?:/|$) - [L,NC]
+    RewriteRule ^\.(?!well-known(?:/|$)) - [F,L,NC]
+    RewriteRule ^(?:\.env(?:\..*)?|composer\.(?:json|lock)|phpunit\.xml|README\.md|.*\.sql(?:\.gz)?)$ - [F,L,NC]
+    RewriteRule ^(?:app|bootstrap|config|database|docs|resources|routes|scripts|storage|tests|vendor)(?:/|$) - [F,L,NC]
+
+    # Compatibilidade com hospedagens compartilhadas que fixam o DocumentRoot
+    # na raiz do repositório. Arquivos públicos e rotas são encaminhados para
+    # public/ sem tornar o restante do projeto acessível pela web.
+    RewriteRule ^public(?:/|$) - [L,NC]
+    RewriteRule ^((?:assets|uploads)(?:/.*)?)$ public/$1 [L,NC]
+    RewriteRule ^ public/index.php [L,QSA]
+</IfModule>

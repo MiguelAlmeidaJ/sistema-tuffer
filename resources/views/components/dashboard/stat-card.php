@@ -1,0 +1,1 @@
+<article class="stat-card"><span><?= e($stat['label']) ?></span><strong><?= e($stat['value']) ?></strong><?php if (!empty($stat['hint'])): ?><small><?= e($stat['hint']) ?></small><?php endif; ?></article>

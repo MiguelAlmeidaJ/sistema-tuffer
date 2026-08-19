@@ -1,0 +1,18 @@
+Options -Indexes
+RewriteEngine On
+
+# Remove /public da URL quando o diretório público já é o DocumentRoot.
+RewriteCond %{THE_REQUEST} \s/+public(?:[/\s?]) [NC]
+RewriteRule ^public(?:/(.*))?$ /$1 [R=301,L,NE]
+
+<IfModule mod_headers.c>
+    Header always unset X-Powered-By
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(self)"
+</IfModule>
+
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.php [L,QSA]
