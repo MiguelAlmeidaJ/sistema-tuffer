@@ -6,10 +6,13 @@ namespace App\Services\Fiscal;
 
 final class FiscalProviderFactory
 {
-    public static function make(?FiscalConfiguration $configuration = null): FiscalProvider
+    /** @param array<string,mixed>|null $storeProfile */
+    public static function make(?FiscalConfiguration $configuration = null, ?array $storeProfile = null): FiscalProvider
     {
         $configuration ??= new FiscalConfiguration();
-        $provider = $configuration->provider();
+        $provider = mb_strtolower(trim((string) ($storeProfile['provider'] ?? $configuration->provider())));
+        $provider = $provider === '' ? 'disabled' : $provider;
+
         return match ($provider) {
             '', 'none', 'disabled' => new DisabledFiscalProvider('disabled'),
             default => new DisabledFiscalProvider($provider),

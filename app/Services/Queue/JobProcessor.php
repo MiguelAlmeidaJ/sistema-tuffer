@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Queue;
 
 use App\Core\Database;
-use App\Services\Fiscal\FiscalDocumentService;
+use App\Services\Fiscal\FiscalOrchestratorService;
 use App\Services\Mail\PasswordResetMailService;
 use App\Services\Payments\PagarmeClient;
 use App\Services\Payments\PagarmeWebhookProcessor;
@@ -23,8 +23,8 @@ final class JobProcessor
             'pagarme.create_payment_link'=>$this->createPaymentLink($payload),
             'pagarme.create_order'=>$this->createPagarmeOrder((int)($payload['payment_id']??0)),
             'pagarme.process_webhook'=>$this->processWebhook((int)($payload['webhook_id']??0)),
-            'fiscal.sync_paid_order'=>(new FiscalDocumentService())->syncPaidOrder((int)($payload['order_id']??0)),
-            'fiscal.review_refund'=>(new FiscalDocumentService())->reviewRefund((int)($payload['order_id']??0),(bool)($payload['full_refund']??false)),
+            'fiscal.sync_paid_order'=>(new FiscalOrchestratorService())->syncPaidOrder((int)($payload['order_id']??0)),
+            'fiscal.review_refund'=>(new FiscalOrchestratorService())->reviewRefund((int)($payload['order_id']??0),(bool)($payload['full_refund']??false)),
             default=>throw new RuntimeException('Tipo de job não suportado.'),
         };
     }
