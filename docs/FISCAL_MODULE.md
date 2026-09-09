@@ -4,78 +4,67 @@ O módulo fiscal da Tuffer é orientado ao `seller_order`: cada fatia da compra 
 
 ## Emissão configurável por loja
 
-A configuração fiscal efetiva passa a ser da `store`, não apenas do `seller`. Isso permite que o mesmo vendedor opere estabelecimentos com CNPJ, IE, série, endereço fiscal e método de emissão diferentes.
+A configuração fiscal efetiva é da `store`, com fallback temporário para `seller_fiscal_profiles`. Isso permite CNPJ, IE, série, endereço fiscal e método de emissão diferentes entre lojas do mesmo vendedor.
 
-A tabela `store_fiscal_profiles` define três modos:
+`store_fiscal_profiles` possui três modos:
 
-- `platform`: a Tuffer valida os dados fiscais e encaminha a NF-e ao provider configurado para aquela loja.
-- `manual`: a loja emite no sistema que já utiliza e registra na Tuffer número, série e chave de acesso.
-- `external`: um ERP/API externa emite e devolve os dados do documento para a Tuffer.
+- `platform`: a Tuffer valida e envia ao provider fiscal da loja.
+- `manual`: a loja emite fora da Tuffer e registra autorização/arquivos em `/vendedor/fiscal/integracao`.
+- `external`: ERP/API emite e sincroniza autorização/cancelamento pela API autenticada.
 
-`seller_fiscal_profiles` continua sendo lido apenas como fallback de compatibilidade enquanto uma loja ainda não possui seu próprio perfil. Ao salvar a tela Fiscal da loja, passa a existir um `store_fiscal_profiles` próprio.
+O `fiscal_document` preserva `issuance_mode`, `provider` e `environment` do pedido, mesmo se a configuração da loja mudar depois.
 
-Cada `fiscal_document` guarda o `issuance_mode`, `provider` e `environment` utilizados naquele pedido. Assim, mudar a configuração futura da loja não apaga o contexto histórico do documento.
+## Segurança
 
-## Estado seguro por padrão
+Nenhum provider real está habilitado por padrão. `FiscalProviderFactory` continua fail-closed até existir adapter homologado.
 
-Nenhum provider real foi habilitado nesta etapa. `FiscalProviderFactory` continua retornando um provider desabilitado até que um adapter seja implementado e homologado.
+Certificado A1, senha e segredos do provider não pertencem a `provider_settings`. A credencial da API externa é gerada por loja e armazenada somente como hash SHA-256 em `store_fiscal_api_credentials`; o token completo aparece uma única vez no painel.
 
-Certificado A1, senha do certificado, tokens e segredos do provider não devem ser armazenados em `provider_settings`. Use variáveis de ambiente ou cofre de segredos. XML e DANFE ficam em `storage/private/fiscal`, nunca em `public/`.
+XML e DANFE ficam em `storage/private/fiscal`, com permissão privada. XML recebido de fora precisa ser uma NF-e reconhecível e, quando contém chave em `infNFe/@Id`, ela deve coincidir com a chave registrada. DANFE precisa ser PDF válido. O cliente acessa arquivos somente por controller autenticado.
 
-## Fluxos
+## Fluxo `platform`
 
-### Pela Tuffer (`platform`)
-
-1. Pagar.me processa o webhook.
-2. O `JobProcessor` agenda `fiscal.sync_paid_order` na fila `fiscal`.
-3. `FiscalOrchestratorService` lê a configuração da loja.
+1. Pagar.me confirma o pagamento.
+2. A fila agenda `fiscal.sync_paid_order`.
+3. `FiscalOrchestratorService` lê o perfil da loja.
 4. Emissor, destinatário e itens são fotografados em snapshots.
 5. Dados fiscais são validados.
-6. Pendências deixam o documento em `validation_failed`.
-7. Documento válido fica `ready`.
-8. Somente se `auto_issue` estiver habilitado e o provider da loja estiver realmente configurado a emissão é enviada.
+6. Pendência vira `validation_failed`; documento válido vira `ready`.
+7. Somente com `auto_issue=1` e provider realmente configurado ocorre transmissão.
 
-### Manual (`manual`)
+## Fluxo `manual`
 
-1. O pagamento cria/atualiza o documento fiscal.
-2. O documento fica `awaiting_manual`.
-3. A loja emite fora da Tuffer.
-4. O vendedor informa número, série, chave de acesso e, opcionalmente, protocolo/referência externa.
-5. A Tuffer vincula a NF-e ao `seller_order` e registra um evento de auditoria.
+1. Documento fica `awaiting_manual`.
+2. A loja emite no sistema próprio.
+3. O vendedor registra número, série, chave e, opcionalmente, protocolo, XML e DANFE.
+4. Arquivos ficam privados e a NF-e aparece no pedido do cliente.
+5. Cancelamento externo pode ser registrado pelo painel sem apagar o histórico.
 
-### ERP/API externa (`external`)
+## Fluxo `external`
 
-1. O documento fica `awaiting_external`.
-2. A integração externa deverá emitir a NF-e.
-3. O retorno será registrado pelo mesmo núcleo fiscal, mantendo chave, número, eventos e vínculo com o pedido.
+1. Documento fica `awaiting_external`.
+2. O vendedor gera uma credencial exclusiva para a loja.
+3. O ERP consulta o `seller_order` e envia a autorização para `/api/v1/fiscal`.
+4. A Tuffer bloqueia substituição de NF-e já autorizada, mas aceita repetições idempotentes.
+5. O ERP pode enviar XML e DANFE junto da autorização e depois registrar cancelamento.
+6. O cliente visualiza e baixa os documentos pelo próprio pedido.
 
-Nesta primeira etapa, o endpoint de registro pelo painel já existe; webhook/API autenticada para ERPs é a próxima camada.
-
-## Dados fiscais
-
-Para `platform`, a loja precisa de razão social, documento, indicador/inscrição estadual, regime, CRT, endereço fiscal, código IBGE e série da NF-e.
-
-Produto: NCM, origem, unidades comercial/tributável, CFOP interno/interestadual, ICMS/CSOSN, PIS, COFINS e, enquanto `FISCAL_RTC_REQUIRED=true`, CST e classificação IBS/CBS. CEST e IPI são informados quando aplicáveis.
-
-Nos modos `manual` e `external`, a Tuffer não bloqueia o pedido por ausência da classificação tributária interna, pois o motor emissor está fora da plataforma. Ainda assim, os snapshots e cadastros podem ser mantidos para auditoria e futura migração de provider.
+Contrato detalhado: `docs/FISCAL_API.md`.
 
 ## Reembolso
 
-Documento autorizado nunca é cancelado automaticamente por um reembolso. A Tuffer marca revisão fiscal para decidir entre cancelamento, devolução ou outro evento adequado. Documentos ainda não autorizados podem ser anulados internamente após reembolso integral.
+Reembolso nunca cancela automaticamente uma NF-e autorizada. O documento fica marcado para revisão fiscal para decidir cancelamento, devolução ou outro evento. Documentos ainda não autorizados podem ser anulados internamente após reembolso integral.
 
-## Operação
-
-O worker padrão inclui a fila `fiscal`. Para reconciliar pedidos pagos existentes:
+## Reconciliação
 
 ```bash
 php scripts/sync-fiscal-paid-orders.php 200
 ```
 
-## Próximas camadas
+## Ainda necessário antes de emissão real pela Tuffer
 
-1. Implementar o primeiro provider real (`FocusNfeProvider`, `NuvemFiscalProvider` ou equivalente).
-2. Criar credenciais por loja em cofre seguro, sem gravar segredo em texto puro no banco.
-3. Criar endpoint autenticado para ERP externo registrar autorização/cancelamento.
-4. Permitir anexar/armazenar XML e DANFE emitidos fora da Tuffer.
-5. Exibir NF-e/DANFE para o cliente no detalhe do pedido.
-6. Criar painel fiscal administrativo e trilha completa de eventos.
+1. Escolher e implementar o primeiro provider real (`FocusNfeProvider`, `NuvemFiscalProvider` ou equivalente).
+2. Guardar credenciais/certificados do provider em cofre de segredos apropriado.
+3. Homologar emissão, consulta e cancelamento no provider escolhido.
+4. Validar tributação e Reforma Tributária com a contabilidade.
+5. Criar painel fiscal administrativo para operação e auditoria em escala.
