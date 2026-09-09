@@ -8,7 +8,7 @@ use App\Core\Database;
 use App\Core\Logger;
 use App\Core\Response;
 use App\Services\Fiscal\FiscalApiTokenService;
-use App\Services\Fiscal\FiscalOrchestratorService;
+use App\Services\Fiscal\ExternalFiscalDocumentService;
 use JsonException;
 use RuntimeException;
 use Throwable;
@@ -24,7 +24,7 @@ final class FiscalIntegrationController
         $sellerOrderId = $this->sellerOrderId($code, $credential);
         if ($sellerOrderId === null) return Response::json(['error'=>'seller_order_not_found','message'=>'Pedido da loja não encontrado para esta credencial.'], 404);
         try {
-            $document = (new FiscalOrchestratorService())->documentForSellerOrder($sellerOrderId);
+            $document = (new ExternalFiscalDocumentService())->document($sellerOrderId);
             return Response::json(['data'=>$this->documentPayload($code, $document)]);
         } catch (RuntimeException $e) {
             return Response::json(['error'=>'fiscal_state_invalid','message'=>$e->getMessage()], 422);
@@ -44,7 +44,7 @@ final class FiscalIntegrationController
             $data = $this->jsonBody();
             $data['danfe'] = $this->decodeBase64Field($data, 'danfe_base64');
             unset($data['danfe_base64']);
-            $document = (new FiscalOrchestratorService())->registerOutsideDocument($sellerOrderId, $data);
+            $document = (new ExternalFiscalDocumentService())->authorize($sellerOrderId, $data);
             return Response::json(['data'=>$this->documentPayload($code, $document)], 200);
         } catch (JsonException $e) {
             return Response::json(['error'=>'invalid_json','message'=>'Envie um JSON válido.'], 400);
@@ -65,7 +65,7 @@ final class FiscalIntegrationController
         if ($sellerOrderId === null) return Response::json(['error'=>'seller_order_not_found','message'=>'Pedido da loja não encontrado para esta credencial.'], 404);
         try {
             $data = $this->jsonBody();
-            $document = (new FiscalOrchestratorService())->registerOutsideCancellation($sellerOrderId, $data);
+            $document = (new ExternalFiscalDocumentService())->cancel($sellerOrderId, $data);
             return Response::json(['data'=>$this->documentPayload($code, $document)]);
         } catch (JsonException) {
             return Response::json(['error'=>'invalid_json','message'=>'Envie um JSON válido.'], 400);
