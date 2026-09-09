@@ -88,7 +88,7 @@ $router->aliasMiddleware('wholesale.approved', WholesaleApprovedMiddleware::clas
 $router->aliasMiddleware('permission', PermissionMiddleware::class);
 $router->aliasMiddleware('csrf', VerifyCsrfToken::class);
 
-foreach (['web', 'auth', 'customer', 'seller', 'admin', 'webhooks'] as $routeFile) {
+foreach (['web', 'auth', 'customer', 'seller', 'admin', 'webhooks', 'api'] as $routeFile) {
     require $root . "/routes/{$routeFile}.php";
 }
 
