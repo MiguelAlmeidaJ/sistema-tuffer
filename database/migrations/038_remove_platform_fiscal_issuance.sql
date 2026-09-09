@@ -9,10 +9,6 @@ WHERE issuance_mode = 'platform';
 UPDATE fiscal_documents
 SET issuance_mode = 'manual',
     provider = CASE WHEN provider = 'disabled' THEN 'manual' ELSE provider END,
-    status = CASE
-        WHEN status IN ('ready','validation_failed','error','configuration_required','pending','submitting','processing','rejected') THEN 'awaiting_manual'
-        ELSE status
-    END,
     requires_action = CASE
         WHEN status IN ('ready','validation_failed','error','configuration_required','pending','submitting','processing','rejected') THEN 1
         ELSE requires_action
@@ -20,6 +16,10 @@ SET issuance_mode = 'manual',
     action_reason = CASE
         WHEN status IN ('ready','validation_failed','error','configuration_required','pending','submitting','processing','rejected') THEN 'A loja deve emitir a NF-e no próprio sistema e vinculá-la à Tuffer.'
         ELSE action_reason
+    END,
+    status = CASE
+        WHEN status IN ('ready','validation_failed','error','configuration_required','pending','submitting','processing','rejected') THEN 'awaiting_manual'
+        ELSE status
     END
 WHERE issuance_mode = 'platform';
 
