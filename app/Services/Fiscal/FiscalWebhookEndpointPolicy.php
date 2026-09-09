@@ -28,16 +28,19 @@ final class FiscalWebhookEndpointPolicy
         if ($host === '' || $host === 'localhost' || str_ends_with($host, '.local')) {
             throw new RuntimeException('O webhook fiscal deve apontar para um host público.');
         }
-        $ips = filter_var($host, FILTER_VALIDATE_IP) ? [$host] : (gethostbynamel($host) ?: []);
-        if ($ips === []) throw new RuntimeException('Não foi possível resolver o host do webhook fiscal.');
+        if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+            throw new RuntimeException('Webhooks fiscais aceitam atualmente host IPv4 público ou hostname com resolução IPv4.');
+        }
+        $ips = filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) ? [$host] : (gethostbynamel($host) ?: []);
+        if ($ips === []) throw new RuntimeException('Não foi possível resolver o host IPv4 do webhook fiscal.');
         foreach ($ips as $ip) {
-            if (!$this->publicIp($ip)) throw new RuntimeException('O webhook fiscal não pode apontar para rede privada, local ou reservada.');
+            if (!$this->publicIpv4($ip)) throw new RuntimeException('O webhook fiscal não pode apontar para rede privada, local ou reservada.');
         }
         return ['url'=>$url,'host'=>$host,'ip'=>$ips[0]];
     }
 
-    private function publicIp(string $ip): bool
+    private function publicIpv4(string $ip): bool
     {
-        return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
+        return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
     }
 }
