@@ -7,6 +7,7 @@ namespace App\Services\Fiscal;
 use App\Core\Database;
 use PDO;
 use RuntimeException;
+use Throwable;
 
 final class ExternalFiscalDocumentService
 {
@@ -30,10 +31,6 @@ final class ExternalFiscalDocumentService
     /** @param array<string,mixed> $data @return array<string,mixed> */
     public function authorize(int $sellerOrderId, array $data): array
     {
-        $document = $this->document($sellerOrderId);
-        $this->assertOutsideMode($document);
-        if ((string) $document['status'] === 'cancelled') throw new RuntimeException('A NF-e deste pedido já está cancelada e não pode ser substituída.');
-
         $number = (int) ($data['number'] ?? 0);
         $series = (int) ($data['series'] ?? 0);
         $accessKey = preg_replace('/\D+/', '', (string) ($data['access_key'] ?? '')) ?? '';
@@ -46,63 +43,107 @@ final class ExternalFiscalDocumentService
         if ($series < 1 || $series > 999) throw new RuntimeException('A série da NF-e deve estar entre 1 e 999.');
         if (!preg_match('/^\d{44}$/', $accessKey)) throw new RuntimeException('A chave de acesso da NF-e deve possuir 44 dígitos.');
 
-        if ((string) $document['status'] === 'authorized') {
-            $same = (int) ($document['number'] ?? 0) === $number
-                && (int) ($document['series'] ?? 0) === $series
-                && hash_equals((string) ($document['access_key'] ?? ''), $accessKey);
-            if (!$same) {
-                $this->event((int) $document['id'], 'outside_document_conflict', 'authorized', 'Tentativa bloqueada de substituir uma NF-e já autorizada.', ['incoming_number'=>$number,'incoming_series'=>$series,'incoming_access_key'=>$accessKey]);
-                throw new RuntimeException('Já existe outra NF-e autorizada para este pedido da loja. A substituição foi bloqueada.');
+        $this->document($sellerOrderId);
+        $this->pdo->beginTransaction();
+        try {
+            $document = $this->lockedDocument($sellerOrderId);
+            $this->assertOutsideMode($document);
+            if ((string) $document['status'] === 'cancelled') throw new RuntimeException('A NF-e deste pedido já está cancelada e não pode ser substituída.');
+
+            if ((string) $document['status'] === 'authorized') {
+                $same = (int) ($document['number'] ?? 0) === $number
+                    && (int) ($document['series'] ?? 0) === $series
+                    && hash_equals((string) ($document['access_key'] ?? ''), $accessKey);
+                if (!$same) {
+                    $this->event((int) $document['id'], 'outside_document_conflict', 'authorized', 'Tentativa bloqueada de substituir uma NF-e já autorizada.', ['incoming_number'=>$number,'incoming_series'=>$series,'incoming_access_key'=>$accessKey]);
+                    $this->pdo->commit();
+                    throw new RuntimeException('Já existe outra NF-e autorizada para este pedido da loja. A substituição foi bloqueada.');
+                }
+                if ($xml !== null || $danfe !== null) {
+                    $paths = $this->storage->store((int) $document['seller_id'], (int) $document['id'], $accessKey, $xml, $danfe);
+                    $this->pdo->prepare('UPDATE fiscal_documents SET xml_storage_path=COALESCE(?,xml_storage_path),danfe_storage_path=COALESCE(?,danfe_storage_path) WHERE id=?')
+                        ->execute([$paths['xml_storage_path'],$paths['danfe_storage_path'],$document['id']]);
+                    $this->event((int) $document['id'], 'outside_files_attached', 'authorized', 'Arquivos fiscais privados vinculados ao documento.', ['xml_attached'=>$xml!==null,'danfe_attached'=>$danfe!==null]);
+                }
+                $id = (int) $document['id'];
+                $this->pdo->commit();
+                return $this->fetchDocument($id);
             }
-            if ($xml !== null || $danfe !== null) return $this->attach($sellerOrderId, $xml, $danfe);
-            return $document;
-        }
 
-        $duplicate = $this->pdo->prepare('SELECT id FROM fiscal_documents WHERE access_key=? AND id<>? LIMIT 1');
-        $duplicate->execute([$accessKey, $document['id']]);
-        if ((int) $duplicate->fetchColumn() > 0) {
-            $this->event((int) $document['id'], 'outside_document_conflict', (string) $document['status'], 'Tentativa bloqueada de reutilizar chave de acesso vinculada a outro documento.', ['incoming_access_key'=>$accessKey]);
-            throw new RuntimeException('Esta chave de acesso já está vinculada a outro pedido. A substituição foi bloqueada.');
-        }
+            $duplicate = $this->pdo->prepare('SELECT id FROM fiscal_documents WHERE access_key=? AND id<>? LIMIT 1 FOR UPDATE');
+            $duplicate->execute([$accessKey, $document['id']]);
+            if ((int) $duplicate->fetchColumn() > 0) {
+                $this->event((int) $document['id'], 'outside_document_conflict', (string) $document['status'], 'Tentativa bloqueada de reutilizar chave de acesso vinculada a outro documento.', ['incoming_access_key'=>$accessKey]);
+                $this->pdo->commit();
+                throw new RuntimeException('Esta chave de acesso já está vinculada a outro pedido. A substituição foi bloqueada.');
+            }
 
-        $paths = $this->storage->store((int) $document['seller_id'], (int) $document['id'], $accessKey, $xml, $danfe);
-        $this->pdo->prepare("UPDATE fiscal_documents SET status='authorized',number=?,series=?,access_key=?,protocol=?,external_reference=?,xml_storage_path=COALESCE(?,xml_storage_path),danfe_storage_path=COALESCE(?,danfe_storage_path),requires_action=0,action_reason=NULL,error_code=NULL,error_message=NULL,authorized_at=COALESCE(authorized_at,NOW()) WHERE id=?")
-            ->execute([$number,$series,$accessKey,$protocol !== '' ? $protocol : null,$externalReference !== '' ? $externalReference : null,$paths['xml_storage_path'],$paths['danfe_storage_path'],$document['id']]);
-        $mode = FiscalIssuanceMode::normalize((string) ($document['issuance_mode'] ?? 'manual'));
-        $this->event((int) $document['id'], $mode === FiscalIssuanceMode::MANUAL ? 'manual_document_registered' : 'external_document_registered', 'authorized', 'NF-e emitida fora da Tuffer foi vinculada ao pedido da loja.', ['number'=>$number,'series'=>$series,'access_key'=>$accessKey,'external_reference'=>$externalReference,'xml_attached'=>$xml!==null,'danfe_attached'=>$danfe!==null]);
-        return $this->fetchDocument((int) $document['id']);
+            $paths = $this->storage->store((int) $document['seller_id'], (int) $document['id'], $accessKey, $xml, $danfe);
+            $this->pdo->prepare("UPDATE fiscal_documents SET status='authorized',number=?,series=?,access_key=?,protocol=?,external_reference=?,xml_storage_path=COALESCE(?,xml_storage_path),danfe_storage_path=COALESCE(?,danfe_storage_path),requires_action=0,action_reason=NULL,error_code=NULL,error_message=NULL,authorized_at=COALESCE(authorized_at,NOW()) WHERE id=?")
+                ->execute([$number,$series,$accessKey,$protocol !== '' ? $protocol : null,$externalReference !== '' ? $externalReference : null,$paths['xml_storage_path'],$paths['danfe_storage_path'],$document['id']]);
+            $mode = FiscalIssuanceMode::normalize((string) ($document['issuance_mode'] ?? 'manual'));
+            $this->event((int) $document['id'], $mode === FiscalIssuanceMode::MANUAL ? 'manual_document_registered' : 'external_document_registered', 'authorized', 'NF-e emitida fora da Tuffer foi vinculada ao pedido da loja.', ['number'=>$number,'series'=>$series,'access_key'=>$accessKey,'external_reference'=>$externalReference,'xml_attached'=>$xml!==null,'danfe_attached'=>$danfe!==null]);
+            $id = (int) $document['id'];
+            $this->pdo->commit();
+            return $this->fetchDocument($id);
+        } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $e;
+        }
     }
 
     /** @return array<string,mixed> */
     public function attach(int $sellerOrderId, ?string $xml, ?string $danfe): array
     {
-        $document = $this->document($sellerOrderId);
-        $this->assertOutsideMode($document);
-        if (!in_array((string) $document['status'], ['authorized','cancelled'], true)) throw new RuntimeException('Autorize a NF-e antes de anexar XML ou DANFE.');
         if ($xml === null && $danfe === null) throw new RuntimeException('Selecione ao menos o XML ou o DANFE.');
-        $paths = $this->storage->store((int) $document['seller_id'], (int) $document['id'], (string) ($document['access_key'] ?? ''), $xml, $danfe);
-        $this->pdo->prepare('UPDATE fiscal_documents SET xml_storage_path=COALESCE(?,xml_storage_path),danfe_storage_path=COALESCE(?,danfe_storage_path) WHERE id=?')
-            ->execute([$paths['xml_storage_path'],$paths['danfe_storage_path'],$document['id']]);
-        $this->event((int) $document['id'], 'outside_files_attached', (string) $document['status'], 'Arquivos fiscais privados vinculados ao documento.', ['xml_attached'=>$xml!==null,'danfe_attached'=>$danfe!==null]);
-        return $this->fetchDocument((int) $document['id']);
+        $this->document($sellerOrderId);
+        $this->pdo->beginTransaction();
+        try {
+            $document = $this->lockedDocument($sellerOrderId);
+            $this->assertOutsideMode($document);
+            if (!in_array((string) $document['status'], ['authorized','cancelled'], true)) throw new RuntimeException('Autorize a NF-e antes de anexar XML ou DANFE.');
+            $paths = $this->storage->store((int) $document['seller_id'], (int) $document['id'], (string) ($document['access_key'] ?? ''), $xml, $danfe);
+            $this->pdo->prepare('UPDATE fiscal_documents SET xml_storage_path=COALESCE(?,xml_storage_path),danfe_storage_path=COALESCE(?,danfe_storage_path) WHERE id=?')
+                ->execute([$paths['xml_storage_path'],$paths['danfe_storage_path'],$document['id']]);
+            $this->event((int) $document['id'], 'outside_files_attached', (string) $document['status'], 'Arquivos fiscais privados vinculados ao documento.', ['xml_attached'=>$xml!==null,'danfe_attached'=>$danfe!==null]);
+            $id = (int) $document['id'];
+            $this->pdo->commit();
+            return $this->fetchDocument($id);
+        } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $e;
+        }
     }
 
     /** @param array<string,mixed> $data @return array<string,mixed> */
     public function cancel(int $sellerOrderId, array $data): array
     {
-        $document = $this->document($sellerOrderId);
-        $this->assertOutsideMode($document);
-        if ((string) $document['status'] === 'cancelled') return $document;
-        if ((string) $document['status'] !== 'authorized') throw new RuntimeException('Somente uma NF-e autorizada pode ser marcada como cancelada.');
         $reason = trim((string) ($data['reason'] ?? ''));
         $protocol = mb_substr(trim((string) ($data['cancellation_protocol'] ?? '')), 0, 100);
         $externalReference = mb_substr(trim((string) ($data['external_reference'] ?? '')), 0, 150);
         if (mb_strlen($reason) < 15 || mb_strlen($reason) > 1000) throw new RuntimeException('Informe o motivo do cancelamento com 15 a 1000 caracteres.');
-        $this->pdo->prepare("UPDATE fiscal_documents SET status='cancelled',cancellation_protocol=?,cancellation_reason=?,external_reference=COALESCE(?,external_reference),requires_action=0,action_reason=NULL,cancelled_at=COALESCE(cancelled_at,NOW()) WHERE id=?")
-            ->execute([$protocol !== '' ? $protocol : null,$reason,$externalReference !== '' ? $externalReference : null,$document['id']]);
-        $mode = FiscalIssuanceMode::normalize((string) ($document['issuance_mode'] ?? 'manual'));
-        $this->event((int) $document['id'], $mode === FiscalIssuanceMode::MANUAL ? 'manual_cancelled' : 'external_cancelled', 'cancelled', 'Cancelamento da NF-e externa registrado na Tuffer.', ['cancellation_protocol'=>$protocol,'external_reference'=>$externalReference]);
-        return $this->fetchDocument((int) $document['id']);
+
+        $this->document($sellerOrderId);
+        $this->pdo->beginTransaction();
+        try {
+            $document = $this->lockedDocument($sellerOrderId);
+            $this->assertOutsideMode($document);
+            if ((string) $document['status'] === 'cancelled') {
+                $this->pdo->commit();
+                return $document;
+            }
+            if ((string) $document['status'] !== 'authorized') throw new RuntimeException('Somente uma NF-e autorizada pode ser marcada como cancelada.');
+            $this->pdo->prepare("UPDATE fiscal_documents SET status='cancelled',cancellation_protocol=?,cancellation_reason=?,external_reference=COALESCE(?,external_reference),requires_action=0,action_reason=NULL,cancelled_at=COALESCE(cancelled_at,NOW()) WHERE id=?")
+                ->execute([$protocol !== '' ? $protocol : null,$reason,$externalReference !== '' ? $externalReference : null,$document['id']]);
+            $mode = FiscalIssuanceMode::normalize((string) ($document['issuance_mode'] ?? 'manual'));
+            $this->event((int) $document['id'], $mode === FiscalIssuanceMode::MANUAL ? 'manual_cancelled' : 'external_cancelled', 'cancelled', 'Cancelamento da NF-e externa registrado na Tuffer.', ['cancellation_protocol'=>$protocol,'external_reference'=>$externalReference]);
+            $id = (int) $document['id'];
+            $this->pdo->commit();
+            return $this->fetchDocument($id);
+        } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $e;
+        }
     }
 
     /** @param array<string,mixed> $document */
@@ -112,6 +153,16 @@ final class ExternalFiscalDocumentService
         if (!in_array($mode, [FiscalIssuanceMode::MANUAL, FiscalIssuanceMode::EXTERNAL], true)) {
             throw new RuntimeException('Este documento utiliza emissão pela própria plataforma.');
         }
+    }
+
+    /** @return array<string,mixed> */
+    private function lockedDocument(int $sellerOrderId): array
+    {
+        $stmt = $this->pdo->prepare("SELECT * FROM fiscal_documents WHERE seller_order_id=? AND document_type='nfe' AND revision=1 LIMIT 1 FOR UPDATE");
+        $stmt->execute([$sellerOrderId]);
+        $row = $stmt->fetch();
+        if (!is_array($row)) throw new RuntimeException('Documento fiscal não encontrado.');
+        return $row;
     }
 
     /** @return array<string,mixed> */
