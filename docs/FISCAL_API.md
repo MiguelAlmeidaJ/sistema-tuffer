@@ -14,6 +14,40 @@ Authorization: Bearer tf_fiscal_<segredo>
 
 Tokens em query string não são suportados. Uma credencial só acessa `seller_orders` da própria `store_id` e `seller_id`.
 
+## Fluxo automático
+
+Quando o pagamento deixa um `seller_order` apto para processamento fiscal, a fila da Tuffer sincroniza o documento e, para lojas em modo `external` com webhook ativo, agenda uma entrega `fiscal.seller_order.ready`.
+
+O webhook é apenas um aviso. Ele não transporta todo o pedido. O ERP recebe o código e a URL do recurso, então usa o Bearer token da própria loja para buscar o payload completo.
+
+Exemplo de webhook:
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "type": "fiscal.seller_order.ready",
+  "created_at": "2026-09-09 16:00:00",
+  "data": {
+    "seller_order_code": "SO-ABC123",
+    "resource_url": "https://tuffer.com.br/api/v1/fiscal/seller-orders/SO-ABC123/payload"
+  }
+}
+```
+
+Headers de assinatura:
+
+```http
+X-Tuffer-Event: <event-id>
+X-Tuffer-Timestamp: <unix-timestamp>
+X-Tuffer-Signature: sha256=<hmac>
+```
+
+A assinatura é `HMAC-SHA256(timestamp + "." + corpo_bruto, segredo_webhook)`. O ERP deve validar a assinatura antes de processar o evento, rejeitar timestamps antigos e tratar `X-Tuffer-Event` de forma idempotente.
+
+O segredo HMAC é gerado por loja, exibido uma única vez e armazenado criptografado com chave derivada de `APP_KEY`. A URL do webhook deve ser HTTPS público na porta 443; destinos locais, privados e reservados são bloqueados e redirects não são seguidos.
+
+Falhas de entrega são reprocessadas pela fila com backoff. A ativação do webhook e o script de reconciliação também reavaliam pedidos elegíveis sem criar evento duplicado para o mesmo `seller_order`.
+
 ## Consultar documento
 
 ```http
@@ -21,6 +55,15 @@ GET /api/v1/fiscal/seller-orders/{seller_order_code}
 ```
 
 Retorna status, número, série, chave, protocolo e indicadores de XML/DANFE.
+
+## Buscar payload para emissão
+
+```http
+GET /api/v1/fiscal/seller-orders/{seller_order_code}/payload
+Authorization: Bearer tf_fiscal_<segredo>
+```
+
+Retorna dados do `seller_order`, totais, emissor, destinatário/endereço e itens com as referências fiscais disponíveis (`NCM`, `CEST`, origem, CFOP, ICMS, PIS, COFINS, IPI e IBS/CBS). Esses campos são dados de referência: o cálculo tributário e a emissão continuam sob responsabilidade do ERP/emissor da loja.
 
 ## Registrar NF-e autorizada
 
@@ -85,3 +128,5 @@ XML e DANFE ficam em `storage/private/fiscal`. O cliente nunca recebe um caminho
 ## Rotação e revogação
 
 Rotacionar uma credencial invalida imediatamente o token anterior. Revogar desabilita o acesso da integração sem alterar documentos fiscais já recebidos. `last_used_at` permite verificar se a integração está efetivamente utilizando o token atual.
+
+O webhook possui segredo separado do Bearer token. Alterar a URL pelo painel `/vendedor/fiscal/webhook` rotaciona o segredo HMAC; desativar o webhook interrompe novos envios sem revogar a API do ERP.
