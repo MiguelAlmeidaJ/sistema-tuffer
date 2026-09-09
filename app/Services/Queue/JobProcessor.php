@@ -6,6 +6,7 @@ namespace App\Services\Queue;
 
 use App\Core\Database;
 use App\Services\Fiscal\FiscalOrchestratorService;
+use App\Services\Fiscal\FiscalWebhookService;
 use App\Services\Mail\PasswordResetMailService;
 use App\Services\Payments\PagarmeClient;
 use App\Services\Payments\PagarmeWebhookProcessor;
@@ -23,15 +24,16 @@ final class JobProcessor
             'pagarme.create_payment_link'=>$this->createPaymentLink($payload),
             'pagarme.create_order'=>$this->createPagarmeOrder((int)($payload['payment_id']??0)),
             'pagarme.process_webhook'=>$this->processWebhook((int)($payload['webhook_id']??0)),
-            'fiscal.sync_paid_order'=>(new FiscalOrchestratorService())->syncPaidOrder((int)($payload['order_id']??0)),
+            'fiscal.sync_paid_order'=>$this->syncPaidOrder((int)($payload['order_id']??0)),
             'fiscal.review_refund'=>(new FiscalOrchestratorService())->reviewRefund((int)($payload['order_id']??0),(bool)($payload['full_refund']??false)),
+            'fiscal.deliver_webhook'=>(new FiscalWebhookService())->deliver((int)($payload['delivery_id']??0)),
             default=>throw new RuntimeException('Tipo de job não suportado.'),
         };
     }
 
     private function sendMail(int $deliveryId): void
     {
-        $pdo=Database::connection();$s=$pdo->prepare('SELECT * FROM mail_deliveries WHERE id=?');$s->execute([$deliveryId]);$delivery=$s->fetch();if(!is_array($delivery))throw new RuntimeException('Entrega de e-mail não encontrada.');if($delivery['status']==='sent')return;$mailer=new PasswordResetMailService();$sent=$mailer->sendMessage((string)$delivery['recipient_name'],(string)$delivery['recipient_email'],(string)$delivery['subject'],(string)$delivery['message_body']);if(!$sent){$error=mb_substr((string)($mailer->lastError()??'Falha não identificada no SMTP.'),0,500);$pdo->prepare("UPDATE mail_deliveries SET status='failed',error_message=? WHERE id=?")->execute([$error,$deliveryId]);throw new RuntimeException($error);}$pdo->prepare("UPDATE mail_deliveries SET status='sent',message_body=NULL,error_message=NULL,sent_at=NOW() WHERE id=?")->execute([$deliveryId]);
+        $pdo=Database::connection();$s=$pdo->prepare('SELECT * FROM mail_deliveries WHERE id=?');$s->execute([$deliveryId]);$delivery=$s->fetch();if(!is_array($delivery))throw new RuntimeException('Entrega de e-mail não encontrada.');if($delivery['status']==='sent')return;$mailer=new PasswordResetMailService();$sent=$mailer->sendMessage((string)$delivery['recipient_name'],(string)$delivery['recipient_email'],(string)$delivery['subject'],(string)$delivery['message_body']);if(!$sent){$error=mb_substr((string)($mailer->lastError()??'Falha não identificada no SMTP.'),0,500);$pdo->prepare("UPDATE mail_deliveries SET status='failed',error_message=? WHERE id=?")->execute([$error,$deliveryId]);throw new RuntimeException($error);}$pdo->prepare("UPDATE mail_deliveries SET status='sent',message_body=NULL,error_message=NULL,sent_at=NOW() WHERE id=? AND status='processing'")->execute([$deliveryId]);
     }
 
     private function createPaymentLink(array $payload): void
@@ -40,6 +42,14 @@ final class JobProcessor
     }
 
     private function createPagarmeOrder(int $paymentId): void{if($paymentId<1)throw new RuntimeException('Job de pedido Pagar.me incompleto.');(new PagarmeOrderService())->createPixOrder($paymentId);}
+
+    private function syncPaidOrder(int $orderId): void
+    {
+        if($orderId<1)throw new RuntimeException('Pedido fiscal enfileirado inválido.');
+        $orchestrator=new FiscalOrchestratorService();$orchestrator->syncPaidOrder($orderId);
+        $pdo=Database::connection();$stmt=$pdo->prepare("SELECT id FROM seller_orders WHERE order_id=? AND status IN ('paid','processing','shipped','delivered') ORDER BY id");$stmt->execute([$orderId]);
+        $webhooks=new FiscalWebhookService($pdo);foreach($stmt->fetchAll(\PDO::FETCH_COLUMN) as $sellerOrderId)$webhooks->enqueueReady((int)$sellerOrderId);
+    }
 
     private function processWebhook(int $webhookId): void
     {
