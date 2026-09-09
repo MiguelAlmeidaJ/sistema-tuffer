@@ -27,3 +27,6 @@ ALTER TABLE store_fiscal_profiles
     MODIFY COLUMN issuance_mode ENUM('manual','external') NOT NULL DEFAULT 'manual',
     MODIFY COLUMN provider VARCHAR(60) NOT NULL DEFAULT 'manual',
     DROP COLUMN auto_issue;
+
+ALTER TABLE fiscal_documents
+    MODIFY COLUMN issuance_mode VARCHAR(20) NOT NULL DEFAULT 'manual';
