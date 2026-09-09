@@ -10,12 +10,10 @@ use PDO;
 final class StoreFiscalProfileRepository
 {
     private readonly PDO $pdo;
-    private readonly FiscalConfiguration $configuration;
 
-    public function __construct(?PDO $pdo = null, ?FiscalConfiguration $configuration = null)
+    public function __construct(?PDO $pdo = null)
     {
         $this->pdo = $pdo ?? Database::connection();
-        $this->configuration = $configuration ?? new FiscalConfiguration();
     }
 
     /** @return array<string,mixed>|null */
@@ -36,10 +34,9 @@ final class StoreFiscalProfileRepository
         }
 
         $legacy['store_id'] = $storeId;
-        $legacy['issuance_mode'] = FiscalIssuanceMode::PLATFORM;
-        $legacy['provider'] = $this->configuration->provider();
-        $legacy['environment'] = $this->configuration->environment();
-        $legacy['auto_issue'] = $this->configuration->autoIssue() ? 1 : 0;
+        $legacy['issuance_mode'] = FiscalIssuanceMode::MANUAL;
+        $legacy['provider'] = 'manual';
+        $legacy['environment'] = 'production';
         return $this->normalize($legacy, 'seller_fallback');
     }
 
@@ -48,10 +45,14 @@ final class StoreFiscalProfileRepository
     {
         $profile['profile_source'] = $source;
         $profile['issuance_mode'] = FiscalIssuanceMode::normalize((string) ($profile['issuance_mode'] ?? FiscalIssuanceMode::MANUAL));
-        $provider = mb_strtolower(trim((string) ($profile['provider'] ?? 'disabled')));
-        $profile['provider'] = $provider === '' ? 'disabled' : $provider;
-        $profile['environment'] = ((string) ($profile['environment'] ?? 'homologation')) === 'production' ? 'production' : 'homologation';
-        $profile['auto_issue'] = filter_var($profile['auto_issue'] ?? false, FILTER_VALIDATE_BOOL);
+        $provider = mb_strtolower(trim((string) ($profile['provider'] ?? 'manual')));
+        if ($profile['issuance_mode'] === FiscalIssuanceMode::MANUAL) {
+            $provider = 'manual';
+        } elseif ($provider === '' || $provider === 'disabled' || $provider === 'manual') {
+            $provider = 'external';
+        }
+        $profile['provider'] = $provider;
+        $profile['environment'] = ((string) ($profile['environment'] ?? 'production')) === 'homologation' ? 'homologation' : 'production';
         return $profile;
     }
 }
