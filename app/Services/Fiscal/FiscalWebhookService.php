@@ -88,13 +88,14 @@ final class FiscalWebhookService
 
         $resolved = $this->policy()->validate((string)$delivery['endpoint_url']);
         $base = rtrim((string)($_ENV['APP_URL'] ?? ''), '/');
+        if ($base === '') throw new RuntimeException('APP_URL precisa estar configurada para webhooks fiscais.');
         $payload = [
             'id'=>(string)$delivery['event_id'],
             'type'=>(string)$delivery['event_type'],
             'created_at'=>(string)$delivery['created_at'],
             'data'=>[
                 'seller_order_code'=>(string)$delivery['seller_order_code'],
-                'resource_url'=>$base . '/api/v1/fiscal/seller-orders/' . rawurlencode((string)$delivery['seller_order_code']),
+                'resource_url'=>$base . '/api/v1/fiscal/seller-orders/' . rawurlencode((string)$delivery['seller_order_code']) . '/payload',
             ],
         ];
         $body = json_encode($payload, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
@@ -130,7 +131,6 @@ final class FiscalWebhookService
         $error = curl_error($ch);
         $status = (int)curl_getinfo($ch,CURLINFO_RESPONSE_CODE);
         curl_close($ch);
-        $excerpt = is_string($response) ? mb_substr(trim($response),0,1000) : null;
 
         if ($error !== '' || $status < 200 || $status >= 300) {
             $message = $error !== '' ? $error : 'ERP respondeu HTTP '.$status.'.';
