@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\FinanceController;
+use App\Http\Controllers\Admin\FiscalController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ReportController;
@@ -22,6 +23,10 @@ $router->group(['prefix' => '/admin', 'middleware' => ['auth', 'role:admin']], s
     $router->get('/', [DashboardController::class, 'index']);
     $router->get('/relatorios', [ReportController::class, 'index']);
     $router->get('/financeiro', [FinanceController::class, 'index']);
+    $router->get('/fiscal', [FiscalController::class, 'index']);
+    $router->get('/fiscal/{id}', [FiscalController::class, 'show']);
+    $router->get('/fiscal/{id}/xml', [FiscalController::class, 'xml']);
+    $router->get('/fiscal/{id}/danfe', [FiscalController::class, 'danfe']);
     $router->get('/financeiro/carteira-fretes', [ShippingWalletController::class, 'index']);
     $router->post('/financeiro/carteira-fretes', [ShippingWalletController::class, 'create'], ['csrf']);
     $router->get('/financeiro/fechamentos', [FinancialSettlementController::class, 'index']);
