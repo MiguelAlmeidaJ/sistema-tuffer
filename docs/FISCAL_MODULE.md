@@ -20,7 +20,7 @@ Nenhum provider real está habilitado por padrão. `FiscalProviderFactory` conti
 
 Certificado A1, senha e segredos do provider não pertencem a `provider_settings`. A credencial da API externa é gerada por loja e armazenada somente como hash SHA-256 em `store_fiscal_api_credentials`; o token completo aparece uma única vez no painel.
 
-XML e DANFE ficam em `storage/private/fiscal`, com permissão privada. XML recebido de fora precisa ser uma NF-e reconhecível e, quando contém chave em `infNFe/@Id`, ela deve coincidir com a chave registrada. DANFE precisa ser PDF válido. O cliente acessa arquivos somente por controller autenticado.
+XML e DANFE ficam em `storage/private/fiscal`, com permissão privada. XML recebido de fora precisa ser uma NF-e reconhecível, não pode declarar DTD/entidades e, quando contém chave em `infNFe/@Id`, ela deve coincidir com a chave registrada. DANFE precisa ser PDF válido. Cliente e admin acessam arquivos somente por controllers autenticados.
 
 ## Fluxo `platform`
 
@@ -51,6 +51,14 @@ XML e DANFE ficam em `storage/private/fiscal`, com permissão privada. XML receb
 
 Contrato detalhado: `docs/FISCAL_API.md`.
 
+## Operação administrativa
+
+`/admin/fiscal` centraliza a visão de documentos fiscais de todas as lojas. O painel permite filtrar por status, modo de emissão e pendências, abrir um documento, consultar snapshots dos itens, baixar XML/DANFE privados e revisar a trilha de `fiscal_events`.
+
+O painel administrativo é deliberadamente read-only para ações fiscais sensíveis: não existe botão de emissão ou cancelamento forçado. Emissão e cancelamento devem passar pelo fluxo configurado da loja/provider para preservar autorização, idempotência e auditoria.
+
+O dashboard administrativo também destaca a quantidade de documentos com `requires_action=1`.
+
 ## Reembolso
 
 Reembolso nunca cancela automaticamente uma NF-e autorizada. O documento fica marcado para revisão fiscal para decidir cancelamento, devolução ou outro evento. Documentos ainda não autorizados podem ser anulados internamente após reembolso integral.
@@ -67,4 +75,3 @@ php scripts/sync-fiscal-paid-orders.php 200
 2. Guardar credenciais/certificados do provider em cofre de segredos apropriado.
 3. Homologar emissão, consulta e cancelamento no provider escolhido.
 4. Validar tributação e Reforma Tributária com a contabilidade.
-5. Criar painel fiscal administrativo para operação e auditoria em escala.
