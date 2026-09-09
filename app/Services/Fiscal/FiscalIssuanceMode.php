@@ -6,8 +6,6 @@ namespace App\Services\Fiscal;
 
 final class FiscalIssuanceMode
 {
-    /** Valor legado apenas para compatibilidade com código/migrations antigos. normalize() nunca o retorna. */
-    public const PLATFORM = 'platform';
     public const MANUAL = 'manual';
     public const EXTERNAL = 'external';
 
