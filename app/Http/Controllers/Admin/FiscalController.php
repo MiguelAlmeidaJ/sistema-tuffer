@@ -9,7 +9,6 @@ use App\Core\Response;
 use App\Core\Session;
 use App\Http\Controllers\Controller;
 use App\Services\Fiscal\FiscalDocumentStorage;
-use PDO;
 use RuntimeException;
 
 final class FiscalController extends Controller
@@ -18,11 +17,11 @@ final class FiscalController extends Controller
     {
         $pdo = Database::connection();
         $allowedStatuses = ['pending','configuration_required','validation_failed','ready','submitting','processing','authorized','rejected','error','awaiting_manual','awaiting_external','cancelled','voided'];
-        $allowedModes = ['platform','manual','external'];
-        $status = in_array((string)($_GET['status'] ?? ''), $allowedStatuses, true) ? (string)$_GET['status'] : '';
-        $mode = in_array((string)($_GET['mode'] ?? ''), $allowedModes, true) ? (string)$_GET['mode'] : '';
-        $actionRequired = (string)($_GET['action'] ?? '') === '1';
-        $search = mb_substr(trim((string)($_GET['q'] ?? '')), 0, 100);
+        $allowedModes = ['manual','external'];
+        $status = in_array((string) ($_GET['status'] ?? ''), $allowedStatuses, true) ? (string) $_GET['status'] : '';
+        $mode = in_array((string) ($_GET['mode'] ?? ''), $allowedModes, true) ? (string) $_GET['mode'] : '';
+        $actionRequired = (string) ($_GET['action'] ?? '') === '1';
+        $search = mb_substr(trim((string) ($_GET['q'] ?? '')), 0, 100);
 
         $where = [];
         $params = [];
@@ -54,8 +53,14 @@ final class FiscalController extends Controller
             COALESCE(SUM(status IN ('pending','configuration_required','validation_failed','ready','submitting','processing','awaiting_manual','awaiting_external','error','rejected')),0) open_documents
             FROM fiscal_documents")->fetch();
 
-        return $this->page('admin/fiscal/index','layouts/admin',[
-            'pageTitle'=>'Fiscal','documents'=>$stmt->fetchAll(),'summary'=>$summary ?: [],'statusFilter'=>$status,'modeFilter'=>$mode,'actionFilter'=>$actionRequired,'searchFilter'=>$search,
+        return $this->page('admin/fiscal/index', 'layouts/admin', [
+            'pageTitle' => 'Fiscal',
+            'documents' => $stmt->fetchAll(),
+            'summary' => $summary ?: [],
+            'statusFilter' => $status,
+            'modeFilter' => $mode,
+            'actionFilter' => $actionRequired,
+            'searchFilter' => $search,
         ]);
     }
 
@@ -70,22 +75,38 @@ final class FiscalController extends Controller
                                JOIN stores st ON st.id=fd.store_id
                                JOIN sellers s ON s.id=fd.seller_id
                                WHERE fd.id=? LIMIT 1");
-        $stmt->execute([(int)$id]);
+        $stmt->execute([(int) $id]);
         $document = $stmt->fetch();
-        if (!is_array($document)) { http_response_code(404); return $this->page('errors/404','layouts/admin',['pageTitle'=>'Documento fiscal não encontrado']); }
+        if (!is_array($document)) {
+            http_response_code(404);
+            return $this->page('errors/404', 'layouts/admin', ['pageTitle' => 'Documento fiscal não encontrado']);
+        }
 
         $stmt = $pdo->prepare('SELECT * FROM fiscal_document_items WHERE fiscal_document_id=? ORDER BY id');
         $stmt->execute([$document['id']]);
         $items = $stmt->fetchAll();
+
         $stmt = $pdo->prepare('SELECT * FROM fiscal_events WHERE fiscal_document_id=? ORDER BY id DESC LIMIT 200');
         $stmt->execute([$document['id']]);
         $events = $stmt->fetchAll();
 
-        return $this->page('admin/fiscal/show','layouts/admin',['pageTitle'=>'Documento fiscal #'.$document['id'],'document'=>$document,'items'=>$items,'events'=>$events]);
+        return $this->page('admin/fiscal/show', 'layouts/admin', [
+            'pageTitle' => 'Documento fiscal #' . $document['id'],
+            'document' => $document,
+            'items' => $items,
+            'events' => $events,
+        ]);
     }
 
-    public function xml(string $id): string { return $this->download((int)$id, 'xml'); }
-    public function danfe(string $id): string { return $this->download((int)$id, 'danfe'); }
+    public function xml(string $id): string
+    {
+        return $this->download((int) $id, 'xml');
+    }
+
+    public function danfe(string $id): string
+    {
+        return $this->download((int) $id, 'danfe');
+    }
 
     private function download(int $id, string $type): string
     {
@@ -94,15 +115,15 @@ final class FiscalController extends Controller
         $stmt->execute([$id]);
         $document = $stmt->fetch();
         if (!is_array($document) || empty($document['storage_path'])) {
-            Session::flash('error','Arquivo fiscal ainda não disponível.');
+            Session::flash('error', 'Arquivo fiscal ainda não disponível.');
             return Response::redirect('/admin/fiscal/' . $id);
         }
         try {
-            $path = (new FiscalDocumentStorage())->path((string)$document['storage_path']);
-            $key = preg_replace('/\D+/', '', (string)($document['access_key'] ?? '')) ?: (string)$id;
+            $path = (new FiscalDocumentStorage())->path((string) $document['storage_path']);
+            $key = preg_replace('/\D+/', '', (string) ($document['access_key'] ?? '')) ?: (string) $id;
             return Response::privateFile($path, $type === 'xml' ? 'application/xml; charset=utf-8' : 'application/pdf', 'nfe-' . $key . '.' . ($type === 'xml' ? 'xml' : 'pdf'));
         } catch (RuntimeException) {
-            Session::flash('error','Arquivo fiscal não encontrado no armazenamento privado.');
+            Session::flash('error', 'Arquivo fiscal não encontrado no armazenamento privado.');
             return Response::redirect('/admin/fiscal/' . $id);
         }
     }
