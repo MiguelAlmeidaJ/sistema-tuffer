@@ -9,17 +9,18 @@ use PHPUnit\Framework\TestCase;
 
 final class FiscalIssuanceModeTest extends TestCase
 {
-    public function testKnownModesArePreserved(): void
+    public function testSupportedModesAreManualAndExternal(): void
     {
-        self::assertSame('platform', FiscalIssuanceMode::normalize('PLATFORM'));
         self::assertSame('manual', FiscalIssuanceMode::normalize('manual'));
         self::assertSame('external', FiscalIssuanceMode::normalize(' external '));
+        self::assertTrue(FiscalIssuanceMode::isExternal('EXTERNAL'));
+        self::assertFalse(FiscalIssuanceMode::isExternal('manual'));
     }
 
-    public function testUnknownModeFallsBackToManual(): void
+    public function testLegacyPlatformAndUnknownModesFallBackToManual(): void
     {
+        self::assertSame('manual', FiscalIssuanceMode::normalize('platform'));
         self::assertSame('manual', FiscalIssuanceMode::normalize('unknown'));
-        self::assertFalse(FiscalIssuanceMode::usesPlatform('external'));
-        self::assertTrue(FiscalIssuanceMode::usesPlatform('platform'));
+        self::assertSame('manual', FiscalIssuanceMode::normalize(null));
     }
 }
