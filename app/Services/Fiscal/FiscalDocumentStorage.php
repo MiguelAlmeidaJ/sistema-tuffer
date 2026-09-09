@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Fiscal;
 
-use DOMDocument;
 use RuntimeException;
 
 final class FiscalDocumentStorage
@@ -78,16 +77,24 @@ final class FiscalDocumentStorage
     private function validateXml(string $xml, ?string $accessKey): void
     {
         if (strlen($xml) < 20 || strlen($xml) > self::MAX_XML_BYTES) throw new RuntimeException('XML fiscal vazio ou acima do limite de 5 MB.');
+        if (stripos($xml, '<!DOCTYPE') !== false || stripos($xml, '<!ENTITY') !== false) {
+            throw new RuntimeException('O XML fiscal não pode declarar DTD ou entidades externas.');
+        }
+
         $previous = libxml_use_internal_errors(true);
         try {
-            $document = new DOMDocument();
-            $loaded = $document->loadXML($xml, LIBXML_NONET | LIBXML_NOBLANKS | LIBXML_NOCDATA);
-            if (!$loaded || $document->doctype !== null) throw new RuntimeException('O XML fiscal enviado é inválido.');
-            $infNFe = $document->getElementsByTagName('infNFe')->item(0);
-            if ($infNFe === null) throw new RuntimeException('O XML enviado não contém uma NF-e reconhecível.');
-            $id = (string) $infNFe->attributes?->getNamedItem('Id')?->nodeValue;
+            $document = simplexml_load_string($xml, \SimpleXMLElement::class, LIBXML_NONET | LIBXML_NOCDATA | LIBXML_NOBLANKS);
+            if (!$document instanceof \SimpleXMLElement) throw new RuntimeException('O XML fiscal enviado é inválido.');
+
+            $nodes = $document->xpath('//*[local-name()="infNFe"]');
+            if (!is_array($nodes) || !isset($nodes[0]) || !$nodes[0] instanceof \SimpleXMLElement) {
+                throw new RuntimeException('O XML enviado não contém uma NF-e reconhecível.');
+            }
+
+            $id = trim((string) $nodes[0]['Id']);
             $xmlKey = str_starts_with($id, 'NFe') ? substr($id, 3) : '';
             if ($xmlKey !== '' && !preg_match('/^\d{44}$/', $xmlKey)) throw new RuntimeException('A chave encontrada no XML da NF-e é inválida.');
+
             $normalizedKey = preg_replace('/\D+/', '', (string) $accessKey) ?? '';
             if ($normalizedKey !== '' && $xmlKey !== '' && !hash_equals($normalizedKey, $xmlKey)) {
                 throw new RuntimeException('A chave da NF-e informada não corresponde ao XML enviado.');
