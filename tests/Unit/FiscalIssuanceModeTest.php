@@ -9,12 +9,14 @@ use PHPUnit\Framework\TestCase;
 
 final class FiscalIssuanceModeTest extends TestCase
 {
-    public function testSupportedModesAreManualAndExternal(): void
+    public function testSupportedModesIncludeConnector(): void
     {
         self::assertSame('manual', FiscalIssuanceMode::normalize('manual'));
         self::assertSame('external', FiscalIssuanceMode::normalize(' external '));
+        self::assertSame('connector', FiscalIssuanceMode::normalize('CONNECTOR'));
         self::assertTrue(FiscalIssuanceMode::isExternal('EXTERNAL'));
-        self::assertFalse(FiscalIssuanceMode::isExternal('manual'));
+        self::assertTrue(FiscalIssuanceMode::isConnector('connector'));
+        self::assertFalse(FiscalIssuanceMode::isConnector('external'));
     }
 
     public function testLegacyPlatformAndUnknownModesFallBackToManual(): void
