@@ -22,6 +22,7 @@
 @import url('./seller/product-export.css');
 @import url('./seller/product-list.css');
 @import url('./seller/orders.css?v=20260806-seller-orders-redesign');
+@import url('./seller/order-fiscal.css?v=20260910-manual-nfe');
 @import url('./admin/catalog.css');
 @import url('./admin/settings.css');
 @import url('./growth.css');
