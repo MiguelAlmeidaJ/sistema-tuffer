@@ -8,11 +8,12 @@ final class FiscalIssuanceMode
 {
     public const MANUAL = 'manual';
     public const EXTERNAL = 'external';
+    public const CONNECTOR = 'connector';
 
     public static function normalize(?string $mode): string
     {
         $mode = mb_strtolower(trim((string) $mode));
-        return in_array($mode, [self::MANUAL, self::EXTERNAL], true)
+        return in_array($mode, [self::MANUAL, self::EXTERNAL, self::CONNECTOR], true)
             ? $mode
             : self::MANUAL;
     }
@@ -20,5 +21,10 @@ final class FiscalIssuanceMode
     public static function isExternal(string $mode): bool
     {
         return self::normalize($mode) === self::EXTERNAL;
+    }
+
+    public static function isConnector(string $mode): bool
+    {
+        return self::normalize($mode) === self::CONNECTOR;
     }
 }
