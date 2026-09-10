@@ -16,8 +16,8 @@ final class FiscalSellerOrderPayloadService
     public function payload(int $sellerOrderId): array
     {
         $pdo = $this->database ?? Database::connection();
-        $stmt = $pdo->prepare("SELECT so.id seller_order_id,so.code seller_order_code,so.status seller_order_status,so.products_total,so.shipping_total,so.discount_total,so.seller_net_total,
-            o.code order_code,o.status order_status,o.user_id,
+        $stmt = $pdo->prepare("SELECT so.id seller_order_id,so.code seller_order_code,so.status seller_order_status,so.products_total,so.shipping_total,so.discount_total,so.seller_net_total,so.created_at seller_order_created_at,
+            o.code order_code,o.status order_status,o.user_id,o.created_at order_created_at,
             st.name store_name,s.legal_name,s.trade_name,s.document seller_document,s.state_registration seller_state_registration,
             sfp.tax_regime,sfp.crt,sfp.state_registration_indicator,sfp.municipal_registration,sfp.fiscal_email,sfp.postal_code issuer_postal_code,sfp.street issuer_street,sfp.number issuer_number,sfp.complement issuer_complement,sfp.neighborhood issuer_neighborhood,sfp.city issuer_city,sfp.city_ibge_code issuer_city_ibge_code,sfp.state issuer_state,sfp.nfe_series,sfp.environment,
             u.name customer_name,u.email customer_email,u.phone customer_phone,u.document customer_document,
@@ -84,8 +84,10 @@ final class FiscalSellerOrderPayloadService
             'seller_order'=>[
                 'code'=>(string)$row['seller_order_code'],
                 'status'=>(string)$row['seller_order_status'],
+                'created_at'=>$row['seller_order_created_at'] ?? null,
                 'order_code'=>(string)$row['order_code'],
                 'order_status'=>(string)$row['order_status'],
+                'order_created_at'=>$row['order_created_at'] ?? null,
             ],
             'amounts'=>[
                 'products_total'=>number_format($products,2,'.',''),
