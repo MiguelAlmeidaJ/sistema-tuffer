@@ -42,6 +42,7 @@ CREATE TABLE fiscal_connector_runs (
     provider_document_id VARCHAR(100) NULL,
     provider_document_number VARCHAR(100) NULL,
     provider_document_series VARCHAR(30) NULL,
+    provider_document_url VARCHAR(500) NULL,
     provider_status VARCHAR(100) NULL,
     attempts SMALLINT UNSIGNED NOT NULL DEFAULT 0,
     last_error VARCHAR(1000) NULL,
