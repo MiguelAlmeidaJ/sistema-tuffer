@@ -4,83 +4,87 @@ O módulo fiscal da Tuffer é orientado ao `seller_order`: cada fatia da compra 
 
 ## Princípio de responsabilidade
 
-A Tuffer não emite NF-e, não assina XML, não guarda certificado A1 de vendedor e não transmite documento para provider ou SEFAZ.
+A Tuffer não assina XML, não guarda certificado A1 de vendedor e não transmite NF-e diretamente à SEFAZ.
 
-Cada loja é responsável pelo próprio emissor fiscal. A Tuffer atua como camada de vínculo, recebimento, armazenamento, auditoria e disponibilização da NF-e associada ao pedido.
+Cada loja continua responsável pela própria configuração fiscal e pelo próprio emissor. Quando a loja usa um conector nativo, como Tiny/Olist ERP, a Tuffer pode orquestrar chamadas na conta do próprio vendedor usando uma credencial exclusiva daquela `store`. A emissão fiscal continua acontecendo no provedor conectado da loja, nunca em uma conta fiscal global da Tuffer.
 
 A configuração fiscal efetiva é da `store`, com fallback temporário para `seller_fiscal_profiles`. Isso permite CNPJ, IE, série, endereço fiscal e sistema emissor diferentes entre lojas do mesmo vendedor.
 
-`store_fiscal_profiles` possui dois modos:
+`store_fiscal_profiles` possui três modos:
 
-- `manual`: a loja emite no sistema de sua preferência e registra autorização/arquivos em `/vendedor/fiscal/integracao`.
-- `external`: ERP/API da loja emite e sincroniza autorização/cancelamento pela API autenticada da Tuffer.
+- `manual`: a loja emite no sistema de sua preferência e registra autorização/arquivos na Tuffer.
+- `external`: ERP/API da loja recebe o aviso da Tuffer e sincroniza autorização/cancelamento pela API autenticada da plataforma.
+- `connector`: a Tuffer usa um conector nativo e a credencial daquela loja para sincronizar o pedido e acompanhar a NF-e no provedor. O primeiro conector suportado é `tiny`.
 
-O valor legado `platform` não é mais suportado. A migration `038_remove_platform_fiscal_issuance.sql` converte perfis/documentos antigos para `manual` e remove `auto_issue` do perfil da loja.
-
-O campo `provider` em `store_fiscal_profiles` é apenas identificação do sistema usado pela loja, como Focus, Nuvem Fiscal, PlugNotas, ERP próprio ou outro emissor. A Tuffer não usa credenciais desse provider para emitir.
-
-O `fiscal_document` preserva `issuance_mode`, `provider` e `environment` do pedido, mesmo se a configuração da loja mudar depois.
+O valor legado `platform` não é suportado. A migration `038_remove_platform_fiscal_issuance.sql` converte dados antigos para `manual`. A migration `040_tiny_fiscal_connector.sql` adiciona o modo `connector` e as tabelas genéricas de configuração/execução dos conectores.
 
 ## Segurança
 
-Certificado A1, senha e segredos do emissor permanecem sob responsabilidade da loja e não pertencem ao cadastro fiscal da Tuffer.
+Certificado A1 e senha permanecem no emissor escolhido pela loja. O conector Tiny armazena somente o token da API da própria conta do vendedor, criptografado com AES-256-GCM usando chave derivada de `APP_KEY`.
 
-A credencial da API externa é gerada por loja e armazenada somente como hash SHA-256 em `store_fiscal_api_credentials`; o token completo aparece uma única vez no painel.
+Ao conectar Tiny, a Tuffer consulta as informações da conta e compara o CPF/CNPJ retornado pelo ERP com o documento fiscal cadastrado na `store`. Uma conta Tiny de outro estabelecimento é recusada.
 
-O webhook de saída possui um segredo HMAC independente do Bearer token. O segredo completo também aparece uma única vez e fica criptografado com AES-256-GCM usando chave derivada de `APP_KEY`.
+A credencial da API `external` permanece separada: é um Bearer token da Tuffer armazenado somente como SHA-256. O webhook de saída também usa segredo HMAC independente.
 
-A URL do webhook precisa ser HTTPS público na porta 443. A política de saída bloqueia destinos locais, privados ou reservados, não segue redirects e fixa a conexão ao IPv4 público resolvido para reduzir risco de SSRF/DNS rebinding.
-
-XML e DANFE ficam em `storage/private/fiscal`, com permissão privada. XML recebido de fora precisa ser uma NF-e reconhecível, não pode declarar DTD/entidades e, quando contém chave em `infNFe/@Id`, ela deve coincidir com a chave registrada. DANFE precisa ser PDF válido. Cliente e admin acessam arquivos somente por controllers autenticados.
+XML e DANFE ficam em `storage/private/fiscal`. XML recebido precisa ser uma NF-e reconhecível, não pode declarar DTD/entidades e, quando contém chave em `infNFe/@Id`, ela deve coincidir com a chave registrada.
 
 ## Fluxo `manual`
 
 1. Pagar.me confirma o pagamento.
 2. A fila agenda `fiscal.sync_paid_order`.
-3. O documento da loja fica `awaiting_manual`.
+3. O documento fica `awaiting_manual`.
 4. A loja emite a NF-e no próprio sistema.
 5. O vendedor registra número, série, chave e, opcionalmente, protocolo, XML e DANFE.
-6. Arquivos ficam privados e a NF-e aparece no pedido do cliente.
-7. Cancelamento realizado fora da Tuffer pode ser registrado no painel sem apagar o histórico.
+6. A NF-e aparece no pedido do cliente.
 
-## Fluxo `external` automático
+## Fluxo `external`
 
 1. Pagar.me confirma o pagamento.
-2. A fila agenda `fiscal.sync_paid_order`.
-3. O documento da loja fica `awaiting_external`.
-4. Se a loja possui webhook ativo, a Tuffer cria uma única entrega `fiscal.seller_order.ready` para o `seller_order`.
-5. A fila envia o webhook HTTPS assinado com HMAC. Falhas temporárias são reprocessadas com backoff.
-6. O ERP valida `X-Tuffer-Signature`, deduplica `X-Tuffer-Event` e usa o Bearer token da própria loja para consultar `GET /api/v1/fiscal/seller-orders/{code}/payload`.
-7. O payload contém pedido, totais, emissor, destinatário e referências fiscais dos itens. A Tuffer não calcula tributos.
-8. O ERP emite a NF-e no emissor fiscal do próprio vendedor.
-9. Após autorização, o ERP chama `POST /api/v1/fiscal/seller-orders/{code}/authorize`, podendo enviar XML e DANFE.
-10. A Tuffer valida, registra e armazena os arquivos de forma privada. Repetições idênticas são idempotentes e uma NF-e autorizada não pode ser substituída silenciosamente.
-11. Cancelamento feito no emissor externo é sincronizado por `POST /api/v1/fiscal/seller-orders/{code}/cancel`.
-12. O cliente visualiza e baixa os documentos pelo próprio pedido.
-
-O webhook é somente uma notificação. Dados fiscais completos são obtidos pela API autenticada, evitando transportar informações sensíveis desnecessariamente no evento de saída.
-
-A ativação tardia do webhook reconcilia até 100 pedidos elegíveis da loja. O comando de reconciliação também reavalia os webhooks sem duplicar eventos já criados.
+2. A Tuffer prepara o documento em `awaiting_external`.
+3. A Tuffer envia `fiscal.seller_order.ready` ao webhook da loja.
+4. O ERP usa o Bearer token da própria loja para consultar `/api/v1/fiscal/seller-orders/{code}/payload`.
+5. O ERP emite no sistema fiscal do vendedor e devolve a autorização por `/authorize`.
+6. A Tuffer valida, armazena e disponibiliza a NF-e.
 
 Contrato detalhado: `docs/FISCAL_API.md`.
 
+## Fluxo `connector` — Tiny/Olist ERP
+
+1. A loja cadastra seus dados fiscais e conecta o token da própria conta Tiny em `/vendedor/fiscal/conectores/tiny`.
+2. A Tuffer valida a conta e exige correspondência do CPF/CNPJ.
+3. Após pagamento, `fiscal.sync_paid_order` prepara o `fiscal_document` e `FiscalConnectorManager` agenda `fiscal.process_connector`.
+4. O conector pesquisa o pedido pelo `seller_order.code` antes de criar. Se já existir, reutiliza o pedido do Tiny.
+5. Se necessário, cria o pedido no Tiny com `numero_pedido_ecommerce` igual ao código do `seller_order` e o marca como aprovado.
+6. Pesquisa uma NF-e pelo mesmo identificador antes de gerar outra. Se não existir, gera a NF-e a partir do pedido.
+7. Com `auto_emit=1`, solicita a emissão no Tiny. Com `auto_emit=0`, aguarda o vendedor emitir dentro do Tiny e permite reprocessamento manual.
+8. Situações rejeitada ou denegada ficam como pendência para revisão da loja; não são tratadas como autorização.
+9. Enquanto a autorização ainda estiver em processamento, a fila reconsulta com retry. Esse estado não é registrado como falha da conexão.
+10. Quando o Tiny retorna situação autorizada, chave de acesso válida, número e série, a Tuffer registra o documento usando a mesma camada idempotente do módulo fiscal.
+11. XML retornado pelo Tiny é armazenado automaticamente. O `link_acesso`/`link_nfe` fica registrado no histórico operacional do conector para acesso do vendedor.
+
+A documentação do Tiny define o link retornado como acesso à NF-e, não como um PDF DANFE garantido. Por isso o conector não grava esse URL como `danfe_storage_path`.
+
+Detalhes: `docs/FISCAL_TINY.md`.
+
+## Dados do intermediador
+
+O Tiny aceita dados do intermediador do marketplace no pedido/nota. A Tuffer não inventa esses dados. Em produção, eles devem ser definidos com os dados jurídicos corretos da plataforma:
+
+```env
+FISCAL_INTERMEDIARY_NAME=
+FISCAL_INTERMEDIARY_DOCUMENT=
+FISCAL_PAYMENT_INTERMEDIARY_DOCUMENT=
+```
+
+`FISCAL_PAYMENT_INTERMEDIARY_DOCUMENT` é opcional e deve ser validado conforme o arranjo de pagamento usado na operação.
+
 ## Dados fiscais de produto
 
-`product_fiscal_profiles` continua disponível como referência opcional da loja e para integrações/exportações. A Tuffer não usa esses campos para calcular tributos nem para autorizar NF-e.
-
-A fonte responsável por cálculo tributário, regras fiscais e emissão é sempre o sistema fiscal escolhido pelo vendedor.
-
-## Operação administrativa
-
-`/admin/fiscal` centraliza a visão de documentos fiscais de todas as lojas. O painel permite filtrar por status, modo e pendências, abrir um documento, consultar snapshots dos itens, baixar XML/DANFE privados e revisar a trilha de `fiscal_events`.
-
-O painel administrativo é deliberadamente read-only para ações fiscais sensíveis: não existe botão para emitir ou cancelar NF-e pela Tuffer. Emissão e cancelamento acontecem no sistema da loja e são apenas sincronizados/registrados na plataforma.
-
-O dashboard administrativo também destaca a quantidade de documentos com `requires_action=1`.
+`product_fiscal_profiles` é referência opcional para integrações/exportações. A Tuffer não calcula ICMS, PIS, COFINS, IBS/CBS ou decide CFOP para o vendedor. As regras fiscais efetivas permanecem no sistema fiscal da loja.
 
 ## Reembolso
 
-Reembolso nunca cancela automaticamente uma NF-e autorizada. O documento fica marcado para revisão fiscal para que a loja decida, no próprio emissor, se deve cancelar, emitir devolução ou outro evento fiscal. Depois, o resultado pode ser sincronizado com a Tuffer.
+Reembolso nunca cancela automaticamente uma NF-e autorizada. O documento fica marcado para revisão para que a loja decida, no próprio emissor, sobre cancelamento, devolução ou outro evento fiscal.
 
 ## Reconciliação
 
@@ -88,20 +92,21 @@ Reembolso nunca cancela automaticamente uma NF-e autorizada. O documento fica ma
 php scripts/sync-fiscal-paid-orders.php 200
 ```
 
-Além de sincronizar os documentos dos pedidos elegíveis, esse comando agenda o evento automático para lojas `external` com webhook ativo quando ainda não existir uma entrega para aquele `seller_order`.
+O comando reconcilia documentos, webhooks `external` e conectores `connector` de forma idempotente.
 
-## Requisitos operacionais do fluxo automático
+## Requisitos operacionais
 
-- `APP_URL` deve apontar para a URL pública HTTPS da Tuffer.
-- `APP_KEY` deve estar configurada e estável; ela protege os segredos HMAC armazenados.
-- o worker precisa consumir a fila `fiscal`.
-- cada loja externa deve possuir Bearer token ativo e webhook configurado.
-- o endpoint do ERP deve responder `2xx` após aceitar o evento.
+- `APP_KEY` configurada e estável para proteger segredos de webhook e credenciais de conectores.
+- worker consumindo a fila `fiscal`.
+- perfil fiscal individual por loja.
+- para Tiny: token API da conta correta da loja e configurações fiscais válidas dentro do próprio Tiny.
+- para `external`: Bearer token e webhook HTTPS da loja.
+- dados jurídicos do intermediador revisados antes de produção.
 
-## O que ainda pode evoluir
+## Próximas evoluções
 
-1. Monitoramento/SLA de NF-e pendentes por loja sem assumir responsabilidade pela emissão.
-2. Botão administrativo/vendedor para reprocessar manualmente uma entrega de webhook específica.
-3. Alertas após esgotamento das tentativas de entrega.
-4. Suporte explícito a endpoints IPv6 públicos após adicionar resolução e pinning equivalentes ao caminho IPv4.
-5. Validar com a contabilidade quais dados fiscais de referência devem permanecer obrigatórios na Tuffer.
+1. Homologação real do conector Tiny com uma conta de testes/produção controlada e uma NF-e de teste permitida pela operação.
+2. Confirmar se o fluxo da conta Tiny usada por Tuffer/Linda Flor exige configurações específicas por causa do FFAdmin existente.
+3. Download automático de DANFE apenas quando houver endpoint/documento oficial que garanta PDF.
+4. Adicionar novos conectores nativos (Bling etc.) reaproveitando `store_fiscal_connector_configs`, `fiscal_connector_runs` e `FiscalConnectorManager`.
+5. Monitoramento/SLA de NF-e pendentes por loja.
