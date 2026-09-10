@@ -103,3 +103,6 @@
     font-size: clamp(1.5rem, 2.5vw, 2.2rem);
     line-height: 1.1
 }
+
+/* Tiny connector state/details kept here so they load after the dedicated module stylesheet. */
+.tiny-flow__item>svg{width:22px;height:22px;fill:none;stroke:#20252a;stroke-width:1.8}.tiny-connected-actions{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:13px 20px;border-top:1px solid #e6e8eb;background:#fafbfc}.tiny-connected-actions>span{display:flex;align-items:center;color:#6f747c;font-size:.62rem;font-weight:750}.tiny-connected-actions>div{display:flex;align-items:center;gap:8px}.tiny-connected-actions form{margin:0}.tiny-connector-error{padding:10px 16px;border-bottom:1px solid #f2d8db;background:#fff2f3;color:#8e2d36;font-size:.62rem;line-height:1.5}@media(max-width:620px){.tiny-connected-actions{align-items:flex-start;flex-direction:column}.tiny-connected-actions>div{width:100%;flex-wrap:wrap}}
