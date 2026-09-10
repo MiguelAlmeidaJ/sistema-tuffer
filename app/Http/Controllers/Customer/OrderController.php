@@ -6,7 +6,11 @@ namespace App\Http\Controllers\Customer;
 
 use App\Core\Auth;
 use App\Core\Database;
+use App\Core\Response;
+use App\Core\Session;
 use App\Http\Controllers\Controller;
+use App\Services\Fiscal\FiscalDocumentStorage;
+use RuntimeException;
 
 final class OrderController extends Controller
 {
@@ -35,9 +39,12 @@ final class OrderController extends Controller
             $details->execute([$order['id']]);
             $sellerOrders = $details->fetchAll();
             $itemStatement = $pdo->prepare('SELECT * FROM order_items WHERE seller_order_id=? ORDER BY id');
+            $fiscalStatement = $pdo->prepare("SELECT id,status,number,series,access_key,protocol,xml_storage_path,danfe_storage_path,authorized_at,cancelled_at,cancellation_reason FROM fiscal_documents WHERE seller_order_id=? AND status IN ('authorized','cancelled') ORDER BY revision DESC,id DESC");
             foreach ($sellerOrders as &$sellerOrder) {
                 $itemStatement->execute([$sellerOrder['id']]);
                 $sellerOrder['items'] = $itemStatement->fetchAll();
+                $fiscalStatement->execute([$sellerOrder['id']]);
+                $sellerOrder['fiscal_documents'] = $fiscalStatement->fetchAll();
             }
             unset($sellerOrder);
             $paymentStatement = $pdo->prepare(
@@ -53,12 +60,8 @@ final class OrderController extends Controller
             );
             $paymentStatement->execute([$order['id']]);
             $payment = $paymentStatement->fetch() ?: null;
-            if (is_array($payment) && !$this->trustedPaymentUrl((string) ($payment['checkout_url'] ?? ''))) {
-                $payment['checkout_url'] = null;
-            }
-            if (is_array($payment) && !$this->trustedPaymentUrl((string) ($payment['pix_qr_code_url'] ?? ''))) {
-                $payment['pix_qr_code_url'] = null;
-            }
+            if (is_array($payment) && !$this->trustedPaymentUrl((string) ($payment['checkout_url'] ?? ''))) $payment['checkout_url'] = null;
+            if (is_array($payment) && !$this->trustedPaymentUrl((string) ($payment['pix_qr_code_url'] ?? ''))) $payment['pix_qr_code_url'] = null;
             $addressStatement = $pdo->prepare('SELECT * FROM order_addresses WHERE order_id=?');
             $addressStatement->execute([$order['id']]);
             $address = $addressStatement->fetch() ?: null;
@@ -70,6 +73,36 @@ final class OrderController extends Controller
             'payment' => $payment,
             'address' => $address,
         ]);
+    }
+
+    public function downloadFiscalXml(string $code, string $id): string
+    {
+        return $this->downloadFiscal($code, (int) $id, 'xml');
+    }
+
+    public function downloadFiscalDanfe(string $code, string $id): string
+    {
+        return $this->downloadFiscal($code, (int) $id, 'danfe');
+    }
+
+    private function downloadFiscal(string $code, int $documentId, string $type): string
+    {
+        $column = $type === 'xml' ? 'xml_storage_path' : 'danfe_storage_path';
+        $stmt = Database::connection()->prepare("SELECT fd.id,fd.access_key,fd.{$column} storage_path FROM fiscal_documents fd JOIN seller_orders so ON so.id=fd.seller_order_id JOIN orders o ON o.id=so.order_id WHERE fd.id=? AND o.code=? AND o.user_id=? AND fd.status IN ('authorized','cancelled') LIMIT 1");
+        $stmt->execute([$documentId, $code, Auth::id()]);
+        $document = $stmt->fetch();
+        if (!is_array($document) || empty($document['storage_path'])) {
+            Session::flash('error', 'Este arquivo fiscal ainda não está disponível.');
+            return Response::redirect('/minha-conta/pedidos/' . rawurlencode($code));
+        }
+        try {
+            $path = (new FiscalDocumentStorage())->path((string) $document['storage_path']);
+            $key = preg_replace('/\D+/', '', (string) ($document['access_key'] ?? '')) ?: (string) $document['id'];
+            return Response::privateFile($path, $type === 'xml' ? 'application/xml; charset=utf-8' : 'application/pdf', 'nfe-' . $key . '.' . ($type === 'xml' ? 'xml' : 'pdf'));
+        } catch (RuntimeException) {
+            Session::flash('error', 'O arquivo fiscal não foi encontrado no armazenamento privado.');
+            return Response::redirect('/minha-conta/pedidos/' . rawurlencode($code));
+        }
     }
 
     private function trustedPaymentUrl(string $url): bool

@@ -16,6 +16,8 @@ $router->group(['prefix' => '/minha-conta', 'middleware' => ['auth', 'role:custo
     $router->get('/', [DashboardController::class, 'index']);
     $router->get('/pedidos', [OrderController::class, 'index']);
     $router->get('/pedidos/{code}', [OrderController::class, 'show']);
+    $router->get('/pedidos/{code}/fiscal/{id}/xml', [OrderController::class, 'downloadFiscalXml']);
+    $router->get('/pedidos/{code}/fiscal/{id}/danfe', [OrderController::class, 'downloadFiscalDanfe']);
     $router->get('/favoritos', [FavoriteController::class, 'index']);
     $router->get('/perfil', [ProfileController::class, 'edit']);
     $router->put('/perfil', [ProfileController::class, 'update'], ['csrf']);

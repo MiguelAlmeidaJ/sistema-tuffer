@@ -17,6 +17,7 @@ try {
         || $requestPath === '/entrar'
         || $requestPath === '/sair'
         || str_starts_with($requestPath, '/admin')
+        || str_starts_with($requestPath, '/api/v1/fiscal')
         || (App\Core\Auth::user()['type'] ?? null) === 'admin';
     if ($maintenance && !$maintenanceBypass) {
         http_response_code(503);
