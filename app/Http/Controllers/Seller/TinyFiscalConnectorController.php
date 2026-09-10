@@ -55,9 +55,9 @@ final class TinyFiscalConnectorController extends Controller
     public function reprocess(string $id): string
     {
         [$store,$seller]=$this->context();if(!$store||!$seller)return Response::redirect('/vendedor');$runId=(int)$id;$pdo=Database::connection();
-        $stmt=$pdo->prepare("SELECT seller_order_id FROM fiscal_connector_runs WHERE id=? AND store_id=? AND seller_id=? AND provider='tiny' LIMIT 1");$stmt->execute([$runId,$store['id'],$seller['id']]);$sellerOrderId=(int)$stmt->fetchColumn();
-        if($sellerOrderId<1){Session::flash('error','Sincronização Tiny não encontrada nesta loja.');return Response::redirect('/vendedor/fiscal/conectores/tiny');}
-        try{$pdo->prepare("UPDATE fiscal_connector_runs SET status='pending',last_error=NULL,completed_at=NULL WHERE id=? AND status<>'completed'")->execute([$runId]);(new TinyFiscalConnectorService($pdo))->enqueue($sellerOrderId);Session::flash('success','Sincronização Tiny reenfileirada.');}catch(RuntimeException $e){Session::flash('error',$e->getMessage());}
+        $stmt=$pdo->prepare("SELECT id FROM fiscal_connector_runs WHERE id=? AND store_id=? AND seller_id=? AND provider='tiny' LIMIT 1");$stmt->execute([$runId,$store['id'],$seller['id']]);
+        if(!(int)$stmt->fetchColumn()){Session::flash('error','Sincronização Tiny não encontrada nesta loja.');return Response::redirect('/vendedor/fiscal/conectores/tiny');}
+        try{(new TinyFiscalConnectorService($pdo))->requeueRun($runId);Session::flash('success','Sincronização Tiny reenfileirada.');}catch(RuntimeException $e){Session::flash('error',$e->getMessage());}
         return Response::redirect('/vendedor/fiscal/conectores/tiny');
     }
 
