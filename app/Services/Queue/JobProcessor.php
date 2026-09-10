@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Services\Queue;
 
 use App\Core\Database;
+use App\Services\Fiscal\FiscalConnectorManager;
 use App\Services\Fiscal\FiscalOrchestratorService;
 use App\Services\Fiscal\FiscalWebhookService;
-use App\Services\Fiscal\TinyFiscalConnectorService;
 use App\Services\Mail\PasswordResetMailService;
 use App\Services\Payments\PagarmeClient;
 use App\Services\Payments\PagarmeWebhookProcessor;
@@ -28,7 +28,7 @@ final class JobProcessor
             'fiscal.sync_paid_order'=>$this->syncPaidOrder((int)($payload['order_id']??0)),
             'fiscal.review_refund'=>(new FiscalOrchestratorService())->reviewRefund((int)($payload['order_id']??0),(bool)($payload['full_refund']??false)),
             'fiscal.deliver_webhook'=>(new FiscalWebhookService())->deliver((int)($payload['delivery_id']??0)),
-            'fiscal.process_connector'=>(new TinyFiscalConnectorService())->process((int)($payload['run_id']??0)),
+            'fiscal.process_connector'=>(new FiscalConnectorManager())->processRun((int)($payload['run_id']??0)),
             default=>throw new RuntimeException('Tipo de job não suportado.'),
         };
     }
@@ -50,8 +50,8 @@ final class JobProcessor
         if($orderId<1)throw new RuntimeException('Pedido fiscal enfileirado inválido.');
         $orchestrator=new FiscalOrchestratorService();$orchestrator->syncPaidOrder($orderId);
         $pdo=Database::connection();$stmt=$pdo->prepare("SELECT id FROM seller_orders WHERE order_id=? AND status IN ('paid','processing','shipped','delivered') ORDER BY id");$stmt->execute([$orderId]);
-        $webhooks=new FiscalWebhookService($pdo);$tiny=new TinyFiscalConnectorService($pdo);
-        foreach($stmt->fetchAll(\PDO::FETCH_COLUMN) as $sellerOrderId){$sellerOrderId=(int)$sellerOrderId;$webhooks->enqueueReady($sellerOrderId);$tiny->enqueue($sellerOrderId);}
+        $webhooks=new FiscalWebhookService($pdo);$connectors=new FiscalConnectorManager($pdo);
+        foreach($stmt->fetchAll(\PDO::FETCH_COLUMN) as $sellerOrderId){$sellerOrderId=(int)$sellerOrderId;$webhooks->enqueueReady($sellerOrderId);$connectors->enqueueSellerOrder($sellerOrderId);}
     }
 
     private function processWebhook(int $webhookId): void
