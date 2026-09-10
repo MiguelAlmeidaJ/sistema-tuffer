@@ -22,16 +22,12 @@ final class StoreFiscalProfileRepository
         $stmt = $this->pdo->prepare('SELECT * FROM store_fiscal_profiles WHERE store_id=? AND seller_id=? LIMIT 1');
         $stmt->execute([$storeId, $sellerId]);
         $profile = $stmt->fetch();
-        if (is_array($profile)) {
-            return $this->normalize($profile, 'store');
-        }
+        if (is_array($profile)) return $this->normalize($profile, 'store');
 
         $stmt = $this->pdo->prepare('SELECT sfp.*,s.legal_name,s.trade_name,s.document,s.state_registration FROM seller_fiscal_profiles sfp JOIN sellers s ON s.id=sfp.seller_id WHERE sfp.seller_id=? LIMIT 1');
         $stmt->execute([$sellerId]);
         $legacy = $stmt->fetch();
-        if (!is_array($legacy)) {
-            return null;
-        }
+        if (!is_array($legacy)) return null;
 
         $legacy['store_id'] = $storeId;
         $legacy['issuance_mode'] = FiscalIssuanceMode::MANUAL;
@@ -44,15 +40,17 @@ final class StoreFiscalProfileRepository
     private function normalize(array $profile, string $source): array
     {
         $profile['profile_source'] = $source;
-        $profile['issuance_mode'] = FiscalIssuanceMode::normalize((string) ($profile['issuance_mode'] ?? FiscalIssuanceMode::MANUAL));
-        $provider = mb_strtolower(trim((string) ($profile['provider'] ?? 'manual')));
+        $profile['issuance_mode'] = FiscalIssuanceMode::normalize((string)($profile['issuance_mode'] ?? FiscalIssuanceMode::MANUAL));
+        $provider = mb_strtolower(trim((string)($profile['provider'] ?? 'manual')));
         if ($profile['issuance_mode'] === FiscalIssuanceMode::MANUAL) {
             $provider = 'manual';
-        } elseif ($provider === '' || $provider === 'disabled' || $provider === 'manual') {
-            $provider = 'external';
+        } elseif ($profile['issuance_mode'] === FiscalIssuanceMode::EXTERNAL) {
+            if ($provider === '' || $provider === 'disabled' || $provider === 'manual') $provider = 'external';
+        } elseif ($provider === '' || in_array($provider, ['disabled','manual','external'], true)) {
+            $provider = 'tiny';
         }
         $profile['provider'] = $provider;
-        $profile['environment'] = ((string) ($profile['environment'] ?? 'production')) === 'homologation' ? 'homologation' : 'production';
+        $profile['environment'] = ((string)($profile['environment'] ?? 'production')) === 'homologation' ? 'homologation' : 'production';
         return $profile;
     }
 }
