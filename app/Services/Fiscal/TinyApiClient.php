@@ -11,6 +11,7 @@ use RuntimeException;
 final class TinyApiClient
 {
     private const BASE_URL = 'https://api.tiny.com.br/api2/';
+    private const NO_RECORDS_ERROR = 20;
 
     /** @param Closure(string,array<string,string>):array<string,mixed>|null $transport */
     public function __construct(private readonly string $token, private readonly ?Closure $transport = null)
@@ -28,12 +29,15 @@ final class TinyApiClient
     /** @return array<string,mixed>|null */
     public function findOrderByEcommerce(string $code): ?array
     {
-        $ret = $this->post('pedidos.pesquisa.php', ['numeroEcommerce'=>$code]);
+        $ret = $this->post('pedidos.pesquisa.php', ['numeroEcommerce'=>$code], true);
+        if ($ret === null) return null;
         $rows = $ret['pedidos'] ?? [];
         if (!is_array($rows)) return null;
         foreach ($rows as $row) {
             $order = is_array($row) && is_array($row['pedido'] ?? null) ? $row['pedido'] : $row;
-            if (is_array($order) && (string)($order['numero_ecommerce'] ?? '') === $code) return $order;
+            if (!is_array($order)) continue;
+            $external = (string)($order['numero_ecommerce'] ?? $order['numero_pedido_ecommerce'] ?? '');
+            if ($external === $code) return $order;
         }
         return null;
     }
@@ -43,6 +47,7 @@ final class TinyApiClient
     {
         $payload = json_encode(['pedido'=>$order], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
         $ret = $this->post('pedido.incluir.php', ['pedido'=>$payload]);
+        if ($ret === null) throw new RuntimeException('Tiny não retornou o pedido criado.');
         $rows = $ret['registros'] ?? [];
         if (!is_array($rows)) throw new RuntimeException('Tiny não retornou o pedido criado.');
         foreach ($rows as $row) {
@@ -63,6 +68,7 @@ final class TinyApiClient
     public function generateInvoice(int $orderId): array
     {
         $ret = $this->post('gerar.nota.fiscal.pedido.php', ['id'=>(string)$orderId,'modelo'=>'NFe']);
+        if ($ret === null) throw new RuntimeException('Tiny não retornou a NF-e gerada para o pedido.');
         $rows = $ret['registros'] ?? [];
         if (!is_array($rows)) throw new RuntimeException('Tiny não retornou a NF-e gerada para o pedido.');
         foreach ($rows as $row) {
@@ -76,7 +82,7 @@ final class TinyApiClient
     public function emitInvoice(int $invoiceId, bool $sendEmail = false): array
     {
         $ret = $this->post('nota.fiscal.emitir.php', ['id'=>(string)$invoiceId,'enviarEmail'=>$sendEmail ? 'S' : 'N']);
-        if (!is_array($ret['nota_fiscal'] ?? null)) throw new RuntimeException('Tiny não retornou os dados da emissão da NF-e.');
+        if ($ret === null || !is_array($ret['nota_fiscal'] ?? null)) throw new RuntimeException('Tiny não retornou os dados da emissão da NF-e.');
         return $ret['nota_fiscal'];
     }
 
@@ -84,19 +90,22 @@ final class TinyApiClient
     public function getInvoice(int $invoiceId): array
     {
         $ret = $this->post('nota.fiscal.obter.php', ['id'=>(string)$invoiceId]);
-        if (!is_array($ret['nota_fiscal'] ?? null)) throw new RuntimeException('Tiny não retornou os dados da NF-e.');
+        if ($ret === null || !is_array($ret['nota_fiscal'] ?? null)) throw new RuntimeException('Tiny não retornou os dados da NF-e.');
         return $ret['nota_fiscal'];
     }
 
     /** @return array<string,mixed>|null */
     public function findInvoiceByEcommerce(string $code): ?array
     {
-        $ret = $this->post('notas.fiscais.pesquisa.php', ['numeroEcommerce'=>$code]);
+        $ret = $this->post('notas.fiscais.pesquisa.php', ['numeroEcommerce'=>$code], true);
+        if ($ret === null) return null;
         $rows = $ret['notas_fiscais'] ?? [];
         if (!is_array($rows)) return null;
         foreach ($rows as $row) {
             $invoice = is_array($row) && is_array($row['nota_fiscal'] ?? null) ? $row['nota_fiscal'] : $row;
-            if (is_array($invoice)) return $invoice;
+            if (!is_array($invoice)) continue;
+            $external = (string)($invoice['numero_ecommerce'] ?? $invoice['numero_pedido_ecommerce'] ?? '');
+            if ($external === '' || $external === $code) return $invoice;
         }
         return null;
     }
@@ -104,22 +113,24 @@ final class TinyApiClient
     public function getInvoiceLink(int $invoiceId): ?string
     {
         $ret = $this->post('nota.fiscal.obter.link.php', ['id'=>(string)$invoiceId]);
+        if ($ret === null) return null;
         $url = trim((string)($ret['link_nfe'] ?? ''));
         return $url !== '' ? $url : null;
     }
 
-    /** @param array<string,string> $params @return array<string,mixed> */
-    private function post(string $path, array $params = []): array
+    /** @param array<string,string> $params @return array<string,mixed>|null */
+    private function post(string $path, array $params = [], bool $allowNoRecords = false): ?array
     {
         $params = ['token'=>$this->token,'formato'=>'JSON'] + $params;
-        if ($this->transport !== null) {
-            $decoded = ($this->transport)(self::BASE_URL . $path, $params);
-        } else {
-            $decoded = $this->curl(self::BASE_URL . $path, $params);
-        }
+        $decoded = $this->transport !== null
+            ? ($this->transport)(self::BASE_URL . $path, $params)
+            : $this->curl(self::BASE_URL . $path, $params);
         $ret = is_array($decoded['retorno'] ?? null) ? $decoded['retorno'] : $decoded;
         if (!is_array($ret)) throw new RuntimeException('Resposta inválida da API Tiny.');
-        if (mb_strtolower((string)($ret['status'] ?? 'erro')) !== 'ok') throw new RuntimeException($this->message($ret));
+        if (mb_strtolower((string)($ret['status'] ?? 'erro')) !== 'ok') {
+            if ($allowNoRecords && (int)($ret['codigo_erro'] ?? 0) === self::NO_RECORDS_ERROR) return null;
+            throw new RuntimeException($this->message($ret));
+        }
         return $ret;
     }
 
@@ -139,6 +150,7 @@ final class TinyApiClient
             CURLOPT_MAXREDIRS=>0,
             CURLOPT_SSL_VERIFYPEER=>true,
             CURLOPT_SSL_VERIFYHOST=>2,
+            CURLOPT_PROTOCOLS=>CURLPROTO_HTTPS,
             CURLOPT_HTTPHEADER=>['Content-Type: application/x-www-form-urlencoded','Accept: application/json','User-Agent: Tuffer-Tiny-Connector/1.0'],
         ]);
         $body = curl_exec($ch);
