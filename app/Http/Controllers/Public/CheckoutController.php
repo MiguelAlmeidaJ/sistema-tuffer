@@ -11,8 +11,12 @@ use App\Core\Session;
 use App\Core\Logger;
 use App\Http\Controllers\Controller;
 use App\Services\Cart\CartService;
+use App\Services\Finance\MarketplaceFinancialLedgerService;
 use App\Services\Orders\OrderPlacementService;
 use App\Services\Payments\PagarmeClient;
+use App\Services\Payments\Pagarme\PagarmeCheckoutConfiguration;
+use App\Services\Payments\Pagarme\PagarmeCreditCardOrderService;
+use App\Services\Payments\Pagarme\PagarmeSplitService;
 use App\Services\Queue\JobProcessor;
 use App\Services\Queue\JobQueue;
 use App\Services\Shipping\ShippingQuoteService;
@@ -49,13 +53,18 @@ final class CheckoutController extends Controller
         $shipping = $postalCode !== ''
             ? $quoteService->quotes($cart, $postalCode)
             : ['configured' => $quoteService->configured(), 'postal_code' => null, 'stores' => [], 'shipping_total' => 0.0];
+        $paymentClient = new PagarmeClient();
+        $checkoutConfiguration = new PagarmeCheckoutConfiguration();
 
         return $this->page('public/checkout/index', 'layouts/public', [
             'pageTitle' => 'Checkout seguro',
             'cart' => $cart,
             'addresses' => $addresses,
             'isCustomer' => ($user['type'] ?? null) === 'customer',
-            'paymentConfigured' => (new PagarmeClient())->configured(),
+            'paymentConfigured' => $paymentClient->configured(),
+            'cardConfigured' => $paymentClient->configured() && $this->cardConfiguredForCart($checkoutConfiguration, $cart),
+            'pagarmePublicKey' => $checkoutConfiguration->publicKey(),
+            'cardTokenUrl' => $checkoutConfiguration->tokenizationUrl(),
             'shipping' => $shipping,
             'shippingConfigured' => $quoteService->configured(),
         ]);
@@ -77,7 +86,7 @@ final class CheckoutController extends Controller
         $user = Auth::user();
         if (($user['type'] ?? null) !== 'customer') {
             Session::flash('error', 'Entre como cliente para concluir a compra.');
-            return Response::redirect('/entrar');
+            return Response::redirect('/entrar?redirect=' . rawurlencode('/checkout'));
         }
         $customerStatement = Database::connection()->prepare('SELECT document,phone FROM users WHERE id=? LIMIT 1');
         $customerStatement->execute([Auth::id()]);
@@ -85,8 +94,8 @@ final class CheckoutController extends Controller
         $customerDocument = preg_replace('/\D+/', '', (string) ($customerData['document'] ?? '')) ?? '';
         $customerPhone = preg_replace('/\D+/', '', (string) ($customerData['phone'] ?? '')) ?? '';
         if (!in_array(strlen($customerDocument), [11, 14], true) || !in_array(strlen($customerPhone), [10, 11], true)) {
-            Session::flash('error', 'Informe CPF/CNPJ e telefone com DDD para concluir a compra e permitir a emissão da etiqueta.');
-            return Response::redirect('/minha-conta/perfil');
+            Session::flash('guide', 'Complete CPF/CNPJ e telefone com DDD. Depois de salvar, você volta automaticamente para o checkout.');
+            return Response::redirect('/minha-conta/perfil?return=' . rawurlencode('/checkout'));
         }
 
         $cartService = new CartService();
@@ -108,22 +117,36 @@ final class CheckoutController extends Controller
         $addressStatement->execute([(int) ($_POST['address_id'] ?? 0), Auth::id()]);
         $selectedAddress = $addressStatement->fetch();
         if (!$selectedAddress) {
-            Session::flash('error', 'Selecione um endereço de entrega válido.');
+            Session::flash('guide', 'Selecione um endereço de entrega para continuar.');
             return Response::redirect('/checkout');
         }
         if (empty($_POST['terms'])) {
-            Session::flash('error', 'Aceite os Termos de Compra e a Política de Privacidade.');
+            Session::flash('guide', 'Confirme os Termos de Compra e a Política de Privacidade para finalizar.');
             return Response::redirect('/checkout');
         }
         $paymentMethod = (string) ($_POST['payment_method'] ?? '');
         if (!in_array($paymentMethod, ['pix', 'card', 'boleto'], true)) {
-            Session::flash('error', 'Selecione uma forma de pagamento.');
+            Session::flash('guide', 'Selecione uma forma de pagamento.');
             return Response::redirect('/checkout');
+        }
+
+        $checkoutConfiguration = new PagarmeCheckoutConfiguration();
+        $cardToken = trim((string) ($_POST['card_token'] ?? ''));
+        $cardInstallments = max(1, min(6, (int) ($_POST['card_installments'] ?? 1)));
+        if ($paymentMethod === 'card') {
+            if (!$this->cardConfiguredForCart($checkoutConfiguration, $cart)) {
+                Session::flash('guide', 'O cartão ainda não está disponível neste checkout. Escolha Pix ou boleto por enquanto.');
+                return Response::redirect('/checkout');
+            }
+            if (preg_match('/^token_[A-Za-z0-9_-]+$/', $cardToken) !== 1) {
+                Session::flash('guide', 'Valide os dados do cartão novamente antes de finalizar.');
+                return Response::redirect('/checkout');
+            }
         }
 
         $shipping = (new ShippingQuoteService())->quotes($cart, (string) $selectedAddress['postal_code']);
         if (!$shipping['configured']) {
-            Session::flash('error', 'Configure o Melhor Envio antes de finalizar pedidos com entrega.');
+            Session::flash('guide', 'A entrega está temporariamente indisponível. Seu carrinho continua salvo; tente novamente em alguns instantes.');
             return Response::redirect('/checkout');
         }
         $shippingSelections = [];
@@ -138,14 +161,14 @@ final class CheckoutController extends Controller
                 }
             }
             if (!is_array($selectedOption)) {
-                Session::flash('error', 'Selecione uma modalidade de entrega para cada loja.');
+                Session::flash('guide', 'Selecione uma modalidade de entrega para cada loja.');
                 return Response::redirect('/checkout');
             }
             $shippingSelections[$storeId] = $selectedOption;
         }
 
         if (!(new PagarmeClient())->configured()) {
-            Session::flash('error', 'Configure a integração Pagar.me para gerar a cobrança com segurança.');
+            Session::flash('guide', 'O pagamento está temporariamente indisponível. Seu carrinho continua salvo.');
             return Response::redirect('/checkout');
         }
 
@@ -161,14 +184,53 @@ final class CheckoutController extends Controller
                     'ip_hash' => hash_hmac('sha256', (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown'), (string) ($_ENV['APP_KEY'] ?? 'tuffer-checkout')),
                 ]
             );
-            $this->processPaymentImmediately((int) $result['payment_id']);
-            Session::flash('success', 'Pedido ' . $result['order_code'] . ' criado. Estamos preparando o pagamento com segurança.');
+            $paymentId = (int) $result['payment_id'];
+
+            if ($paymentMethod === 'card') {
+                $this->processCardImmediately($paymentId, $cardToken, $cardInstallments);
+                Session::flash('success', 'Pedido ' . $result['order_code'] . ' criado. Seu cartão foi enviado com segurança e estamos confirmando o pagamento.');
+            } else {
+                $this->processPaymentImmediately($paymentId);
+                Session::flash('success', 'Pedido ' . $result['order_code'] . ' criado. Estamos preparando o pagamento com segurança.');
+            }
             return Response::redirect('/minha-conta/pedidos/' . rawurlencode((string) $result['order_code']));
         } catch (Throwable $exception) {
             Logger::exception($exception, [], 'checkout');
-            Session::flash('error', $exception->getMessage());
+            Session::flash('guide', 'Não foi possível concluir essa etapa agora. Revise os dados e tente novamente; seu carrinho permanece protegido sempre que a compra ainda não tiver sido criada.');
             return Response::redirect('/checkout');
         }
+    }
+
+    private function processCardImmediately(int $paymentId, string $cardToken, int $installments): void
+    {
+        $pdo = Database::connection();
+        try {
+            (new PagarmeSplitService($pdo))->createSnapshot($paymentId);
+            (new MarketplaceFinancialLedgerService($pdo))->createPending($paymentId);
+            (new PagarmeCreditCardOrderService(null, $pdo))->create($paymentId, $cardToken, $installments);
+        } catch (Throwable $exception) {
+            Logger::exception($exception, ['payment_id' => $paymentId], 'pagarme_card');
+            $pdo->prepare("UPDATE payments SET integration_type='payment_link',status='pending' WHERE id=? AND status NOT IN ('paid','partially_refunded','refunded')")
+                ->execute([$paymentId]);
+            $this->processPaymentImmediately($paymentId);
+            Session::flash('guide', 'Não conseguimos confirmar o cartão diretamente. Preparamos uma alternativa segura para você continuar o pagamento sem criar outro pedido.');
+        }
+    }
+
+    /** @param array<string,mixed> $cart */
+    private function cardConfiguredForCart(PagarmeCheckoutConfiguration $configuration, array $cart): bool
+    {
+        if (!$configuration->cardCheckoutConfigured()) return false;
+        $allowed = array_flip($configuration->allowedSellerIds());
+        $sellerIds = array_unique(array_map(
+            static fn(array $item): int => (int) ($item['seller_id'] ?? 0),
+            is_array($cart['items'] ?? null) ? $cart['items'] : []
+        ));
+        if ($sellerIds === []) return false;
+        foreach ($sellerIds as $sellerId) {
+            if ($sellerId < 1 || !isset($allowed[$sellerId])) return false;
+        }
+        return true;
     }
 
     private function processPaymentImmediately(int $paymentId): void
