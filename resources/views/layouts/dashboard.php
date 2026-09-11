@@ -19,7 +19,7 @@
         <main class="dashboard-content">
             <?php if ($flashSuccess): ?><div class="alert alert--success"><?= e($flashSuccess) ?></div><?php endif; ?>
             <?php if ($flashGuide): ?><div class="alert alert--guide"><?= e($flashGuide) ?></div><?php endif; ?>
-            <?php if ($flashError): ?><div class="alert alert--error"><?= e($flashError) ?></div><?php endif; ?>
+            <?php if ($flashError && ($dashboardArea ?? '') === 'customer'): ?><div class="alert alert--guide"><?= e($flashError) ?></div><?php elseif ($flashError): ?><div class="alert alert--error"><?= e($flashError) ?></div><?php endif; ?>
             <?= $content ?>
         </main>
     </div>
