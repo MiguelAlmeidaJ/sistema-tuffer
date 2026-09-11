@@ -12,14 +12,6 @@ $registerPath = '/cadastro' . ($redirectPath !== '' ? '?redirect=' . rawurlencod
                 <p>Use seu e-mail e senha para continuar<?= $redirectPath !== '' ? ' de onde parou' : '' ?>.</p>
             </div>
 
-            <div class="auth-social">
-                <a class="auth-social__button" href="<?= e(url('/auth/google')) ?>">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21.6 12.2c0-.7-.1-1.3-.2-1.9H12v3.6h5.4a4.6 4.6 0 0 1-2 3v2.4h3.2c1.9-1.8 3-4.2 3-7.1Z"/><path fill="currentColor" opacity=".78" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.4c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.2H3.1v2.5A10 10 0 0 0 12 22Z"/><path fill="currentColor" opacity=".58" d="M6.4 14a6 6 0 0 1 0-4V7.5H3.1a10 10 0 0 0 0 9L6.4 14Z"/><path fill="currentColor" opacity=".9" d="M12 5.8c1.5 0 2.8.5 3.8 1.5l2.9-2.8A9.6 9.6 0 0 0 3.1 7.5L6.4 10c.8-2.4 3-4.2 5.6-4.2Z"/></svg>
-                    Continuar com Google
-                </a>
-            </div>
-            <div class="auth-divider"><span>ou entre com seu e-mail</span></div>
-
             <form action="<?= e(url('/entrar')) ?>" method="post" class="auth-form" data-auth-login-form>
                 <?= csrf_field() ?>
                 <?php if ($redirectPath !== ''): ?><input type="hidden" name="redirect" value="<?= e($redirectPath) ?>"><?php endif; ?>
@@ -65,7 +57,7 @@ $registerPath = '/cadastro' . ($redirectPath !== '' ? '?redirect=' . rawurlencod
                             <p>Crie agora e continue sua compra sem perder o carrinho.</p>
                         </div>
                     </div>
-                    <a class="auth-create-account__cta" href="<?= e(url($registerPath)) ?>">Criar minha conta <span aria-hidden="true">→</span></a>
+                    <a class="auth-create-account__cta" href="<?= e(url($registerPath)) ?>" aria-label="Criar minha conta"><span class="auth-create-account__cta-label">Criar minha conta</span><span aria-hidden="true">→</span></a>
                 </section>
                 <a class="auth-seller-promo" href="<?= e(url('/quero-vender')) ?>"><span><strong>Quer vender na <?= e($platformSettings['platform_name'] ?? 'Tuffer') ?>?</strong><small>Cadastre sua loja e alcance novos clientes.</small></span><b>Conhecer o programa de vendedores →</b></a>
             </div>
