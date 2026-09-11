@@ -13,15 +13,19 @@
     <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/responsive.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/commerce-ux.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset('css/guidance.css')) ?>">
     <style>:root{<?= platform_theme_style($platformSettings) ?>}</style>
     <script defer src="<?= e(asset('js/app.js')) ?>"></script>
     <script defer src="<?= e(asset('js/commerce-ux.js')) ?>"></script>
+    <script defer src="<?= e(asset('js/purchase-assistant.js')) ?>"></script>
     <?php foreach($schemas as $schema):?><script type="application/ld+json"><?=json_encode($schema,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT)?></script><?php endforeach;?>
 </head>
 <body class="public-shell <?=e(platform_theme_classes($platformSettings))?>">
+    <?php $requestPath=(string)parse_url($_SERVER['REQUEST_URI']??'/',PHP_URL_PATH);$checkoutRequest=str_starts_with($requestPath,'/checkout'); ?>
     <?php require dirname(__DIR__) . '/components/public/header.php'; ?>
     <?php if ($flashSuccess): ?><div class="toast toast--success" role="status"><?= e($flashSuccess) ?></div><?php endif; ?>
-    <?php if ($flashError): ?><div class="toast toast--error" role="alert"><?= e($flashError) ?></div><?php endif; ?>
+    <?php if ($flashGuide): ?><div class="toast toast--guide" role="status"><?= e($flashGuide) ?></div><?php endif; ?>
+    <?php if ($flashError && $checkoutRequest): ?><div class="toast toast--guide" role="status">Não foi possível concluir essa etapa agora. Seu carrinho continua salvo; confira a orientação abaixo e tente novamente.</div><?php elseif ($flashError): ?><div class="toast toast--error" role="alert"><?= e($flashError) ?></div><?php endif; ?>
     <main><?= $content ?></main>
     <?php require dirname(__DIR__) . '/components/public/footer.php'; ?>
 </body>
