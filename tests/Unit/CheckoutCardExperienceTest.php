@@ -92,4 +92,20 @@ final class CheckoutCardExperienceTest extends TestCase
         self::assertStringContainsString('camera=(self)', $bootstrap);
         self::assertStringContainsString('https://api.pagar.me', $bootstrap);
     }
+
+    public function testSellerEligibilityComesFromPaymentStateInsteadOfEnvAllowlist(): void
+    {
+        $controller = file_get_contents($this->root . '/app/Http/Controllers/Public/CheckoutController.php');
+        $configuration = file_get_contents($this->root . '/app/Services/Payments/Pagarme/PagarmeCheckoutConfiguration.php');
+        $env = file_get_contents($this->root . '/.env.example');
+
+        self::assertIsString($controller);
+        self::assertIsString($configuration);
+        self::assertIsString($env);
+        self::assertStringContainsString('SellerSalesEligibility', $controller);
+        self::assertStringContainsString('assertAllCanSell', $controller);
+        self::assertStringNotContainsString('allowedSellerIds', $controller);
+        self::assertStringNotContainsString('PAGARME_SPLIT_ALLOWED_SELLERS', $configuration);
+        self::assertStringNotContainsString('PAGARME_SPLIT_ALLOWED_SELLERS', $env);
+    }
 }
