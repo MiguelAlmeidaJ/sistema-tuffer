@@ -14,7 +14,9 @@
     <link rel="stylesheet" href="<?= e(asset('css/responsive.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/commerce-ux.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/guidance.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset('css/customer-flow.css')) ?>">
     <style>:root{<?= platform_theme_style($platformSettings) ?>}</style>
+    <script defer src="<?= e(asset('js/checkout-card.js')) ?>"></script>
     <script defer src="<?= e(asset('js/app.js')) ?>"></script>
     <script defer src="<?= e(asset('js/commerce-ux.js')) ?>"></script>
     <script defer src="<?= e(asset('js/purchase-assistant.js')) ?>"></script>
