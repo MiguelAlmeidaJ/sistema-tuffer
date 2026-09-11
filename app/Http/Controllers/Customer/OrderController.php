@@ -10,7 +10,9 @@ use App\Core\Response;
 use App\Core\Session;
 use App\Http\Controllers\Controller;
 use App\Services\Fiscal\FiscalDocumentStorage;
+use App\Services\Payments\PendingPaymentRecoveryService;
 use RuntimeException;
+use Throwable;
 
 final class OrderController extends Controller
 {
@@ -49,7 +51,8 @@ final class OrderController extends Controller
             unset($sellerOrder);
             $paymentStatement = $pdo->prepare(
                 "SELECT p.method,p.status,p.integration_type,p.checkout_url,p.expires_at,
-                        p.pix_qr_code,p.pix_qr_code_url,p.pix_expires_at,aj.status async_status
+                        p.pix_qr_code,p.pix_qr_code_url,p.pix_expires_at,
+                        aj.status async_status,aj.attempts async_attempts,aj.max_attempts async_max_attempts
                  FROM payments p
                  LEFT JOIN async_jobs aj ON aj.unique_key=CASE
                     WHEN p.integration_type='orders' THEN CONCAT('pagarme-order:',p.id)
@@ -73,6 +76,41 @@ final class OrderController extends Controller
             'payment' => $payment,
             'address' => $address,
         ]);
+    }
+
+    public function refreshPayment(string $code): string
+    {
+        $pdo = Database::connection();
+        $statement = $pdo->prepare('SELECT id,status FROM orders WHERE user_id=? AND code=? LIMIT 1');
+        $statement->execute([Auth::id(), $code]);
+        $order = $statement->fetch();
+        if (!is_array($order)) {
+            http_response_code(404);
+            Session::flash('error', 'Pedido não encontrado.');
+            return Response::redirect('/minha-conta/pedidos');
+        }
+        if ((string) $order['status'] !== 'pending_payment') {
+            Session::flash('success', 'O status deste pedido já foi atualizado.');
+            return Response::redirect('/minha-conta/pedidos/' . rawurlencode($code));
+        }
+
+        try {
+            $result = (new PendingPaymentRecoveryService($pdo))->recover((int) $order['id'], (int) Auth::id());
+            $state = (string) ($result['state'] ?? 'processing');
+            if (in_array($state, ['ready', 'order_updated'], true)) {
+                Session::flash('success', 'Pagamento atualizado. Continue o pagamento abaixo.');
+            } elseif ($state === 'processing') {
+                Session::flash('success', 'Tentamos preparar o pagamento novamente. Se ainda não aparecer, aguarde alguns segundos e tente mais uma vez.');
+            } elseif ($state === 'failed') {
+                Session::flash('error', 'Não foi possível gerar esta cobrança automaticamente. Entre em contato com o suporte informando o código do pedido.');
+            } else {
+                Session::flash('error', 'Não encontramos uma cobrança recuperável para este pedido. Entre em contato com o suporte informando o código do pedido.');
+            }
+        } catch (Throwable) {
+            Session::flash('error', 'Não foi possível atualizar o pagamento agora. Aguarde alguns instantes e tente novamente.');
+        }
+
+        return Response::redirect('/minha-conta/pedidos/' . rawurlencode($code));
     }
 
     public function downloadFiscalXml(string $code, string $id): string
