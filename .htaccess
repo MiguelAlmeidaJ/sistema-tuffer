@@ -3,6 +3,11 @@ Options -Indexes
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # Remove /public da URL visível também quando o DocumentRoot aponta para a
+    # raiz do projeto, mantendo uma única URL canônica para clientes e OAuth.
+    RewriteCond %{THE_REQUEST} \s/+public(?:[/\s?]) [NC]
+    RewriteRule ^public(?:/(.*))?$ /$1 [R=301,L,NE]
+
     # Impede que uma configuração incorreta com DocumentRoot no diretório do
     # projeto exponha segredos, código-fonte, logs, backups e dumps.
     RewriteRule ^\.well-known(?:/|$) - [L,NC]
@@ -13,7 +18,6 @@ Options -Indexes
     # Compatibilidade com hospedagens compartilhadas que fixam o DocumentRoot
     # na raiz do repositório. Arquivos públicos e rotas são encaminhados para
     # public/ sem tornar o restante do projeto acessível pela web.
-    RewriteRule ^public(?:/|$) - [L,NC]
     RewriteRule ^((?:assets|uploads)(?:/.*)?)$ public/$1 [L,NC]
     RewriteRule ^ public/index.php [L,QSA]
 </IfModule>
