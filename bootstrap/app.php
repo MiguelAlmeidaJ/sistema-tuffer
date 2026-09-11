@@ -40,7 +40,7 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
         || (filter_var($_ENV['TRUST_PROXY_HEADERS'] ?? false, FILTER_VALIDATE_BOOL)
             && strtolower(trim(explode(',', (string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''))[0])) === 'https');
     if ($secureRequest) header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
-    $contentSecurityPolicy = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https://*.pagar.me; img-src 'self' data: blob: https://res.cloudinary.com; media-src 'self' blob: https://res.cloudinary.com; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://api.cloudinary.com https://*.melhorenvio.com.br";
+    $contentSecurityPolicy = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https://*.pagar.me; img-src 'self' data: blob: https://res.cloudinary.com; media-src 'self' blob: https://res.cloudinary.com; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://api.cloudinary.com https://*.melhorenvio.com.br https://viacep.com.br";
     if ($secureRequest) $contentSecurityPolicy .= '; upgrade-insecure-requests';
     header('Content-Security-Policy: ' . $contentSecurityPolicy);
 }
@@ -49,6 +49,7 @@ Session::start();
 
 View::share('authUser', Auth::user());
 View::share('flashSuccess', Session::pullFlash('success'));
+View::share('flashGuide', Session::pullFlash('guide'));
 View::share('flashError', Session::pullFlash('error'));
 View::share('validationErrors', Session::pullFlash('errors', []));
 View::share('oldInput', Session::pullFlash('old', []));
