@@ -178,8 +178,8 @@ final class PagarmeCreditCardOrderService
                     'statement_descriptor' => $this->statementDescriptor(),
                     'operation_type' => 'auth_and_capture',
                     'card_id' => $cardId,
-                    'split' => array_map(static fn($rule): array => $rule->toArray(), $rules),
                 ],
+                'split' => array_map(static fn($rule): array => $rule->toArray(), $rules),
             ]],
             'metadata' => [
                 'integration' => 'tuffer-marketplace-card-v1',
