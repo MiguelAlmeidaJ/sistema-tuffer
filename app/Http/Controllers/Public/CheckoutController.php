@@ -224,14 +224,10 @@ final class CheckoutController extends Controller
             $integrationType = (string) ($payment['integration_type'] ?? '');
             $status = (string) ($payment['status'] ?? '');
 
-            $safeFallback = ($integrationType === 'payment_link' && $status === 'pending')
-                || ($integrationType === 'orders' && $status === 'failed');
-            if (!$safeFallback) {
+            if (!($integrationType === 'payment_link' && $status === 'pending')) {
                 return 'processing';
             }
 
-            $pdo->prepare("UPDATE payments SET integration_type='payment_link',status='pending' WHERE id=? AND status NOT IN ('paid','partially_refunded','refunded')")
-                ->execute([$paymentId]);
             $this->processPaymentImmediately($paymentId);
             return 'fallback';
         }
