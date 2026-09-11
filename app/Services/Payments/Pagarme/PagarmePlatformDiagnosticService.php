@@ -35,7 +35,7 @@ final class PagarmePlatformDiagnosticService
             'checkout_mode' => $this->configuration->mode(),
             'orders_pix_enabled' => $this->configuration->ordersPixEnabled(),
             'split_enabled' => $this->configuration->splitEnabled(),
-            'allowed_sellers_count' => count($this->configuration->allowedSellerIds()),
+            'seller_eligibility_source' => 'database',
             'recipient_id' => $this->mask($recipientId),
             'recipient_id_valid' => $this->configuration->validPlatformRecipientId(),
             'key_environment' => $this->client->environment(),
