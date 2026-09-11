@@ -2,68 +2,67 @@
 
 ## Escopo implantado
 
-O checkout possui dois modos:
+O checkout mantém flags globais no ambiente e obtém a elegibilidade de cada seller automaticamente do banco. Não existe mais lista manual de IDs em `.env`.
 
-- Sem as três flags explícitas de homologação: fluxo legado integral por Payment Link.
-- Com `PAGARME_ORDERS_PIX_ENABLED=true`, `PAGARME_SPLIT_ENABLED=true` e todos os vendedores presentes em `PAGARME_SPLIT_ALLOWED_SELLERS`: Pix usa `POST /core/v5/orders` com split; cartão e boleto continuam no Payment Link.
+- `PAGARME_SPLIT_ENABLED=true` habilita a infraestrutura global de split.
+- `PAGARME_PLATFORM_RECIPIENT_ID` identifica o recebedor da plataforma.
+- `PAGARME_ORDERS_PIX_ENABLED=true` habilita Pix via Orders.
+- Cartão direto exige também `PAGARME_PUBLIC_KEY` válida para tokenização segura no navegador.
 
-O modo `orders_pix_limited` exige `PAGARME_PLATFORM_RECIPIENT_ID`. A conta Pagar.me também precisa estar contratualmente habilitada para PSP/Marketplace e split. `PAGARME_CHECKOUT_MODE` não habilita o fluxo sozinho.
+Um seller só participa de uma cobrança com split quando o cadastro comercial e a conta Pagar.me estiverem aptos: seller ativo, loja ativa, pagamentos habilitados, onboarding ativo, recipient válido, recipient ativo, KYC elegível e `enabled_for_sales=1`. Essa verificação é feita por `SellerSalesEligibility` e é repetida antes da cobrança por `PagarmeSplitService`.
 
-## Política financeira v1
+A loja oficial usa a conta Pagar.me da plataforma conforme as regras de elegibilidade próprias. `PAGARME_CHECKOUT_MODE` não substitui essas validações.
+
+## Política financeira
 
 A política está centralizada em `MarketplaceFinancialPolicy`:
 
 - comissão sobre produtos após descontos;
-- frete fora da base percentual e destinado ao vendedor;
+- frete conforme a política financeira configurada;
 - cupom do vendedor reduz o líquido do vendedor;
 - cupom da plataforma reduz a parcela da Tuffer;
-- taxa de processamento, responsabilidade e centavos residuais ficam com a plataforma;
+- taxa de processamento, responsabilidade e centavos residuais seguem a política da plataforma;
 - split fixo (`flat`) e sempre em centavos.
 
-Cupons criados pelo painel do vendedor são financiados pelo vendedor. Uma campanha financiada pela plataforma deve ser criada por fluxo administrativo confiável com `coupons.funding_source=platform`. Se o desconto da plataforma superar toda a receita da Tuffer no pedido, o checkout é bloqueado porque a API não aceita uma parcela negativa.
+Cupons criados pelo painel do vendedor são financiados pelo vendedor. Uma campanha financiada pela plataforma deve ser criada por fluxo administrativo confiável com `coupons.funding_source=platform`. Se o desconto da plataforma superar a receita disponível da Tuffer no pedido, o checkout é bloqueado para impedir parcela negativa.
 
 ## Snapshot imutável
 
-O pedido persiste os valores comerciais primeiro. Depois, dentro da mesma transação, `PagarmeSplitService` grava `payment_split_snapshots`, agregando lojas do mesmo vendedor em uma única entrada.
+O pedido persiste os valores comerciais primeiro. Depois, `PagarmeSplitService` grava os snapshots financeiros, agregando lojas do mesmo vendedor quando necessário.
 
-O worker só lê esse snapshot; comissão e split não são recalculados. Triggers impedem `UPDATE` e `DELETE`. Antes de chamar a Pagar.me, todos os recebedores são sincronizados novamente e precisam permanecer com:
-
-- `recipient.status=active`;
-- `kyc_details.status=approved`;
-- o mesmo `recipient_id` gravado no snapshot.
+O processamento usa esse snapshot; comissão e split não são recalculados livremente. Antes do request transacional, os recebedores são revalidados e precisam continuar elegíveis, incluindo recipient correto e KYC/status aceitos.
 
 ## Idempotência e cobranças
 
-- checkout: `payments.idempotency_key`, job único e header `Idempotency-Key`;
+- checkout: `payments.idempotency_key`, job único e header `Idempotency-Key` quando aplicável;
 - pedido externo: `pagarme_orders.external_order_id` e `idempotency_key` únicos;
 - webhook: `provider_event_id` único e conflito detectado pelo SHA-256;
-- cobrança: cada `charge_id` possui uma linha própria em `pagarme_charges`.
+- cobrança: cada `charge_id` possui uma linha própria em `pagarme_charges`;
+- tentativas de Orders usam coordenação idempotente e recuperação de estado incerto.
 
-Um reprocessamento pode criar outro `charge_id` para o mesmo `order_id`. O registro anterior não é sobrescrito. `charge_id`, `transaction_id`, `order_id` e `gateway_id` são strings; os dois `gateway_id` aceitam valores alfanuméricos de até 128 caracteres.
+Um reprocessamento pode produzir outro `charge_id` para o mesmo `order_id`. O registro anterior não é sobrescrito.
 
 ## Webhooks
 
-Além dos eventos de recebedor, habilite:
+Além dos eventos de recebedor, habilite os eventos de pedido e cobrança usados pela integração, incluindo pagamento, falha, cancelamento, reembolso e chargeback. Os payloads persistidos são sanitizados e não devem armazenar PAN, CVV, documentos completos ou dados bancários desnecessários.
 
-- `order.created`, `order.updated`, `order.closed`, `order.paid`, `order.payment_failed`, `order.canceled`;
-- `charge.created`, `charge.updated`, `charge.pending`, `charge.processing`, `charge.paid`, `charge.payment_failed`, `charge.refunded`;
-- `chargeback.received`.
+## Cartão
 
-`charge.chargedback` permanece aceito temporariamente durante a migração indicada pela Pagar.me. Os payloads persistidos são minimizados e não contêm cliente, documento, banco, cartão nem QR Pix completo.
+O cartão é preenchido no checkout, mas PAN e CVV não são enviados ao backend da Tuffer. O navegador tokeniza o cartão diretamente com a Pagar.me usando somente a chave pública. O backend recebe o token temporário, cria/obtém o cartão seguro na Pagar.me e envia a cobrança com `card_id`, parcelas e split.
 
-## Cartão e boleto
-
-Os DTOs aceitam a evolução dos meios de pagamento, mas a API de Pedidos está habilitada apenas para Pix nesta fase. O backend rejeita o ponto de entrada de cartão até existir uma estratégia aprovada de `card_id`/tokenização e conformidade PCI. Boleto permanece no fallback.
+A opção de cartão só é exibida quando as configurações globais estão válidas e todos os sellers do carrinho passam pela elegibilidade dinâmica do banco.
 
 ## Ativação em sandbox
 
-1. Aplicar as migrations.
-2. Configurar chave `sk_test_`, `PAGARME_PLATFORM_RECIPIENT_ID` e webhook.
-3. Confirmar que vendedores do carrinho estão ativos e aprovados no ambiente de teste.
-4. Incluir os vendedores de teste em `PAGARME_SPLIT_ALLOWED_SELLERS`.
-5. Habilitar explicitamente `PAGARME_SPLIT_ENABLED=true` e `PAGARME_ORDERS_PIX_ENABLED=true`.
-5. Manter o worker e `scripts/expire-pending-orders.php` agendados.
-6. Testar criação, pagamento, expiração, falha, estorno e reprocessamento com outro `charge_id`.
+1. Aplicar as migrations e configurar a Pagar.me de teste.
+2. Configurar `PAGARME_PLATFORM_RECIPIENT_ID`, chave pública, chave secreta e webhook.
+3. Concluir o onboarding Pagar.me dos sellers de teste e confirmar recipient/KYC/habilitação para vendas.
+4. Habilitar `PAGARME_SPLIT_ENABLED=true`.
+5. Para Pix Orders, habilitar também `PAGARME_ORDERS_PIX_ENABLED=true`.
+6. Manter worker e rotinas de expiração/reconciliação ativos.
+7. Testar criação, pagamento, expiração, falha, estorno, cartão parcelado e cenários com múltiplos sellers.
+
+Não é necessário editar `.env` quando um novo seller termina o onboarding: o próprio estado persistido da conta de pagamento passa a controlar a elegibilidade.
 
 Referências oficiais:
 
@@ -71,4 +70,3 @@ Referências oficiais:
 - https://docs.pagar.me/reference/pix-2
 - https://docs.pagar.me/reference/eventos-de-webhook-1
 - https://docs.pagar.me/docs/pagamentos
-- https://docs.pagar.me/docs/mudan%C3%A7as-de-apis
