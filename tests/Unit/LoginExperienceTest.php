@@ -15,30 +15,36 @@ final class LoginExperienceTest extends TestCase
         $this->root = dirname(__DIR__, 2);
     }
 
-    public function testLoginCardKeepsOnlyGoogleAndPlacesLogoBeforeWelcome(): void
+    public function testLoginKeepsBrandBeforeWelcomeAndSocialLoginIsDisabled(): void
     {
         $view = file_get_contents($this->root . '/resources/views/auth/login.php');
-
         self::assertIsString($view);
-        self::assertStringContainsString('class="auth-login__logo"', $view);
-        self::assertStringContainsString('class="auth-eyebrow">BEM-VINDO', $view);
-        self::assertLessThan(strpos($view, 'class="auth-eyebrow"'), strpos($view, 'class="auth-login__logo"'));
-        self::assertSame(1, substr_count($view, 'class="auth-social__button"'));
-        self::assertStringContainsString("url('/auth/google')", $view);
-        self::assertStringNotContainsString('facebook', mb_strtolower($view));
-        self::assertStringNotContainsString('auth-login__brand', $view);
+        self::assertStringNotContainsString('auth-social__button', $view);
+        self::assertStringNotContainsString('/auth/google', $view);
+        self::assertStringNotContainsString('ou entre com seu e-mail', mb_strtolower($view));
+        self::assertStringContainsString('auth-login__logo', $view);
+        self::assertStringContainsString('Criar minha conta', $view);
+        self::assertStringContainsString('auth-create-account__cta-label', $view);
+        self::assertLessThan(
+            strpos($view, 'BEM-VINDO'),
+            strpos($view, 'auth-login__logo')
+        );
     }
 
-    public function testOnlyExplicitGoogleSocialRoutesRemain(): void
+    public function testSocialAuthenticationRoutesAreNotExposed(): void
     {
         $routes = file_get_contents($this->root . '/routes/auth.php');
-        $controller = file_get_contents($this->root . '/app/Http/Controllers/Auth/SocialAuthController.php');
-
         self::assertIsString($routes);
-        self::assertIsString($controller);
-        self::assertStringContainsString("'/auth/google'", $routes);
-        self::assertStringContainsString("'/auth/google/callback'", $routes);
-        self::assertStringNotContainsString("'/auth/{provider}'", $routes);
-        self::assertStringNotContainsString('facebook.com', mb_strtolower($controller));
+        self::assertStringNotContainsString('/auth/google', $routes);
+        self::assertStringNotContainsString('SocialAuthController', $routes);
+    }
+
+    public function testLoginStylesKeepTheAccountCreationLabelVisible(): void
+    {
+        $css = file_get_contents($this->root . '/public/assets/css/customer-flow.css');
+        self::assertIsString($css);
+        self::assertStringContainsString('.auth-create-account__cta-label', $css);
+        self::assertStringContainsString('color: #fff !important', $css);
+        self::assertStringContainsString('visibility: visible !important', $css);
     }
 }
