@@ -7,6 +7,7 @@
     const expiry=form.querySelector('[data-card-expiry]');
     const cvv=form.querySelector('[data-card-cvv]');
     const tokenField=form.querySelector('[name="card_token"]');
+    const installments=form.querySelector('[name="card_installments"]');
     const status=form.querySelector('[data-card-status]');
     const scanRoot=form.querySelector('[data-card-scan]');
     const scanInput=form.querySelector('[data-card-camera-input]');
@@ -14,6 +15,7 @@
     if(!number||!holder||!expiry||!cvv||!tokenField)return;
 
     const digits=value=>String(value||'').replace(/\D/g,'');
+    const money=value=>Number(value||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
     const selectedCard=()=>form.querySelector('[name="payment_method"]:checked')?.value==='card';
     const setStatus=(message,tone='')=>{
       if(!status)return;
@@ -61,11 +63,27 @@
       cvv.setCustomValidity('');
       return true;
     };
+    const updateInstallments=()=>{
+      if(!installments)return;
+      const summary=form.querySelector('[data-summary-total]');
+      const base=Number(summary?.dataset.baseTotal||0);
+      const shipping=[...form.querySelectorAll('[data-shipping-price]:checked')]
+        .reduce((sum,input)=>sum+Number(input.dataset.shippingPrice||0),0);
+      const total=base+shipping;
+      [...installments.options].forEach(option=>{
+        const count=Math.max(1,Number(option.value)||1);
+        option.textContent=`${count}x de ${money(total/count)} sem juros`;
+      });
+    };
 
     number.addEventListener('input',()=>{number.value=formatNumber(number.value);number.setCustomValidity('');clearToken()});
     holder.addEventListener('input',()=>{holder.value=holder.value.replace(/[^A-Za-zÀ-ÿ '\-]/g,'').slice(0,64);holder.setCustomValidity('');clearToken()});
     expiry.addEventListener('input',()=>{expiry.value=formatExpiry(expiry.value);expiry.setCustomValidity('');clearToken()});
     cvv.addEventListener('input',()=>{cvv.value=digits(cvv.value).slice(0,4);cvv.setCustomValidity('');clearToken()});
+    form.addEventListener('change',event=>{if(event.target.matches?.('[data-shipping-price],[name="address_id"]'))updateInstallments()});
+    const shippingRoot=form.querySelector('[data-shipping-groups]');
+    if(shippingRoot)new MutationObserver(updateInstallments).observe(shippingRoot,{subtree:true,childList:true});
+    updateInstallments();
 
     const tokenize=async()=>{
       if(form.dataset.cardConfigured!=='1')throw new Error('O pagamento por cartão ainda não está habilitado.');
