@@ -11,7 +11,6 @@ final class PagarmeCheckoutConfiguration
         return $this->ordersPixEnabled()
             && $this->splitEnabled()
             && $this->validPlatformRecipientId()
-            && $this->allowedSellerIds() !== []
             ? 'orders_pix_limited'
             : 'payment_link';
     }
@@ -27,9 +26,8 @@ final class PagarmeCheckoutConfiguration
             return false;
         }
 
-        $allowed = array_flip($this->allowedSellerIds());
         foreach (array_unique(array_map('intval', $sellerIds)) as $sellerId) {
-            if ($sellerId < 1 || !isset($allowed[$sellerId])) {
+            if ($sellerId < 1) {
                 return false;
             }
         }
@@ -63,27 +61,12 @@ final class PagarmeCheckoutConfiguration
     {
         return $this->validPublicKey()
             && $this->splitEnabled()
-            && $this->validPlatformRecipientId()
-            && $this->allowedSellerIds() !== [];
+            && $this->validPlatformRecipientId();
     }
 
     public function splitEnabled(): bool
     {
         return $this->boolean('PAGARME_SPLIT_ENABLED');
-    }
-
-    /** @return array<int,int> */
-    public function allowedSellerIds(): array
-    {
-        $values = preg_split('/[\s,;]+/', trim((string) ($_ENV['PAGARME_SPLIT_ALLOWED_SELLERS'] ?? ''))) ?: [];
-        $ids = [];
-        foreach ($values as $value) {
-            if (ctype_digit($value) && (int) $value > 0) {
-                $ids[(int) $value] = (int) $value;
-            }
-        }
-        ksort($ids);
-        return array_values($ids);
     }
 
     public function platformRecipientId(): string
