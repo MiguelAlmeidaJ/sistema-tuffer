@@ -35,12 +35,12 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header('X-Content-Type-Options: nosniff');
     header('X-Frame-Options: DENY');
     header('Referrer-Policy: strict-origin-when-cross-origin');
-    header('Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(self)');
+    header('Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=(self)');
     $secureRequest = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')
         || (filter_var($_ENV['TRUST_PROXY_HEADERS'] ?? false, FILTER_VALIDATE_BOOL)
             && strtolower(trim(explode(',', (string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''))[0])) === 'https');
     if ($secureRequest) header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
-    $contentSecurityPolicy = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https://*.pagar.me; img-src 'self' data: blob: https://res.cloudinary.com; media-src 'self' blob: https://res.cloudinary.com; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://api.cloudinary.com https://*.melhorenvio.com.br https://viacep.com.br";
+    $contentSecurityPolicy = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https://*.pagar.me; img-src 'self' data: blob: https://res.cloudinary.com; media-src 'self' blob: https://res.cloudinary.com; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://api.cloudinary.com https://*.melhorenvio.com.br https://viacep.com.br https://api.pagar.me https://sdx-api.pagar.me";
     if ($secureRequest) $contentSecurityPolicy .= '; upgrade-insecure-requests';
     header('Content-Security-Policy: ' . $contentSecurityPolicy);
 }
@@ -64,6 +64,7 @@ try {
 View::share('menuCategories', $menuCategories);
 $wholesaleStatus = null;
 $unreadNotifications = 0;
+$deliveryAddress = null;
 if ((Auth::user()['type'] ?? null) === 'customer') {
     try {
         $statement = \App\Core\Database::connection()->prepare('SELECT status FROM wholesale_accounts WHERE user_id=? LIMIT 1');
@@ -72,12 +73,16 @@ if ((Auth::user()['type'] ?? null) === 'customer') {
         $statement = \App\Core\Database::connection()->prepare('SELECT COUNT(*) FROM user_notifications WHERE user_id=? AND read_at IS NULL');
         $statement->execute([Auth::id()]);
         $unreadNotifications = (int) $statement->fetchColumn();
+        $statement = \App\Core\Database::connection()->prepare('SELECT label,street,number,city,state,postal_code FROM user_addresses WHERE user_id=? ORDER BY is_default DESC,id DESC LIMIT 1');
+        $statement->execute([Auth::id()]);
+        $deliveryAddress = $statement->fetch() ?: null;
     } catch (\Throwable) {
         // Permite executar a aplicação antes da nova migração.
     }
 }
 View::share('wholesaleStatus', $wholesaleStatus);
 View::share('unreadNotifications', $unreadNotifications);
+View::share('deliveryAddress', $deliveryAddress);
 
 $router = new Router();
 $router->aliasMiddleware('auth', Authenticate::class);
