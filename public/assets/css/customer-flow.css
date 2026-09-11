@@ -1,0 +1,231 @@
+/* Ajustes finais do fluxo do cliente: autenticação, cabeçalho e pagamento. */
+.auth-create-account__cta,
+.auth-create-account__cta:visited,
+.auth-create-account__cta:hover,
+.auth-create-account__cta:focus {
+    color: #fff !important;
+    text-decoration: none;
+}
+
+.auth-create-account__cta-label,
+.auth-create-account__cta > span {
+    color: inherit !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.auth-create-account__cta-label {
+    display: inline !important;
+    font-size: .78rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.header-logout {
+    display: inline-flex;
+    margin: 0;
+}
+
+.header-logout .icon-action {
+    border: 0;
+    cursor: pointer;
+}
+
+.icon-action--logout {
+    color: #655f59;
+    background: #fff;
+}
+
+.icon-action--logout:hover {
+    color: var(--brand-red);
+    border-color: rgba(227, 6, 19, .25);
+}
+
+.delivery-bar {
+    gap: 8px;
+}
+
+.delivery-bar__copy {
+    display: flex;
+    min-width: 0;
+    align-items: baseline;
+    gap: 7px;
+}
+
+.delivery-bar__copy strong {
+    color: inherit;
+    font-size: inherit;
+}
+
+.delivery-bar__copy small {
+    max-width: min(58vw, 620px);
+    overflow: hidden;
+    color: #655f59;
+    font-size: .7rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.delivery-bar.has-address {
+    color: #161412;
+}
+
+.public-mobile-menu__logout {
+    margin: 0;
+}
+
+.public-mobile-menu__logout button {
+    width: 100%;
+    padding: 12px 0;
+    border: 0;
+    background: transparent;
+    color: var(--brand-red);
+    font: inherit;
+    font-weight: 800;
+    text-align: left;
+    cursor: pointer;
+}
+
+.checkout-card-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1.65fr) minmax(150px, .75fr);
+    gap: 14px;
+    margin-top: 16px;
+}
+
+.checkout-card-fields label {
+    display: grid;
+    gap: 7px;
+    color: #312e2b;
+    font-size: .72rem;
+    font-weight: 800;
+}
+
+.checkout-card-fields label:first-child,
+.checkout-card-fields .checkout-card-holder,
+.checkout-card-fields .checkout-card-installments {
+    grid-column: 1 / -1;
+}
+
+.checkout-card-fields input,
+.checkout-card-fields select {
+    width: 100%;
+    min-height: 46px;
+    padding: 0 13px;
+    border: 1px solid #ddd5ce;
+    border-radius: 11px;
+    background: #fff;
+    color: #191715;
+    font: inherit;
+    font-size: .86rem;
+    font-weight: 600;
+    outline: 0;
+}
+
+.checkout-card-fields input:focus,
+.checkout-card-fields select:focus {
+    border-color: var(--brand-red);
+    box-shadow: 0 0 0 3px rgba(227, 6, 19, .08);
+}
+
+.checkout-card-security {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 13px;
+    padding: 11px 12px;
+    border-radius: 10px;
+    background: #f7f5f2;
+    color: #5f5953;
+    font-size: .68rem;
+    line-height: 1.45;
+}
+
+.checkout-card-security svg {
+    width: 16px;
+    flex: 0 0 16px;
+    fill: none;
+    stroke: #26714a;
+    stroke-width: 1.8;
+}
+
+.checkout-card-scan {
+    display: none;
+    margin-top: 12px;
+}
+
+.checkout-card-scan .button {
+    width: 100%;
+}
+
+.checkout-card-scan small,
+.checkout-card-status {
+    display: block;
+    margin-top: 7px;
+    color: #746d66;
+    font-size: .67rem;
+    line-height: 1.4;
+}
+
+.checkout-card-status.is-error {
+    color: #b20a13;
+}
+
+.checkout-card-status.is-success {
+    color: #26714a;
+}
+
+.payment-option-disabled {
+    opacity: .56;
+}
+
+.payment-option-disabled input {
+    pointer-events: none;
+}
+
+@media (max-width: 760px) {
+    .header-actions {
+        gap: 6px;
+    }
+
+    .header-actions .icon-action {
+        width: 42px;
+        height: 42px;
+    }
+
+    .delivery-bar__copy {
+        display: grid;
+        gap: 1px;
+        line-height: 1.2;
+    }
+
+    .delivery-bar__copy small {
+        max-width: 78vw;
+        font-size: .62rem;
+    }
+
+    .checkout-card-fields {
+        grid-template-columns: minmax(0, 1fr) minmax(110px, .7fr);
+        gap: 11px;
+    }
+
+    .checkout-card-scan {
+        display: block;
+    }
+}
+
+@media (max-width: 430px) {
+    .header-actions {
+        gap: 4px;
+    }
+
+    .header-actions .icon-action {
+        width: 40px;
+        height: 40px;
+    }
+
+    .checkout-card-fields {
+        grid-template-columns: 1fr 1fr;
+    }
+}
