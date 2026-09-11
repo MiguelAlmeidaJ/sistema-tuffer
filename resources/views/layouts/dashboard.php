@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/responsive.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/commerce-ux.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset('css/guidance.css')) ?>">
     <style>:root{<?= platform_theme_style($platformSettings) ?>}</style>
     <script defer src="<?= e(asset('js/app.js')) ?>"></script>
     <script defer src="<?= e(asset('js/commerce-ux.js')) ?>"></script>
@@ -17,6 +18,7 @@
         <?php require dirname(__DIR__) . '/components/dashboard/topbar.php'; ?>
         <main class="dashboard-content">
             <?php if ($flashSuccess): ?><div class="alert alert--success"><?= e($flashSuccess) ?></div><?php endif; ?>
+            <?php if ($flashGuide): ?><div class="alert alert--guide"><?= e($flashGuide) ?></div><?php endif; ?>
             <?php if ($flashError): ?><div class="alert alert--error"><?= e($flashError) ?></div><?php endif; ?>
             <?= $content ?>
         </main>
