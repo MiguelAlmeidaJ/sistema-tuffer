@@ -8,9 +8,9 @@
 
 <?php
 $cards = [
-    ['label' => 'Modo do checkout', 'value' => $platform['checkout_mode'] === 'orders_pix_limited' ? 'Orders Pix limitado' : 'Payment Link'],
+    ['label' => 'Modo do checkout', 'value' => $platform['checkout_mode'] === 'orders_pix_limited' ? 'Orders Pix' : 'Payment Link'],
     ['label' => 'Vendedores elegíveis', 'value' => (string) $summary['enabled_sellers']],
-    ['label' => 'Permitidos na homologação', 'value' => (string) $summary['allowed_sellers']],
+    ['label' => 'Elegibilidade', 'value' => 'Automática pelo cadastro'],
     ['label' => 'Pix pendentes', 'value' => (string) $summary['pending_pix']],
     ['label' => 'Webhooks falhos (7 dias)', 'value' => (string) $summary['failed_webhooks']],
     ['label' => 'Divergências abertas', 'value' => (string) $summary['open_divergences']],
@@ -25,6 +25,7 @@ $cards = [
         <tr><th>Status do recipient</th><td><?= e($platform['recipient_status'] ?? 'não validado') ?></td></tr>
         <tr><th>Status do KYC</th><td><?= ($platform['kyc_status'] ?? null) === 'legacy_not_required' ? 'Dispensado para recebedor existente' : e($platform['kyc_status'] ?? 'não validado') ?></td></tr>
         <tr><th>Recipient no mesmo ambiente</th><td><?= $platform['environment_match'] ? 'Sim' : 'Não confirmado' ?></td></tr>
+        <tr><th>Elegibilidade dos vendedores</th><td>Automática pelo onboarding, recipient, KYC e habilitação para vendas</td></tr>
         <tr><th>Orders Pix</th><td><?= $platform['orders_pix_enabled'] ? 'Habilitado por flag' : 'Desabilitado' ?></td></tr>
         <tr><th>Split</th><td><?= $platform['split_enabled'] ? 'Habilitado por flag' : 'Desabilitado' ?></td></tr>
     </tbody></table></div>
