@@ -21,20 +21,23 @@
 
 - [ ] Configurar e validar SMTP, Pagar.me, Melhor Envio e Cloudinary separadamente.
 - [ ] Cadastrar o webhook HTTPS da Pagar.me e validar o segredo de assinatura.
-- [ ] Confirmar que a conta está habilitada como PSP/Marketplace, identificar `PAGARME_PLATFORM_RECIPIENT_ID` e habilitar `recipient.created` e `recipient.updated` no webhook.
-- [ ] Validar em sandbox a criação do recebedor, a geração do link KYC e a transição até `recipient.status=active` e `kyc_details.status=approved`.
-- [ ] Configurar `PAGARME_PLATFORM_RECIPIENT_ID`, validar a afiliação PSP/Marketplace e executar Pix com split para dois ou mais vendedores.
-- [ ] Manter `PAGARME_ORDERS_PIX_ENABLED=false` e `PAGARME_SPLIT_ENABLED=false` até concluir a homologação; ativar vendedores gradualmente em `PAGARME_SPLIT_ALLOWED_SELLERS`.
-- [ ] Habilitar eventos de pedido, cobrança, `chargeback.received` e confirmar reprocessamento com novo `charge_id` no mesmo `order_id`.
-- [ ] Validar `gateway_id` alfanumérico, expiração Pix e execução periódica de `scripts/expire-pending-orders.php`.
+- [ ] Confirmar que a conta está habilitada como PSP/Marketplace, identificar `PAGARME_PLATFORM_RECIPIENT_ID` e habilitar os eventos necessários de recipient, pedido e cobrança.
+- [ ] Validar em sandbox a criação do recebedor, a geração do link KYC e a transição até recipient/KYC elegíveis.
+- [ ] Configurar `PAGARME_PLATFORM_RECIPIENT_ID`, validar a afiliação PSP/Marketplace e executar split para dois ou mais vendedores.
+- [ ] Manter `PAGARME_ORDERS_PIX_ENABLED=false` e `PAGARME_SPLIT_ENABLED=false` até concluir a homologação.
+- [ ] Confirmar que a elegibilidade de cada seller é liberada automaticamente pelo onboarding e pelos estados persistidos de pagamento; não manter IDs de sellers no `.env`.
+- [ ] Para cartão direto, configurar a public key da Pagar.me e validar tokenização no navegador sem enviar PAN/CVV ao backend da Tuffer.
+- [ ] Habilitar eventos de pedido, cobrança e chargeback e confirmar reprocessamento/idempotência no mesmo pedido.
+- [ ] Validar `gateway_id` alfanumérico, expiração Pix e execução periódica das rotinas operacionais.
 - [ ] Ativar cada integração no painel somente depois do teste correspondente.
 - [ ] Confirmar que nenhuma chave de produção está presente em máquinas locais ou no histórico Git.
 
 ## Processos operacionais
 
 - [ ] Manter `scripts/queue-worker.php` supervisionado continuamente.
-- [ ] Agendar `scripts/expire-pending-orders.php` e `scripts/monitor-health.php` a cada cinco minutos.
+- [ ] Agendar `scripts/expire-pending-orders.php` e `scripts/monitor-health.php` conforme o volume da operação.
 - [ ] Agendar `scripts/sync-pagarme-recipients.php` para reconciliar bloqueios e aprovações de recebedores.
+- [ ] Agendar o reconciliador Pagar.me para recuperar estados remotos e detectar divergências.
 - [ ] Agendar `scripts/backup-database.php` diariamente e testar restauração em ambiente isolado.
 - [ ] Configurar monitor externo para `/health`, alertas e rotação/retenção de logs.
 
@@ -42,5 +45,6 @@
 
 - [ ] Executar `composer validate --strict`, testes, verificação de sintaxe e `composer audit`.
 - [ ] Verificar cadastro, login, recuperação de senha, compra, webhook, cancelamento, estoque, cupom, frete e e-mail em homologação.
+- [ ] Validar um seller recém-aprovado no onboarding sem qualquer alteração manual no `.env`.
 - [ ] Ativar modo de manutenção durante migrações que alterem esquema ou dados.
 - [ ] Fazer smoke test após a implantação e manter um plano de rollback com backup válido.
