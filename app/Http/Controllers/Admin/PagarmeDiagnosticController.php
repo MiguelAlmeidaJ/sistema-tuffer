@@ -8,6 +8,7 @@ use App\Core\Database;
 use App\Http\Controllers\Controller;
 use App\Services\Payments\Pagarme\PagarmeCheckoutConfiguration;
 use App\Services\Payments\Pagarme\PagarmePlatformDiagnosticService;
+use App\Services\Sellers\SellerSalesEligibility;
 
 final class PagarmeDiagnosticController extends Controller
 {
@@ -16,20 +17,18 @@ final class PagarmeDiagnosticController extends Controller
         $pdo = Database::connection();
         $configuration = new PagarmeCheckoutConfiguration();
         $platform = (new PagarmePlatformDiagnosticService())->inspect();
-        $environment = (string) ($platform['key_environment'] ?? 'unknown');
 
-        $enabled = $pdo->prepare(
-            "SELECT COUNT(*) FROM seller_payment_accounts spa
-             JOIN sellers s ON s.id=spa.seller_id
-             WHERE spa.provider='pagarme' AND spa.environment=?
-               AND spa.enabled_for_sales=1 AND spa.recipient_status='active'
-               AND spa.kyc_status IN ('approved','legacy_not_required')
-               AND s.status='active' AND s.payment_enabled=1
-               AND s.payment_onboarding_status='active'"
-        );
-        $enabled->execute([$environment]);
+        $eligibility = new SellerSalesEligibility($pdo);
+        $sellerIds = $pdo->query("SELECT id FROM sellers WHERE status='active' ORDER BY id")->fetchAll(\PDO::FETCH_COLUMN);
+        $enabledSellers = 0;
+        foreach ($sellerIds as $sellerId) {
+            if ($eligibility->sellerCanSell((int) $sellerId)) {
+                $enabledSellers++;
+            }
+        }
+
         $summary = [
-            'enabled_sellers' => (int) $enabled->fetchColumn(),
+            'enabled_sellers' => $enabledSellers,
             'seller_eligibility_source' => 'database',
             'pending_pix' => (int) $pdo->query(
                 "SELECT COUNT(*) FROM payments
