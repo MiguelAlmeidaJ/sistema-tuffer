@@ -19,15 +19,18 @@ final class PagarmeDiagnosticController extends Controller
         $environment = (string) ($platform['key_environment'] ?? 'unknown');
 
         $enabled = $pdo->prepare(
-            "SELECT COUNT(*) FROM seller_payment_accounts
-             WHERE provider='pagarme' AND environment=?
-               AND enabled_for_sales=1 AND recipient_status='active'
-               AND kyc_status IN ('approved','legacy_not_required')"
+            "SELECT COUNT(*) FROM seller_payment_accounts spa
+             JOIN sellers s ON s.id=spa.seller_id
+             WHERE spa.provider='pagarme' AND spa.environment=?
+               AND spa.enabled_for_sales=1 AND spa.recipient_status='active'
+               AND spa.kyc_status IN ('approved','legacy_not_required')
+               AND s.status='active' AND s.payment_enabled=1
+               AND s.payment_onboarding_status='active'"
         );
         $enabled->execute([$environment]);
         $summary = [
             'enabled_sellers' => (int) $enabled->fetchColumn(),
-            'allowed_sellers' => count($configuration->allowedSellerIds()),
+            'seller_eligibility_source' => 'database',
             'pending_pix' => (int) $pdo->query(
                 "SELECT COUNT(*) FROM payments
                  WHERE provider='pagarme' AND integration_type='orders' AND method='pix'
