@@ -187,8 +187,14 @@ final class CheckoutController extends Controller
             $paymentId = (int) $result['payment_id'];
 
             if ($paymentMethod === 'card') {
-                $this->processCardImmediately($paymentId, $cardToken, $cardInstallments);
-                Session::flash('success', 'Pedido ' . $result['order_code'] . ' criado. Seu cartão foi enviado com segurança e estamos confirmando o pagamento.');
+                $cardState = $this->processCardImmediately($paymentId, $cardToken, $cardInstallments);
+                if ($cardState === 'direct') {
+                    Session::flash('success', 'Pedido ' . $result['order_code'] . ' criado. Seu cartão foi enviado com segurança e estamos confirmando o pagamento.');
+                } elseif ($cardState === 'fallback') {
+                    Session::flash('success', 'Pedido ' . $result['order_code'] . ' criado sem duplicação. Continue o pagamento pela alternativa segura preparada para este pedido.');
+                } else {
+                    Session::flash('guide', 'Recebemos a tentativa com cartão e estamos verificando a resposta da operadora. Não tente pagar novamente enquanto o pedido estiver em processamento.');
+                }
             } else {
                 $this->processPaymentImmediately($paymentId);
                 Session::flash('success', 'Pedido ' . $result['order_code'] . ' criado. Estamos preparando o pagamento com segurança.');
@@ -201,19 +207,33 @@ final class CheckoutController extends Controller
         }
     }
 
-    private function processCardImmediately(int $paymentId, string $cardToken, int $installments): void
+    /** @return 'direct'|'fallback'|'processing' */
+    private function processCardImmediately(int $paymentId, string $cardToken, int $installments): string
     {
         $pdo = Database::connection();
         try {
             (new PagarmeSplitService($pdo))->createSnapshot($paymentId);
             (new MarketplaceFinancialLedgerService($pdo))->createPending($paymentId);
             (new PagarmeCreditCardOrderService(null, $pdo))->create($paymentId, $cardToken, $installments);
+            return 'direct';
         } catch (Throwable $exception) {
             Logger::exception($exception, ['payment_id' => $paymentId], 'pagarme_card');
+            $statement = $pdo->prepare('SELECT integration_type,status FROM payments WHERE id=? LIMIT 1');
+            $statement->execute([$paymentId]);
+            $payment = $statement->fetch() ?: [];
+            $integrationType = (string) ($payment['integration_type'] ?? '');
+            $status = (string) ($payment['status'] ?? '');
+
+            $safeFallback = ($integrationType === 'payment_link' && $status === 'pending')
+                || ($integrationType === 'orders' && $status === 'failed');
+            if (!$safeFallback) {
+                return 'processing';
+            }
+
             $pdo->prepare("UPDATE payments SET integration_type='payment_link',status='pending' WHERE id=? AND status NOT IN ('paid','partially_refunded','refunded')")
                 ->execute([$paymentId]);
             $this->processPaymentImmediately($paymentId);
-            Session::flash('guide', 'Não conseguimos confirmar o cartão diretamente. Preparamos uma alternativa segura para você continuar o pagamento sem criar outro pedido.');
+            return 'fallback';
         }
     }
 
