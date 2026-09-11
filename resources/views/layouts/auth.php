@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="<?= e(asset('css/responsive.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/commerce-ux.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/guidance.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset('css/customer-flow.css')) ?>">
     <style>:root{<?= platform_theme_style($platformSettings) ?>}</style>
     <script src="<?= e(asset('js/app.js')) ?>" defer></script>
     <script src="<?= e(asset('js/commerce-ux.js')) ?>" defer></script>
