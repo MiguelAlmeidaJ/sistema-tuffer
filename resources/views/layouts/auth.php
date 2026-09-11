@@ -8,12 +8,14 @@
     <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/responsive.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/commerce-ux.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset('css/guidance.css')) ?>">
     <style>:root{<?= platform_theme_style($platformSettings) ?>}</style>
     <script src="<?= e(asset('js/app.js')) ?>" defer></script>
     <script src="<?= e(asset('js/commerce-ux.js')) ?>" defer></script>
 </head>
 <body class="auth-page <?= e(platform_theme_classes($platformSettings)) ?>">
     <?php if ($flashSuccess): ?><div class="toast toast--success" role="status"><?= e($flashSuccess) ?></div><?php endif; ?>
+    <?php if ($flashGuide): ?><div class="toast toast--guide" role="status"><?= e($flashGuide) ?></div><?php endif; ?>
     <?php if ($flashError): ?><div class="toast toast--error" role="alert"><?= e($flashError) ?></div><?php endif; ?>
 
     <main class="auth-main">
