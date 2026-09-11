@@ -8,19 +8,23 @@ final class PagarmeCheckoutConfiguration
 {
     public function mode(): string
     {
-        return $this->ordersPixEnabled()
+        return ($this->ordersPixEnabled() || $this->ordersCardEnabled())
             && $this->splitEnabled()
             && $this->validPlatformRecipientId()
             && $this->allowedSellerIds() !== []
-            ? 'orders_pix_limited'
+            ? 'orders_mixed_limited'
             : 'payment_link';
     }
 
     /** @param array<int,int> $sellerIds */
     public function usesOrders(string $paymentMethod, array $sellerIds = []): bool
     {
-        if ($paymentMethod !== 'pix'
-            || !$this->ordersPixEnabled()
+        $methodEnabled = match ($paymentMethod) {
+            'pix' => $this->ordersPixEnabled(),
+            'card' => $this->ordersCardEnabled(),
+            default => false,
+        };
+        if (!$methodEnabled
             || !$this->splitEnabled()
             || !$this->validPlatformRecipientId()
             || $sellerIds === []) {
@@ -40,6 +44,28 @@ final class PagarmeCheckoutConfiguration
     public function ordersPixEnabled(): bool
     {
         return $this->boolean('PAGARME_ORDERS_PIX_ENABLED');
+    }
+
+    public function ordersCardEnabled(): bool
+    {
+        return $this->validPublicKey();
+    }
+
+    public function publicKey(): string
+    {
+        return trim((string) ($_ENV['PAGARME_PUBLIC_KEY'] ?? ''));
+    }
+
+    public function validPublicKey(): bool
+    {
+        return preg_match('/^pk_(?:test_)?[A-Za-z0-9_-]+$/', $this->publicKey()) === 1;
+    }
+
+    public function tokenizationUrl(): string
+    {
+        return str_starts_with($this->publicKey(), 'pk_test_')
+            ? 'https://sdx-api.pagar.me/core/v5/tokens'
+            : 'https://api.pagar.me/core/v5/tokens';
     }
 
     public function splitEnabled(): bool
