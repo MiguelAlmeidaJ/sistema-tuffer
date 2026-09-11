@@ -37,6 +37,14 @@ document.querySelectorAll('[data-purchase-assistant][data-purchase-assistant-con
     });
     if(progress)progress.style.width=`${Math.round(completed/stepKeys.length*100)}%`;
   };
+  const lockForProfile=locked=>{
+    const submit=form.querySelector('[data-checkout-submit]');
+    const mobile=document.querySelector('[data-mobile-submit]');
+    if(locked){
+      if(submit){submit.disabled=true;submit.classList.remove('button--primary','is-ready');submit.classList.add('button--secondary');submit.textContent='Complete seus dados para continuar'}
+      if(mobile){mobile.disabled=true;mobile.classList.remove('button--primary');mobile.classList.add('button--secondary');mobile.textContent='Completar dados'}
+    }
+  };
   const sync=()=>{
     const customer=form.dataset.customer==='1';
     const profileComplete=form.dataset.profileComplete==='1';
@@ -48,6 +56,7 @@ document.querySelectorAll('[data-purchase-assistant][data-purchase-assistant-con
     const terms=!!form.querySelector('[name="terms"]:checked');
     const paymentDone=payment&&terms&&paymentConfigured;
     setSteps({account:customer,profile:customer&&profileComplete,address:hasAddress,shipping:delivery,payment:paymentDone});
+    lockForProfile(customer&&!profileComplete);
 
     if(!customer){setCopy('info','Vamos continuar de onde você parou','Entre ou crie sua conta. Seu carrinho continua salvo e você volta direto para esta etapa.','Entrar ou criar conta',assistant.dataset.loginUrl);return}
     if(!profileComplete){setCopy('attention','Só faltam seus dados de compra','Complete CPF/CNPJ e telefone com DDD. Depois de salvar, você volta automaticamente para o checkout.','Completar meus dados',assistant.dataset.profileUrl);return}
@@ -59,7 +68,12 @@ document.querySelectorAll('[data-purchase-assistant][data-purchase-assistant-con
     if(!terms){setCopy('info','Último passo: confirme os termos','Revise o resumo e confirme os termos da compra para liberar o botão de finalização.','Revisar e confirmar','#checkout-summary');return}
     setCopy('success','Tudo pronto para finalizar','Revise o total e toque em Finalizar compra. Seu pedido será criado com segurança.','Ir para finalizar','#checkout-summary');
   };
-  form.addEventListener('change',sync);
+  form.addEventListener('submit',event=>{
+    if(form.dataset.customer==='1'&&form.dataset.profileComplete!=='1'){
+      event.preventDefault();event.stopImmediatePropagation();window.location.href=assistant.dataset.profileUrl;
+    }
+  },true);
+  form.addEventListener('change',()=>queueMicrotask(sync));
   const shippingRoot=form.querySelector('[data-shipping-groups]');
   if(shippingRoot)new MutationObserver(sync).observe(shippingRoot,{subtree:true,childList:true,attributes:true,attributeFilter:['checked']});
   sync();
