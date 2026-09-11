@@ -1,3 +1,11 @@
+<?php
+$currentRequest = (string) ($_SERVER['REQUEST_URI'] ?? '/');
+$currentPath = (string) (parse_url($currentRequest, PHP_URL_PATH) ?: '/');
+$currentQuery = (string) (parse_url($currentRequest, PHP_URL_QUERY) ?? '');
+$currentReturn = $currentPath . ($currentQuery !== '' ? '?' . $currentQuery : '');
+$guestLoginUrl = url('/entrar?redirect=' . rawurlencode($currentReturn));
+$addressLoginUrl = url('/entrar?redirect=' . rawurlencode('/minha-conta/enderecos'));
+?>
 <header class="site-header">
     <div class="header-main container">
         <button class="public-menu-toggle" type="button" data-public-menu-open aria-expanded="false" aria-controls="public-mobile-menu" aria-label="Abrir menu">
@@ -6,7 +14,7 @@
         <a class="brand" href="<?= e(url('/')) ?>" aria-label="Tuffer, página inicial"><img src="<?= e(upload_asset($platformSettings['logo_path'] ?? 'platform/logos/tuffer-logo.svg')) ?>" alt="<?= e($platformSettings['platform_name'] ?? 'Tuffer') ?>"></a>
         <?php require __DIR__ . '/search-bar.php'; ?>
         <nav class="header-actions" aria-label="Acesso rápido">
-            <a class="icon-action" href="<?= e($authUser ? url(match ($authUser['type']) {'admin'=>'/admin','seller','operator'=>'/vendedor',default=>'/minha-conta'}) : url('/entrar')) ?>" aria-label="Minha conta">
+            <a class="icon-action" href="<?= e($authUser ? url(match ($authUser['type']) {'admin'=>'/admin','seller','operator'=>'/vendedor',default=>'/minha-conta'}) : $guestLoginUrl) ?>" aria-label="Minha conta">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
             </a>
             <?php if (($authUser['type'] ?? null) === 'customer'): ?>
@@ -28,7 +36,7 @@
         <?php endif; ?>
         <a href="<?= e(url('/lojas')) ?>">Loja Oficial</a>
     </nav>
-    <a class="delivery-bar" href="<?= e($authUser ? url('/minha-conta') : url('/entrar')) ?>"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2"/></svg> Cadastrar endereço para entrega</a>
+    <a class="delivery-bar" href="<?= e($authUser ? url('/minha-conta/enderecos') : $addressLoginUrl) ?>"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2"/></svg> Cadastrar endereço para entrega</a>
     <div class="public-mobile-menu" id="public-mobile-menu" data-public-menu aria-hidden="true">
         <button class="public-mobile-menu__backdrop" type="button" data-public-menu-close tabindex="-1" aria-label="Fechar menu"></button>
         <aside class="public-mobile-menu__panel" aria-label="Menu principal">
@@ -44,7 +52,7 @@
                 <a href="<?= e(url('/lojas')) ?>"><span>Lojas oficiais</span><b>→</b></a>
             </nav>
             <footer>
-                <a href="<?= e($authUser ? url(match ($authUser['type']) {'admin'=>'/admin','seller','operator'=>'/vendedor',default=>'/minha-conta'}) : url('/entrar')) ?>">Minha conta</a>
+                <a href="<?= e($authUser ? url(match ($authUser['type']) {'admin'=>'/admin','seller','operator'=>'/vendedor',default=>'/minha-conta'}) : $guestLoginUrl) ?>">Minha conta</a>
                 <a href="<?= e(url('/carrinho')) ?>">Carrinho<?= ($cartCount ?? 0) > 0 ? ' (' . (int) $cartCount . ')' : '' ?></a>
             </footer>
         </aside>

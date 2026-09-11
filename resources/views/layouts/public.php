@@ -12,8 +12,10 @@
     <link rel="icon" href="<?= e(upload_asset($platformSettings['favicon_path'] ?? 'platform/favicon/favicon.svg')) ?>" type="image/svg+xml">
     <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/responsive.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset('css/commerce-ux.css')) ?>">
     <style>:root{<?= platform_theme_style($platformSettings) ?>}</style>
     <script defer src="<?= e(asset('js/app.js')) ?>"></script>
+    <script defer src="<?= e(asset('js/commerce-ux.js')) ?>"></script>
     <?php foreach($schemas as $schema):?><script type="application/ld+json"><?=json_encode($schema,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT)?></script><?php endforeach;?>
 </head>
 <body class="public-shell <?=e(platform_theme_classes($platformSettings))?>">

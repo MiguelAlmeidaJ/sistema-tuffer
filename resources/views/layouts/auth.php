@@ -7,8 +7,10 @@
     <link rel="icon" href="<?= e(upload_asset($platformSettings['favicon_path'] ?? 'platform/favicon/favicon.svg')) ?>" type="image/svg+xml">
     <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/responsive.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset('css/commerce-ux.css')) ?>">
     <style>:root{<?= platform_theme_style($platformSettings) ?>}</style>
     <script src="<?= e(asset('js/app.js')) ?>" defer></script>
+    <script src="<?= e(asset('js/commerce-ux.js')) ?>" defer></script>
 </head>
 <body class="auth-page <?= e(platform_theme_classes($platformSettings)) ?>">
     <?php if ($flashSuccess): ?><div class="toast toast--success" role="status"><?= e($flashSuccess) ?></div><?php endif; ?>

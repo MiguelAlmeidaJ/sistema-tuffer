@@ -19,18 +19,28 @@ final class LoginController extends Controller
 {
     public function create(): string
     {
-        return $this->page('auth/login', 'layouts/auth', ['pageTitle' => 'Entrar', 'minimalAuthLayout' => true]);
+        $redirect = $this->safeRedirect((string) ($_GET['redirect'] ?? ''));
+        if ($redirect === '') {
+            $redirect = $this->safeReferrer();
+        }
+
+        return $this->page('auth/login', 'layouts/auth', [
+            'pageTitle' => 'Entrar',
+            'minimalAuthLayout' => true,
+            'redirectPath' => $redirect,
+        ]);
     }
 
     public function store(): string
     {
         $email = mb_strtolower(trim((string) ($_POST['email'] ?? '')));
+        $redirect = $this->safeRedirect((string) ($_POST['redirect'] ?? ''));
         $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
         $throttle = new LoginThrottle();
         if ($throttle->blocked($email, $ip)) {
             Session::flash('errors', ['email' => 'Muitas tentativas de acesso. Aguarde 15 minutos e tente novamente.']);
             Session::flash('old', ['email' => $email]);
-            return Response::redirect('/entrar');
+            return Response::redirect($this->loginPath($redirect));
         }
         $statement = Database::connection()->prepare('SELECT id, name, email, password_hash, auth_version, type, status FROM users WHERE email = ? LIMIT 1');
         $statement->execute([$email]);
@@ -40,13 +50,13 @@ final class LoginController extends Controller
             $throttle->recordFailure($email, $ip);
             Session::flash('errors', ['email' => 'E-mail ou senha incorretos.']);
             Session::flash('old', ['email' => $email]);
-            return Response::redirect('/entrar');
+            return Response::redirect($this->loginPath($redirect));
         }
         if ($user['status'] !== 'active') {
             $throttle->recordFailure($email, $ip);
             Session::flash('errors', ['email' => 'Esta conta ainda não está ativa.']);
             Session::flash('old', ['email' => $email]);
-            return Response::redirect('/entrar');
+            return Response::redirect($this->loginPath($redirect));
         }
 
         $throttle->clear($email, $ip);
@@ -73,6 +83,10 @@ final class LoginController extends Controller
             }
         }
 
+        if ($user['type'] === 'customer' && $redirect !== '') {
+            return Response::redirect($redirect);
+        }
+
         return Response::redirect(match ($user['type']) {
             'admin' => '/admin',
             'seller', 'operator' => '/vendedor',
@@ -85,5 +99,35 @@ final class LoginController extends Controller
         Auth::logout();
         Session::flash('success', 'Você saiu com segurança.');
         return Response::redirect('/');
+    }
+
+    private function loginPath(string $redirect): string
+    {
+        return $redirect === '' ? '/entrar' : '/entrar?redirect=' . rawurlencode($redirect);
+    }
+
+    private function safeRedirect(string $path): string
+    {
+        if ($path === '' || !str_starts_with($path, '/') || str_starts_with($path, '//')) return '';
+        if (str_contains($path, '\\') || preg_match('/[\x00-\x1F\x7F]/', $path) === 1) return '';
+
+        $pathname = (string) (parse_url($path, PHP_URL_PATH) ?? '');
+        if (in_array($pathname, ['/entrar', '/cadastro', '/sair'], true)) return '';
+
+        return $path;
+    }
+
+    private function safeReferrer(): string
+    {
+        $referrer = trim((string) ($_SERVER['HTTP_REFERER'] ?? ''));
+        if ($referrer === '') return '';
+
+        $host = (string) (parse_url($referrer, PHP_URL_HOST) ?? '');
+        $requestHost = preg_replace('/:\\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? '')) ?? '';
+        if ($host !== '' && strcasecmp($host, $requestHost) !== 0) return '';
+
+        $path = (string) (parse_url($referrer, PHP_URL_PATH) ?? '');
+        $query = (string) (parse_url($referrer, PHP_URL_QUERY) ?? '');
+        return $this->safeRedirect($path . ($query !== '' ? '?' . $query : ''));
     }
 }

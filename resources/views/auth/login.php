@@ -1,3 +1,7 @@
+<?php
+$redirectPath = (string) ($redirectPath ?? '');
+$registerPath = '/cadastro' . ($redirectPath !== '' ? '?redirect=' . rawurlencode($redirectPath) : '');
+?>
 <section class="auth-card auth-card--login">
     <div class="auth-login__panel">
         <div class="auth-login__panel-inner">
@@ -5,11 +9,12 @@
             <div class="auth-card__header">
                 <span class="auth-eyebrow">BEM-VINDO</span>
                 <h1>Entre na sua conta.</h1>
-                <p>Use seu e-mail e senha para continuar.</p>
+                <p>Use seu e-mail e senha para continuar<?= $redirectPath !== '' ? ' de onde parou' : '' ?>.</p>
             </div>
 
             <form action="<?= e(url('/entrar')) ?>" method="post" class="auth-form" data-auth-login-form>
                 <?= csrf_field() ?>
+                <?php if ($redirectPath !== ''): ?><input type="hidden" name="redirect" value="<?= e($redirectPath) ?>"><?php endif; ?>
                 <div class="form-group">
                     <label for="email">E-mail</label>
                     <div class="auth-input">
@@ -44,7 +49,16 @@
             </form>
 
             <div class="auth-account-actions">
-                <section class="auth-create-account"><div><strong>Novo por aqui?</strong><p>Crie sua conta para comprar na <?= e($platformSettings['platform_name'] ?? 'Tuffer') ?>.</p></div><a href="<?= e(url('/cadastro')) ?>">Criar conta</a></section>
+                <section class="auth-create-account">
+                    <div class="auth-create-account__copy">
+                        <span class="auth-create-account__icon" aria-hidden="true">+</span>
+                        <div>
+                            <strong>Ainda não tem conta?</strong>
+                            <p>Crie agora e continue sua compra sem perder o carrinho.</p>
+                        </div>
+                    </div>
+                    <a class="auth-create-account__cta" href="<?= e(url($registerPath)) ?>">Criar minha conta <span aria-hidden="true">→</span></a>
+                </section>
                 <a class="auth-seller-promo" href="<?= e(url('/quero-vender')) ?>"><span><strong>Quer vender na <?= e($platformSettings['platform_name'] ?? 'Tuffer') ?>?</strong><small>Cadastre sua loja e alcance novos clientes.</small></span><b>Conhecer o programa de vendedores →</b></a>
             </div>
         </div>

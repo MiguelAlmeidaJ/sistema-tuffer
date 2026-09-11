@@ -1,0 +1,476 @@
+/* Ajustes de conversão e usabilidade para autenticação, carrinho e endereço. */
+.auth-step[hidden] {
+    display: none !important;
+}
+
+.auth-card--register {
+    width: min(100%, 680px);
+}
+
+.auth-register-data {
+    gap: 22px;
+}
+
+.auth-register-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+}
+
+.auth-register-grid__full {
+    grid-column: 1 / -1;
+}
+
+.auth-account-actions {
+    display: grid;
+    gap: 12px;
+    margin-top: 26px;
+    padding-top: 22px;
+    border-top: 1px solid #e8e2dc;
+}
+
+.auth-create-account {
+    display: grid;
+    gap: 14px;
+    padding: 17px;
+    border: 1px solid #ead6d7;
+    border-radius: 16px;
+    background: #fff8f8;
+}
+
+.auth-create-account__copy {
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    gap: 11px;
+    align-items: start;
+}
+
+.auth-create-account__copy strong {
+    display: block;
+    margin-bottom: 3px;
+    font-size: .82rem;
+}
+
+.auth-create-account__copy p {
+    color: #736c66;
+    font-size: .7rem;
+    line-height: 1.45;
+}
+
+.auth-create-account__icon {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(227, 6, 19, .09);
+    color: var(--brand-red);
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.auth-create-account__cta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 44px;
+    padding: 0 15px;
+    border-radius: 11px;
+    background: var(--brand-red);
+    color: #fff;
+    font-size: .74rem;
+    font-weight: 800;
+}
+
+.auth-create-account__cta:hover {
+    background: var(--brand-red-dark);
+}
+
+.auth-seller-promo {
+    display: grid;
+    gap: 8px;
+    padding: 15px 17px;
+    border: 1px solid #e5dfd8;
+    border-radius: 14px;
+    background: #faf8f5;
+    color: #332f2b;
+}
+
+.auth-seller-promo > span {
+    display: grid;
+    gap: 3px;
+}
+
+.auth-seller-promo strong {
+    font-size: .75rem;
+}
+
+.auth-seller-promo small {
+    color: #7b746d;
+    font-size: .65rem;
+}
+
+.auth-seller-promo b {
+    color: var(--brand-red);
+    font-size: .68rem;
+}
+
+.address-form__cep {
+    position: relative;
+}
+
+.cep-lookup-status {
+    display: block;
+    min-height: 1.25em;
+    color: #776f68;
+    font-size: .68rem;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.cep-lookup-status.is-loading {
+    color: #7a621f;
+}
+
+.cep-lookup-status.is-success {
+    color: #26714a;
+}
+
+.cep-lookup-status.is-error {
+    color: #b20a13;
+}
+
+@media (max-width: 760px) {
+    .commerce-breadcrumb {
+        padding-top: 10px;
+        font-size: .68rem;
+    }
+
+    .cart-heading {
+        gap: 9px;
+        padding: 12px 0 22px;
+    }
+
+    .cart-heading h1 {
+        margin: .2rem 0;
+        font-size: clamp(2rem, 11vw, 2.7rem);
+    }
+
+    .cart-heading p {
+        font-size: .74rem;
+    }
+
+    .cart-mode-actions {
+        width: 100%;
+    }
+
+    .cart-store {
+        border-radius: 14px;
+    }
+
+    .cart-store > header,
+    .cart-store > footer {
+        padding: 13px 14px;
+    }
+
+    .cart-store > header a {
+        font-size: .84rem;
+    }
+
+    .cart-item {
+        grid-template-columns: 82px minmax(0, 1fr);
+        gap: 12px;
+        align-items: start;
+        padding: 14px;
+    }
+
+    .cart-item__image {
+        width: 82px;
+        border-radius: 11px;
+    }
+
+    .cart-item__info {
+        min-width: 0;
+    }
+
+    .cart-item__info h2 {
+        margin: 3px 0 7px;
+        font-size: .86rem;
+        line-height: 1.28;
+        overflow-wrap: anywhere;
+    }
+
+    .cart-item__details {
+        gap: 3px 8px;
+    }
+
+    .cart-item__details span {
+        font-size: .61rem;
+    }
+
+    .cart-item__details span:not(:last-child)::after {
+        margin-left: 8px;
+    }
+
+    .cart-item__links {
+        flex-wrap: wrap;
+        gap: 7px 12px;
+        margin-top: 9px;
+    }
+
+    .cart-item__links button {
+        font-size: .64rem;
+    }
+
+    .cart-item__quantity {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--line);
+    }
+
+    .cart-item__quantity > span {
+        margin: 0;
+    }
+
+    .quantity-stepper {
+        grid-template-columns: 34px 40px 34px;
+    }
+
+    .quantity-stepper button {
+        height: 34px;
+    }
+
+    .cart-item__price {
+        grid-column: 1 / -1;
+        padding-top: 10px;
+    }
+
+    .cart-item__price strong {
+        font-size: 1rem;
+    }
+
+    .cart-delivery-card {
+        gap: 15px;
+        padding: 17px 15px;
+        border-radius: 14px;
+    }
+
+    .cart-delivery-card > form {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+    }
+
+    .cart-delivery-card > form label {
+        min-width: 0;
+    }
+
+    .cart-delivery-card > form .button {
+        align-self: end;
+        min-height: 44px;
+        padding-inline: 17px;
+    }
+
+    .order-summary {
+        padding: 18px 16px;
+        border-radius: 14px;
+    }
+
+    .coupon-block {
+        margin-block: 16px;
+    }
+
+    .cart-summary > .button--block {
+        display: none;
+    }
+
+    .summary-security {
+        margin-top: 13px;
+    }
+
+    .mobile-cart-action {
+        gap: 12px;
+        padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    }
+
+    .mobile-cart-action span {
+        min-width: 0;
+    }
+
+    .mobile-cart-action strong {
+        font-size: .9rem;
+    }
+
+    .mobile-cart-action .button {
+        min-width: 116px;
+        padding-inline: 16px;
+    }
+
+    .address-form .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .address-form .form-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .address-form .form-actions .button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 640px) {
+    .auth-main {
+        padding: 8px 10px 30px;
+    }
+
+    .auth-shell,
+    .auth-shell--login {
+        width: 100%;
+        gap: 12px;
+    }
+
+    .auth-page-nav {
+        padding: 8px 6px 2px;
+    }
+
+    .auth-page-nav__logo img {
+        width: 108px;
+    }
+
+    .auth-card,
+    .auth-card--register,
+    .auth-card--login {
+        width: 100%;
+        max-width: none;
+        border-radius: 20px;
+    }
+
+    .auth-card--login {
+        display: block;
+        overflow: hidden;
+    }
+
+    .auth-login__panel {
+        display: block;
+        width: 100%;
+        max-width: none;
+        padding: 25px 20px 22px;
+    }
+
+    .auth-login__panel-inner {
+        width: 100%;
+    }
+
+    .auth-login__logo {
+        display: inline-flex;
+        margin-bottom: 24px;
+    }
+
+    .auth-login__logo img {
+        width: 108px;
+        max-height: 40px;
+        object-fit: contain;
+    }
+
+    .auth-login__panel .auth-card__header {
+        margin-bottom: 20px;
+    }
+
+    .auth-login__panel .auth-card__header h1,
+    .auth-card--register h1 {
+        font-size: 1.95rem;
+        line-height: 1.05;
+    }
+
+    .auth-form__options {
+        gap: 10px;
+    }
+
+    .auth-create-account {
+        padding: 15px;
+        border-radius: 14px;
+    }
+
+    .auth-create-account__cta {
+        width: 100%;
+    }
+
+    .auth-seller-promo {
+        padding: 13px 15px;
+    }
+
+    .auth-card--register {
+        padding: 26px 18px;
+    }
+
+    .auth-card--register .auth-card__header {
+        margin-bottom: 22px;
+    }
+
+    .auth-steps {
+        margin-bottom: 22px;
+    }
+
+    .auth-steps li {
+        gap: 6px;
+        font-size: .66rem;
+    }
+
+    .auth-steps li span {
+        width: 28px;
+        height: 28px;
+    }
+
+    .auth-register-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .auth-register-grid__full {
+        grid-column: auto;
+    }
+
+    .auth-step__actions {
+        grid-template-columns: 1fr;
+        gap: 9px;
+    }
+
+    .auth-step__actions .auth-back-button {
+        order: 2;
+    }
+
+    .auth-step__actions .btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 390px) {
+    .cart-item {
+        grid-template-columns: 72px minmax(0, 1fr);
+        padding: 12px;
+    }
+
+    .cart-item__image {
+        width: 72px;
+    }
+
+    .cart-delivery-card > form {
+        grid-template-columns: 1fr;
+    }
+
+    .cart-delivery-card > form .button {
+        width: 100%;
+    }
+
+    .auth-form__options {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
