@@ -5,6 +5,13 @@ $currentQuery = (string) (parse_url($currentRequest, PHP_URL_QUERY) ?? '');
 $currentReturn = $currentPath . ($currentQuery !== '' ? '?' . $currentQuery : '');
 $guestLoginUrl = url('/entrar?redirect=' . rawurlencode($currentReturn));
 $addressLoginUrl = url('/entrar?redirect=' . rawurlencode('/minha-conta/enderecos'));
+$hasDeliveryAddress = ($authUser['type'] ?? null) === 'customer' && is_array($deliveryAddress ?? null);
+$deliveryPrimary = $hasDeliveryAddress
+    ? trim((string) (($deliveryAddress['label'] ?? '') ?: 'Entregar em'))
+    : 'Cadastrar endereço para entrega';
+$deliverySecondary = $hasDeliveryAddress
+    ? trim((string) ($deliveryAddress['street'] ?? '') . ', ' . (string) ($deliveryAddress['number'] ?? '') . ' · ' . (string) ($deliveryAddress['city'] ?? '') . '/' . (string) ($deliveryAddress['state'] ?? ''))
+    : '';
 ?>
 <header class="site-header">
     <div class="header-main container">
@@ -14,9 +21,17 @@ $addressLoginUrl = url('/entrar?redirect=' . rawurlencode('/minha-conta/endereco
         <a class="brand" href="<?= e(url('/')) ?>" aria-label="Tuffer, página inicial"><img src="<?= e(upload_asset($platformSettings['logo_path'] ?? 'platform/logos/tuffer-logo.svg')) ?>" alt="<?= e($platformSettings['platform_name'] ?? 'Tuffer') ?>"></a>
         <?php require __DIR__ . '/search-bar.php'; ?>
         <nav class="header-actions" aria-label="Acesso rápido">
-            <a class="icon-action" href="<?= e($authUser ? url(match ($authUser['type']) {'admin'=>'/admin','seller','operator'=>'/vendedor',default=>'/minha-conta'}) : $guestLoginUrl) ?>" aria-label="Minha conta">
+            <a class="icon-action" href="<?= e($authUser ? url(match ($authUser['type']) {'admin'=>'/admin','seller','operator'=>'/vendedor',default=>'/minha-conta'}) : $guestLoginUrl) ?>" aria-label="<?= $authUser ? 'Minha conta' : 'Entrar' ?>">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
             </a>
+            <?php if ($authUser): ?>
+            <form class="header-logout" method="post" action="<?= e(url('/sair')) ?>">
+                <?= csrf_field() ?>
+                <button class="icon-action icon-action--logout" type="submit" aria-label="Sair da conta" title="Sair">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5v16h5"/><path d="M14 8l4 4-4 4M8 12h10"/></svg>
+                </button>
+            </form>
+            <?php endif; ?>
             <?php if (($authUser['type'] ?? null) === 'customer'): ?>
             <a class="icon-action icon-action--notice" href="<?= e(url('/minha-conta/notificacoes')) ?>" aria-label="Notificações<?= $unreadNotifications > 0 ? ' não lidas: ' . (int) $unreadNotifications : '' ?>">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg><?php if ($unreadNotifications > 0): ?><b><?= (int) min(99, $unreadNotifications) ?></b><?php endif; ?>
@@ -36,7 +51,10 @@ $addressLoginUrl = url('/entrar?redirect=' . rawurlencode('/minha-conta/endereco
         <?php endif; ?>
         <a href="<?= e(url('/lojas')) ?>">Loja Oficial</a>
     </nav>
-    <a class="delivery-bar" href="<?= e($authUser ? url('/minha-conta/enderecos') : $addressLoginUrl) ?>"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2"/></svg> Cadastrar endereço para entrega</a>
+    <a class="delivery-bar<?= $hasDeliveryAddress ? ' has-address' : '' ?>" href="<?= e($authUser ? url('/minha-conta/enderecos') : $addressLoginUrl) ?>">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2"/></svg>
+        <span class="delivery-bar__copy"><strong><?= e($deliveryPrimary) ?></strong><?php if ($deliverySecondary !== ''): ?><small><?= e($deliverySecondary) ?></small><?php endif; ?></span>
+    </a>
     <div class="public-mobile-menu" id="public-mobile-menu" data-public-menu aria-hidden="true">
         <button class="public-mobile-menu__backdrop" type="button" data-public-menu-close tabindex="-1" aria-label="Fechar menu"></button>
         <aside class="public-mobile-menu__panel" aria-label="Menu principal">
@@ -52,8 +70,9 @@ $addressLoginUrl = url('/entrar?redirect=' . rawurlencode('/minha-conta/endereco
                 <a href="<?= e(url('/lojas')) ?>"><span>Lojas oficiais</span><b>→</b></a>
             </nav>
             <footer>
-                <a href="<?= e($authUser ? url(match ($authUser['type']) {'admin'=>'/admin','seller','operator'=>'/vendedor',default=>'/minha-conta'}) : $guestLoginUrl) ?>">Minha conta</a>
+                <a href="<?= e($authUser ? url(match ($authUser['type']) {'admin'=>'/admin','seller','operator'=>'/vendedor',default=>'/minha-conta'}) : $guestLoginUrl) ?>"><?= $authUser ? 'Minha conta' : 'Entrar' ?></a>
                 <a href="<?= e(url('/carrinho')) ?>">Carrinho<?= ($cartCount ?? 0) > 0 ? ' (' . (int) $cartCount . ')' : '' ?></a>
+                <?php if ($authUser): ?><form class="public-mobile-menu__logout" method="post" action="<?= e(url('/sair')) ?>"><?= csrf_field() ?><button type="submit">Sair da conta</button></form><?php endif; ?>
             </footer>
         </aside>
     </div>
