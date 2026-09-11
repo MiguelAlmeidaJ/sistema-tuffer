@@ -7,13 +7,10 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\SellerRegisterController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\ResetPasswordController;
-use App\Http\Controllers\Auth\SocialAuthController;
 
 $router->get('/entrar', [LoginController::class, 'create'], ['guest']);
 $router->post('/entrar', [LoginController::class, 'store'], ['guest', 'csrf']);
 $router->post('/sair', [LoginController::class, 'destroy'], ['auth', 'csrf']);
-$router->get('/auth/google', [SocialAuthController::class, 'redirect'], ['guest']);
-$router->get('/auth/google/callback', [SocialAuthController::class, 'callback'], ['guest']);
 $router->get('/cadastro', [RegisterController::class, 'create'], ['guest']);
 $router->post('/cadastro', [RegisterController::class, 'store'], ['guest', 'csrf']);
 $router->get('/quero-vender', [SellerRegisterController::class, 'create'], ['guest']);
