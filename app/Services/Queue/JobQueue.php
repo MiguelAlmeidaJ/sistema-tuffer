@@ -124,6 +124,24 @@ final class JobQueue
         }
     }
 
+    public function releaseStaleByUniqueKey(string $uniqueKey, int $staleAfterSeconds = 120): bool
+    {
+        $uniqueKey = trim($uniqueKey);
+        if ($uniqueKey === '' || strlen($uniqueKey) > 191) {
+            throw new RuntimeException('Chave única do job inválida.');
+        }
+        $staleAfterSeconds = max(30, min(900, $staleAfterSeconds));
+        $statement = ($this->database ?? Database::connection())->prepare(
+            "UPDATE async_jobs
+             SET status='pending',reserved_at=NULL,reserved_by=NULL,available_at=NOW(),
+                 last_error='Job recuperado após reserva de pagamento expirada.'
+             WHERE unique_key=? AND status='processing' AND reserved_at IS NOT NULL
+               AND reserved_at<DATE_SUB(NOW(),INTERVAL {$staleAfterSeconds} SECOND)"
+        );
+        $statement->execute([$uniqueKey]);
+        return $statement->rowCount() === 1;
+    }
+
     public function complete(int $jobId): void
     {
         ($this->database ?? Database::connection())->prepare("UPDATE async_jobs SET status='completed',payload=JSON_OBJECT(),completed_at=NOW(),reserved_at=NULL,reserved_by=NULL,last_error=NULL WHERE id=? AND status='processing'")->execute([$jobId]);
