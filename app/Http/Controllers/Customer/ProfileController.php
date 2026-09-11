@@ -21,7 +21,11 @@ final class ProfileController extends Controller
     {
         $statement = Database::connection()->prepare('SELECT * FROM users WHERE id=?');
         $statement->execute([Auth::id()]);
-        return $this->page('customer/profile/edit', 'layouts/customer', ['pageTitle' => 'Meus dados', 'user' => $statement->fetch()]);
+        return $this->page('customer/profile/edit', 'layouts/customer', [
+            'pageTitle' => 'Meus dados',
+            'user' => $statement->fetch(),
+            'returnPath' => $this->safeReturn((string) ($_GET['return'] ?? '')),
+        ]);
     }
 
     public function update(): string
@@ -30,6 +34,7 @@ final class ProfileController extends Controller
         $phone = preg_replace('/\D+/', '', (string) ($_POST['phone'] ?? '')) ?? '';
         $document = preg_replace('/\D+/', '', (string) ($_POST['document'] ?? '')) ?? '';
         $password = (string) ($_POST['password'] ?? '');
+        $returnPath = $this->safeReturn((string) ($_POST['return'] ?? ''));
         $errors = [];
         if (mb_strlen($name) < 3 || mb_strlen($name) > 150) $errors['name'] = 'Informe um nome válido.';
         if (!in_array(strlen($phone), [10, 11], true)) $errors['phone'] = 'Informe um telefone com DDD.';
@@ -42,9 +47,7 @@ final class ProfileController extends Controller
         if (!$user) return Response::redirect('/entrar');
 
         if ($password !== '') {
-            if (!password_verify((string) ($_POST['current_password'] ?? ''), (string) $user['password_hash'])) {
-                $errors['current_password'] = 'Informe corretamente sua senha atual.';
-            }
+            if (!password_verify((string) ($_POST['current_password'] ?? ''), (string) $user['password_hash'])) $errors['current_password'] = 'Informe corretamente sua senha atual.';
             if (($policyError = PasswordPolicy::error($password)) !== null) $errors['password'] = $policyError;
             if ($password !== (string) ($_POST['password_confirmation'] ?? '')) $errors['password_confirmation'] = 'As novas senhas não coincidem.';
             foreach (array_merge([(string) $user['password_hash']], (new UserRepository())->recentPasswordHashes((int) $user['id'])) as $knownHash) {
@@ -58,7 +61,7 @@ final class ProfileController extends Controller
         if ($errors !== []) {
             Session::flash('errors', $errors);
             Session::flash('old', ['name' => $name, 'phone' => $phone, 'document' => $document]);
-            return Response::redirect('/minha-conta/perfil');
+            return Response::redirect($this->profilePath($returnPath));
         }
 
         $pdo->beginTransaction();
@@ -72,8 +75,9 @@ final class ProfileController extends Controller
             $pdo->commit();
         } catch (Throwable $exception) {
             if ($pdo->inTransaction()) $pdo->rollBack();
-            Session::flash('error', 'Não foi possível atualizar seus dados.');
-            return Response::redirect('/minha-conta/perfil');
+            Logger::exception($exception, ['user_id' => $user['id']], 'profile');
+            Session::flash('error', 'Não conseguimos salvar seus dados agora. Nada foi perdido; revise os campos e tente novamente.');
+            return Response::redirect($this->profilePath($returnPath));
         }
 
         if ($password !== '') {
@@ -84,10 +88,22 @@ final class ProfileController extends Controller
             }
             Auth::logout();
             Session::flash('success', 'Senha alterada. Entre novamente com a nova senha.');
-            return Response::redirect('/entrar');
+            return Response::redirect($returnPath !== '' ? '/entrar?redirect=' . rawurlencode($returnPath) : '/entrar');
         }
 
-        Session::flash('success', 'Dados atualizados.');
-        return Response::redirect('/minha-conta/perfil');
+        Session::flash('success', $returnPath === '/checkout' ? 'Dados atualizados. Vamos continuar sua compra.' : 'Dados atualizados.');
+        return Response::redirect($returnPath !== '' ? $returnPath : '/minha-conta/perfil');
+    }
+
+    private function profilePath(string $returnPath): string
+    {
+        return $returnPath === '' ? '/minha-conta/perfil' : '/minha-conta/perfil?return=' . rawurlencode($returnPath);
+    }
+
+    private function safeReturn(string $path): string
+    {
+        if ($path === '' || !str_starts_with($path, '/') || str_starts_with($path, '//')) return '';
+        if (str_contains($path, '\\') || preg_match('/[\x00-\x1F\x7F]/', $path) === 1) return '';
+        return $path;
     }
 }
