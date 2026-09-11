@@ -19,6 +19,7 @@ use App\Services\Payments\Pagarme\PagarmeCreditCardOrderService;
 use App\Services\Payments\Pagarme\PagarmeSplitService;
 use App\Services\Queue\JobProcessor;
 use App\Services\Queue\JobQueue;
+use App\Services\Sellers\SellerSalesEligibility;
 use App\Services\Shipping\ShippingQuoteService;
 use Throwable;
 
@@ -236,17 +237,25 @@ final class CheckoutController extends Controller
     /** @param array<string,mixed> $cart */
     private function cardConfiguredForCart(PagarmeCheckoutConfiguration $configuration, array $cart): bool
     {
-        if (!$configuration->cardCheckoutConfigured()) return false;
-        $allowed = array_flip($configuration->allowedSellerIds());
-        $sellerIds = array_unique(array_map(
+        if (!$configuration->cardCheckoutConfigured()) {
+            return false;
+        }
+
+        $sellerIds = array_values(array_unique(array_filter(array_map(
             static fn(array $item): int => (int) ($item['seller_id'] ?? 0),
             is_array($cart['items'] ?? null) ? $cart['items'] : []
-        ));
-        if ($sellerIds === []) return false;
-        foreach ($sellerIds as $sellerId) {
-            if ($sellerId < 1 || !isset($allowed[$sellerId])) return false;
+        ), static fn(int $sellerId): bool => $sellerId > 0)));
+
+        if ($sellerIds === []) {
+            return false;
         }
-        return true;
+
+        try {
+            (new SellerSalesEligibility())->assertAllCanSell($sellerIds);
+            return true;
+        } catch (Throwable) {
+            return false;
+        }
     }
 
     private function processPaymentImmediately(int $paymentId): void
