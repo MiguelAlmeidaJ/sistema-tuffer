@@ -12,8 +12,8 @@ use Throwable;
 
 final class CardInstallmentPricingService
 {
-    public const FREE_INSTALLMENTS = 3;
-    public const MAX_INSTALLMENTS = 6;
+    public const FREE_INSTALLMENTS = 6;
+    public const MAX_INSTALLMENTS = 12;
 
     /** @var array<int,float|null>|null */
     private ?array $rateOverride;
@@ -69,7 +69,7 @@ final class CardInstallmentPricingService
                 throw new RuntimeException('A taxa contratada da Pagar.me para este parcelamento ainda não foi configurada.');
             }
             if ($providerRate < $baseRate) {
-                throw new RuntimeException('A taxa do parcelamento não pode ser menor que a taxa-base de 3x.');
+                throw new RuntimeException('A taxa do parcelamento não pode ser menor que a taxa-base de 6x.');
             }
             $targetFraction = $providerRate / 100;
             if ($targetFraction >= 1) {
@@ -183,19 +183,18 @@ final class CardInstallmentPricingService
             return $this->rateOverride;
         }
         $settings = PlatformSettings::all();
-        return $this->normalizeRates([
-            3 => $settings['pagarme_card_mdr_3x'] ?? null,
-            4 => $settings['pagarme_card_mdr_4x'] ?? null,
-            5 => $settings['pagarme_card_mdr_5x'] ?? null,
-            6 => $settings['pagarme_card_mdr_6x'] ?? null,
-        ]);
+        $rates = [];
+        for ($installments = self::FREE_INSTALLMENTS; $installments <= self::MAX_INSTALLMENTS; $installments++) {
+            $rates[$installments] = $settings['pagarme_card_mdr_' . $installments . 'x'] ?? null;
+        }
+        return $this->normalizeRates($rates);
     }
 
     /** @param array<int,float|int|string|null> $rates @return array<int,float|null> */
     private function normalizeRates(array $rates): array
     {
         $normalized = array_fill(1, self::MAX_INSTALLMENTS, null);
-        foreach ([3, 4, 5, 6] as $installments) {
+        for ($installments = self::FREE_INSTALLMENTS; $installments <= self::MAX_INSTALLMENTS; $installments++) {
             $raw = $rates[$installments] ?? null;
             if ($raw === null || trim((string) $raw) === '') {
                 $normalized[$installments] = null;
