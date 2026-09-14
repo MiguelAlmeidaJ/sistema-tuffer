@@ -6,6 +6,7 @@ namespace App\Services\Payments\Pagarme;
 
 use App\Core\Database;
 use App\Core\Logger;
+use App\Services\Payments\CardInstallmentPricingService;
 use App\Services\Payments\PagarmeApiClient;
 use App\Services\Payments\PagarmeClient;
 use App\Services\Payments\PagarmeException;
@@ -33,8 +34,8 @@ final class PagarmeCreditCardOrderService
         if ($paymentId < 1 || preg_match('/^token_[A-Za-z0-9_-]+$/', $cardToken) !== 1) {
             throw new RuntimeException('O token do cartão é inválido ou expirou.');
         }
-        if ($installments < 1 || $installments > 6) {
-            throw new RuntimeException('Escolha entre 1 e 6 parcelas.');
+        if ($installments < 1 || $installments > CardInstallmentPricingService::MAX_INSTALLMENTS) {
+            throw new RuntimeException('Escolha entre 1 e ' . CardInstallmentPricingService::MAX_INSTALLMENTS . ' parcelas.');
         }
 
         $context = $this->context($paymentId);
