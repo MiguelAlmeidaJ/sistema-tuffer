@@ -13,6 +13,7 @@ use App\Http\Controllers\Controller;
 use App\Services\Cart\CartService;
 use App\Services\Finance\MarketplaceFinancialLedgerService;
 use App\Services\Orders\OrderPlacementService;
+use App\Services\Payments\CardInstallmentPricingService;
 use App\Services\Payments\PagarmeClient;
 use App\Services\Payments\Pagarme\PagarmeCheckoutConfiguration;
 use App\Services\Payments\Pagarme\PagarmeCreditCardOrderService;
@@ -133,7 +134,7 @@ final class CheckoutController extends Controller
 
         $checkoutConfiguration = new PagarmeCheckoutConfiguration();
         $cardToken = trim((string) ($_POST['card_token'] ?? ''));
-        $cardInstallments = max(1, min(6, (int) ($_POST['card_installments'] ?? 1)));
+        $cardInstallments = max(1, min(CardInstallmentPricingService::MAX_INSTALLMENTS, (int) ($_POST['card_installments'] ?? 1)));
         if ($paymentMethod === 'card') {
             if (!$this->cardConfiguredForCart($checkoutConfiguration, $cart)) {
                 Session::flash('guide', 'O cartão ainda não está disponível neste checkout. Escolha Pix ou boleto por enquanto.');
@@ -166,6 +167,20 @@ final class CheckoutController extends Controller
                 return Response::redirect('/checkout');
             }
             $shippingSelections[$storeId] = $selectedOption;
+        }
+
+        if ($paymentMethod === 'card') {
+            $shippingTotal = array_sum(array_map(
+                static fn(array $option): float => (float) ($option['price'] ?? 0),
+                $shippingSelections
+            ));
+            $baseAmountCents = (int) round(((float) $cart['total'] + $shippingTotal) * 100);
+            try {
+                (new CardInstallmentPricingService())->quote($baseAmountCents, $cardInstallments);
+            } catch (Throwable $exception) {
+                Session::flash('guide', $exception->getMessage());
+                return Response::redirect('/checkout');
+            }
         }
 
         if (!(new PagarmeClient())->configured()) {
@@ -212,6 +227,8 @@ final class CheckoutController extends Controller
     private function processCardImmediately(int $paymentId, string $cardToken, int $installments): string
     {
         $pdo = Database::connection();
+        (new CardInstallmentPricingService($pdo))->applyToPayment($paymentId, $installments);
+
         try {
             (new PagarmeSplitService($pdo))->createSnapshot($paymentId);
             (new MarketplaceFinancialLedgerService($pdo))->createPending($paymentId);

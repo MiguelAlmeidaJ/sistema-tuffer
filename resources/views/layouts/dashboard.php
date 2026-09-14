@@ -11,6 +11,7 @@
     <style>:root{<?= platform_theme_style($platformSettings) ?>}</style>
     <script defer src="<?= e(asset('js/app.js')) ?>"></script>
     <script defer src="<?= e(asset('js/commerce-ux.js')) ?>"></script>
+    <script defer src="<?= e(asset('js/admin-card-installments.js')) ?>"></script>
 </head>
 <body class="dashboard-shell <?=e(platform_theme_classes($platformSettings))?>">
     <?php require dirname(__DIR__) . '/components/dashboard/sidebar.php'; ?>

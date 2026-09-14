@@ -18,6 +18,7 @@
     <style>:root{<?= platform_theme_style($platformSettings) ?>}</style>
     <script defer src="<?= e(asset('js/checkout-card.js')) ?>"></script>
     <script defer src="<?= e(asset('js/app.js')) ?>"></script>
+    <script defer src="<?= e(asset('js/checkout-installments.js')) ?>"></script>
     <script defer src="<?= e(asset('js/commerce-ux.js')) ?>"></script>
     <script defer src="<?= e(asset('js/purchase-assistant.js')) ?>"></script>
     <?php foreach($schemas as $schema):?><script type="application/ld+json"><?=json_encode($schema,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT)?></script><?php endforeach;?>

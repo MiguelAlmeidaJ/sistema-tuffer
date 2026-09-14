@@ -44,6 +44,9 @@ final class PagarmeCreditCardOrderService
         if (!in_array((string) $context['payment_status'], ['pending', 'processing'], true)) {
             throw new RuntimeException('O estado atual do pagamento não permite uma nova tentativa com cartão.');
         }
+        if ((int) ($context['card_installments'] ?? 0) !== $installments) {
+            throw new RuntimeException('O parcelamento do cartão diverge da precificação confirmada no checkout.');
+        }
 
         $splitService = new PagarmeSplitService($this->pdo);
         $splitService->revalidateRecipients($paymentId);
@@ -79,6 +82,7 @@ final class PagarmeCreditCardOrderService
             'payment_id' => $paymentId,
             'order_id' => $safe['id'] ?? null,
             'installments' => $installments,
+            'installment_surcharge_cents' => (int) ($context['card_installment_surcharge_cents'] ?? 0),
         ], 'pagarme_card');
         return $safe;
     }
@@ -151,9 +155,21 @@ final class PagarmeCreditCardOrderService
             ];
             $itemsTotal += $amount;
         }
+
+        $surcharge = (int) ($context['card_installment_surcharge_cents'] ?? 0);
+        if ($surcharge > 0) {
+            $items[] = [
+                'amount' => $surcharge,
+                'description' => 'Acréscimo do parcelamento no cartão',
+                'quantity' => 1,
+                'code' => mb_substr((string) $context['order_code'] . '-PARCELAMENTO', 0, 52),
+            ];
+            $itemsTotal += $surcharge;
+        }
+
         $shippingAmount = (int) $context['shipping_amount_cents'];
         if ($items === [] || $itemsTotal + $shippingAmount !== (int) $context['amount_cents']) {
-            throw new RuntimeException('Os itens e o frete não fecham com o total do pagamento.');
+            throw new RuntimeException('Os itens, o parcelamento e o frete não fecham com o total do pagamento.');
         }
         if (array_sum(array_map(static fn($rule): int => $rule->amount, $rules)) !== (int) $context['amount_cents']) {
             throw new RuntimeException('A soma do split não corresponde ao valor da cobrança.');
@@ -184,6 +200,8 @@ final class PagarmeCreditCardOrderService
             'metadata' => [
                 'integration' => 'tuffer-marketplace-card-v1',
                 'order_code' => (string) $context['order_code'],
+                'installments' => $installments,
+                'installment_surcharge_cents' => $surcharge,
             ],
         ];
     }
@@ -193,6 +211,8 @@ final class PagarmeCreditCardOrderService
     {
         $statement = $this->pdo->prepare(
             "SELECT p.id payment_id,p.method,p.status payment_status,p.amount_cents,p.idempotency_key,
+                    p.card_installments,p.card_base_amount_cents,p.card_installment_surcharge_cents,
+                    p.card_base_provider_rate,p.card_provider_rate,
                     o.id order_id,o.code order_code,o.user_id,ROUND(o.shipping_total*100) shipping_amount_cents,
                     u.name customer_name,u.email customer_email,u.phone customer_phone,u.document customer_document,
                     oa.recipient_name,oa.postal_code,oa.street,oa.number,oa.complement,oa.neighborhood,oa.city,oa.state

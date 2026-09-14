@@ -7,6 +7,7 @@ use App\Http\Controllers\Public\CatalogController;
 use App\Http\Controllers\Public\HomeController;
 use App\Http\Controllers\Public\ProductController;
 use App\Http\Controllers\Public\CheckoutController;
+use App\Http\Controllers\Public\CardInstallmentPricingController;
 use App\Http\Controllers\Public\StoreController;
 use App\Http\Controllers\Public\TrackingController;
 use App\Http\Controllers\Public\LegalController;
@@ -35,6 +36,7 @@ $router->post('/carrinho/item/{id}/salvar', [CartController::class, 'saveForLate
 $router->put('/carrinho/item/{id}', [CartController::class, 'update'], ['csrf']);
 $router->delete('/carrinho/item/{id}', [CartController::class, 'destroy'], ['csrf']);
 $router->get('/checkout', [CheckoutController::class, 'index']);
+$router->get('/checkout/parcelamento', [CardInstallmentPricingController::class, 'show']);
 $router->post('/checkout/cotacoes', [CheckoutController::class, 'quotes'], ['auth', 'role:customer', 'csrf']);
 $router->post('/checkout/finalizar', [CheckoutController::class, 'store'], ['auth', 'role:customer', 'csrf']);
 $router->get('/rastrear-pedido', [TrackingController::class, 'index']);

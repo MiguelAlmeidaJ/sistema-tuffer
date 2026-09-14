@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\CardInstallmentSettingsController;
 use App\Http\Controllers\Admin\StoreController;
 use App\Http\Controllers\Admin\TagController;
 use App\Http\Controllers\Admin\UserController;
@@ -86,6 +87,8 @@ $router->group(['prefix' => '/admin', 'middleware' => ['auth', 'role:admin']], s
     $router->get('/usuarios/{id}/editar', [UserController::class, 'edit']);
     $router->put('/usuarios/{id}', [UserController::class, 'update'], ['csrf']);
 
+    $router->get('/configuracoes/parcelamento', [CardInstallmentSettingsController::class, 'show']);
+    $router->post('/configuracoes/parcelamento', [CardInstallmentSettingsController::class, 'update'], ['csrf']);
     $router->get('/configuracoes', [SettingsController::class, 'index']);
     $router->put('/configuracoes', [SettingsController::class, 'update'], ['csrf']);
 });

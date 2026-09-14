@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Finance;
 
 use App\Core\Database;
+use App\Services\Payments\Pagarme\PagarmeRecipientId;
 use PDO;
 use RuntimeException;
 
@@ -20,7 +21,7 @@ final class MarketplaceFinancialLedgerService
     {
         $pdo = $this->pdo();
         $statement = $pdo->prepare(
-            "SELECT fsl.*,p.order_id,o.created_at order_created_at
+            "SELECT fsl.*,p.order_id,p.card_installment_surcharge_cents,o.created_at order_created_at
              FROM payment_financial_snapshot_lines fsl
              JOIN payments p ON p.id=fsl.payment_id
              JOIN orders o ON o.id=p.order_id
@@ -82,9 +83,37 @@ final class MarketplaceFinancialLedgerService
             $created += $this->entry($common, $owner, $netType, 'credit', (int) $line['seller_net_amount_cents'], true);
             $platformContribution = (int) $line['platform_contribution_cents'];
             if ($platformContribution > 0) {
-                $created += $this->entry($common, 'marketplace', 'marketplace_service_fee', 'credit', $platformContribution, true);
+                $platformCommon = $common;
+                $platformCommon['recipient_id'] = $this->platformRecipient();
+                $created += $this->entry($platformCommon, 'marketplace', 'marketplace_service_fee', 'credit', $platformContribution, true);
             }
         }
+
+        $surcharge = (int) ($lines[0]['card_installment_surcharge_cents'] ?? 0);
+        if ($surcharge > 0) {
+            $first = $lines[0];
+            $surchargeCommon = [
+                'order_id' => (int) $first['order_id'],
+                'seller_order_id' => null,
+                'payment_id' => $paymentId,
+                'seller_id' => null,
+                'recipient_id' => $this->platformRecipient(),
+                'occurred_at' => (string) $first['order_created_at'],
+                'source_type' => 'card_installment_pricing',
+                'source_id' => (string) $paymentId,
+                'policy_version' => (string) ($first['policy_version'] ?? self::POLICY_VERSION),
+                'product_cost_known' => null,
+            ];
+            $created += $this->entry(
+                $surchargeCommon,
+                'marketplace',
+                'card_installment_surcharge',
+                'credit',
+                $surcharge,
+                true
+            );
+        }
+
         return $created;
     }
 
@@ -184,6 +213,15 @@ final class MarketplaceFinancialLedgerService
             $occurredAt,
         ]);
         return $statement->rowCount() === 1 ? 1 : 0;
+    }
+
+    private function platformRecipient(): string
+    {
+        $recipient = trim((string) ($_ENV['PAGARME_PLATFORM_RECIPIENT_ID'] ?? ''));
+        if (!PagarmeRecipientId::isValid($recipient)) {
+            throw new RuntimeException('Configure PAGARME_PLATFORM_RECIPIENT_ID com o recebedor da Tuffer.');
+        }
+        return $recipient;
     }
 
     private function pdo(): PDO
