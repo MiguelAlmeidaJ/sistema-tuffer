@@ -23,8 +23,23 @@
     url.pathname=url.pathname.replace(/\/cotacoes\/?$/,'/parcelamento');
     return url.toString();
   };
+  const freeInstallments=()=>Math.max(1,Number(configuration?.free_installments)||6);
+  const maxInstallments=()=>Math.max(freeInstallments(),Number(configuration?.max_installments)||6);
+  const ensureOptions=()=>{
+    const existing=new Set([...select.options].map(option=>Number(option.value)||0));
+    for(let count=1;count<=maxInstallments();count++){
+      if(existing.has(count))continue;
+      const option=document.createElement('option');
+      option.value=String(count);
+      select.append(option);
+    }
+    [...select.options].forEach(option=>{
+      const count=Number(option.value)||0;
+      if(count>maxInstallments())option.remove();
+    });
+  };
   const planAvailable=installments=>{
-    if(installments<=3)return true;
+    if(installments<=freeInstallments())return true;
     return Boolean(configuration?.plans?.[installments]?.available);
   };
   const rate=installments=>{
@@ -32,8 +47,9 @@
     return value===null||value===undefined||value===''?null:Number(value);
   };
   const quote=(amount,installments)=>{
-    if(installments<=3)return {surcharge:0,total:amount};
-    const baseRate=rate(3),targetRate=rate(installments);
+    const free=freeInstallments();
+    if(installments<=free)return {surcharge:0,total:amount};
+    const baseRate=rate(free),targetRate=rate(installments);
     if(baseRate===null||targetRate===null||targetRate<baseRate||targetRate>=100)return null;
     const target=targetRate/100;
     const extra=(targetRate-baseRate)/100;
@@ -56,23 +72,28 @@
     return row;
   };
   const render=()=>{
+    ensureOptions();
     const amount=baseCents();
+    const free=freeInstallments();
+    const max=maxInstallments();
     [...select.options].forEach(option=>{
       const count=Math.max(1,Number(option.value)||1);
       const pricing=quote(amount,count);
       option.disabled=!planAvailable(count);
-      if(count<=3){
-        option.textContent=`${count}x de ${moneyCents(amount/count)} sem juros`;
+      if(count<=free){
+        option.textContent=`${count}x de ${moneyCents(amount/count)} sem acréscimo`;
       }else if(pricing){
         option.textContent=`${count}x de ${moneyCents(pricing.total/count)} · acréscimo ${moneyCents(pricing.surcharge)}`;
       }else{
         option.textContent=`${count}x · taxa Pagar.me não configurada`;
       }
     });
-    if(select.selectedOptions[0]?.disabled)select.value='3';
+    if(select.selectedOptions[0]?.disabled)select.value=String(Math.min(free,max));
 
     const cardLabel=form.querySelector('[name="payment_method"][value="card"]')?.closest('label')?.querySelector('small');
-    if(cardLabel)cardLabel.textContent='Até 3x sem acréscimo · até 6x com custo adicional da Pagar.me';
+    if(cardLabel)cardLabel.textContent=max>free
+      ? `Até ${free}x sem acréscimo · até ${max}x com custo adicional da Pagar.me`
+      : `Até ${free}x sem acréscimo`;
 
     const count=Math.max(1,Number(select.value)||1);
     const pricing=isCard()?quote(amount,count):{surcharge:0,total:amount};
@@ -89,13 +110,13 @@
     const installment=form.querySelector('[data-installment]');
     if(installment){
       if(isCard()){
-        installment.textContent=count<=3
+        installment.textContent=count<=free
           ? `${count}x de ${moneyCents(amount/count)} sem acréscimo`
           : pricing
             ? `${count}x de ${moneyCents(pricing.total/count)} · acréscimo total ${moneyCents(pricing.surcharge)}`
-            : 'Parcelamento acima de 3x indisponível';
+            : `Parcelamento acima de ${free}x indisponível`;
       }else{
-        installment.textContent=`ou 3x de ${moneyCents(amount/3)} sem acréscimo`;
+        installment.textContent=`ou ${free}x de ${moneyCents(amount/free)} sem acréscimo`;
       }
     }
   };
@@ -108,5 +129,5 @@
   fetch(pricingEndpoint(),{headers:{'Accept':'application/json'}})
     .then(response=>response.ok?response.json():Promise.reject(new Error('pricing unavailable')))
     .then(data=>{configuration=data;render()})
-    .catch(()=>{configuration={rates:{},plans:{}};render()});
+    .catch(()=>{configuration={free_installments:6,max_installments:6,rates:{},plans:{}};render()});
 })();
