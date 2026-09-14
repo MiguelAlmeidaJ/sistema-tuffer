@@ -37,13 +37,13 @@ final class PagarmeOrderReconciliationService
 
         try {
             $statement = $this->pdo->query(
-                "SELECT p.id payment_id,p.status local_status,p.amount_cents,o.code order_code,
+                "SELECT p.id payment_id,p.method,p.status local_status,p.amount_cents,o.code order_code,
                         po.external_order_id,pa.status attempt_status
                  FROM payments p
                  JOIN orders o ON o.id=p.order_id
                  LEFT JOIN pagarme_orders po ON po.payment_id=p.id
                  LEFT JOIN pagarme_order_attempts pa ON pa.payment_id=p.id
-                 WHERE p.provider='pagarme' AND p.integration_type='orders' AND p.method='pix'
+                 WHERE p.provider='pagarme' AND p.integration_type='orders' AND p.method IN ('pix','card')
                    AND (
                        p.status IN ('pending','waiting_payment','processing','failed','paid','partially_refunded')
                        OR pa.status IN ('creating','uncertain')
@@ -84,9 +84,11 @@ final class PagarmeOrderReconciliationService
                         }
                     }
 
-                    $orderService = new PagarmeOrderService($this->client, $this->pdo);
                     $wasMissing = trim((string) ($payment['external_order_id'] ?? '')) === '';
-                    $orderService->recoverRemoteOrder((int) $payment['payment_id'], $remote);
+                    if ((string) ($payment['method'] ?? '') === 'pix') {
+                        (new PagarmeOrderService($this->client, $this->pdo))
+                            ->recoverRemoteOrder((int) $payment['payment_id'], $remote);
+                    }
                     (new PagarmeOrderAttemptCoordinator($this->pdo))
                         ->markRecovered((int) $payment['payment_id'], $remoteId);
                     if ($wasMissing) {
@@ -126,6 +128,60 @@ final class PagarmeOrderReconciliationService
 
         Logger::info('Reconciliação Pagar.me concluída.', $result, 'pagarme_reconciliation');
         return $result;
+    }
+
+    public function reconcileOrder(string $orderCode): bool
+    {
+        $orderCode = trim($orderCode);
+        if ($orderCode === '') {
+            return false;
+        }
+
+        $statement = $this->pdo->prepare(
+            "SELECT p.id payment_id,p.method,p.status local_status,p.amount_cents,o.code order_code,
+                    po.external_order_id,pa.status attempt_status
+             FROM payments p
+             JOIN orders o ON o.id=p.order_id
+             LEFT JOIN pagarme_orders po ON po.payment_id=p.id
+             LEFT JOIN pagarme_order_attempts pa ON pa.payment_id=p.id
+             WHERE o.code=? AND p.provider='pagarme' AND p.integration_type='orders'
+               AND p.method IN ('pix','card')
+             ORDER BY p.id DESC
+             LIMIT 1"
+        );
+        $statement->execute([$orderCode]);
+        $payment = $statement->fetch();
+        if (!is_array($payment)) {
+            return false;
+        }
+
+        $remote = $this->remoteOrder($payment);
+        if ($remote === null) {
+            return false;
+        }
+        if (!hash_equals((string) $payment['order_code'], (string) ($remote['code'] ?? ''))
+            || (int) ($remote['amount'] ?? -1) !== (int) $payment['amount_cents']) {
+            Logger::warning('Pedido Pagar.me divergente durante sincronização administrativa.', [
+                'payment_id' => (int) $payment['payment_id'],
+                'order_code' => (string) $payment['order_code'],
+                'remote_order_id' => $remote['id'] ?? null,
+                'remote_code' => $remote['code'] ?? null,
+                'local_amount_cents' => (int) $payment['amount_cents'],
+                'remote_amount_cents' => (int) ($remote['amount'] ?? -1),
+            ], 'pagarme_reconciliation');
+            return false;
+        }
+
+        if ((string) ($payment['method'] ?? '') === 'pix') {
+            (new PagarmeOrderService($this->client, $this->pdo))
+                ->recoverRemoteOrder((int) $payment['payment_id'], $remote);
+        }
+        (new PagarmeOrderAttemptCoordinator($this->pdo))->markRecovered(
+            (int) $payment['payment_id'],
+            trim((string) ($remote['id'] ?? ''))
+        );
+        $this->applyRemoteCharges($remote);
+        return true;
     }
 
     /** @param array<string,mixed> $payment @return array<string,mixed>|null */

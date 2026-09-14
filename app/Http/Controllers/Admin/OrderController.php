@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Core\Database;
+use App\Core\Logger;
 use App\Core\Response;
 use App\Core\Session;
 use App\Http\Controllers\Controller;
-use App\Services\Shipping\MelhorEnvioTrackingService;
+use App\Services\Payments\Pagarme\PagarmeOrderReconciliationService;
 use App\Services\Payments\Pagarme\PagarmePixRefundService;
+use App\Services\Shipping\MelhorEnvioTrackingService;
 use RuntimeException;
 use Throwable;
 
@@ -22,7 +24,77 @@ final class OrderController extends Controller
 
     public function show(string $code): string
     {
-        $pdo=Database::connection();$statement=$pdo->prepare('SELECT o.*,u.name customer_name,u.email customer_email,u.phone customer_phone,u.document customer_document FROM orders o JOIN users u ON u.id=o.user_id WHERE o.code=?');$statement->execute([$code]);$order=$statement->fetch();if(!$order){http_response_code(404);return $this->page('admin/orders/show','layouts/admin',['pageTitle'=>'Pedido não encontrado','order'=>null]);}$sub=$pdo->prepare('SELECT so.*,st.name store_name,s.trade_name,sh.id shipment_id,sh.external_id,sh.service_name,sh.carrier_name,sh.tracking_code,sh.tracking_url,sh.status shipment_status,sh.raw_status,sh.last_synced_at FROM seller_orders so JOIN stores st ON st.id=so.store_id JOIN sellers s ON s.id=so.seller_id LEFT JOIN shipments sh ON sh.seller_order_id=so.id WHERE so.order_id=? ORDER BY so.id');$sub->execute([$order['id']]);$sellerOrders=$sub->fetchAll();$items=$pdo->prepare('SELECT * FROM order_items WHERE seller_order_id=? ORDER BY id');foreach($sellerOrders as &$sellerOrder){$items->execute([$sellerOrder['id']]);$sellerOrder['items']=$items->fetchAll();}unset($sellerOrder);$payment=$pdo->prepare('SELECT * FROM payments WHERE order_id=? ORDER BY id DESC');$payment->execute([$order['id']]);$history=$pdo->prepare('SELECT * FROM order_status_history WHERE order_id=? ORDER BY created_at DESC,id DESC');$history->execute([$order['id']]);$address=$pdo->prepare('SELECT * FROM order_addresses WHERE order_id=?');$address->execute([$order['id']]);return $this->page('admin/orders/show','layouts/admin',['pageTitle'=>'Pedido '.$code,'order'=>$order,'sellerOrders'=>$sellerOrders,'payments'=>$payment->fetchAll(),'history'=>$history->fetchAll(),'address'=>$address->fetch()?:null,'trackingConfigured'=>(new MelhorEnvioTrackingService())->configured()]);
+        $pdo = Database::connection();
+        $statement = $pdo->prepare(
+            'SELECT o.*,u.name customer_name,u.email customer_email,u.phone customer_phone,u.document customer_document
+             FROM orders o
+             JOIN users u ON u.id=o.user_id
+             WHERE o.code=?'
+        );
+        $statement->execute([$code]);
+        $order = $statement->fetch();
+        if (!$order) {
+            http_response_code(404);
+            return $this->page('admin/orders/show', 'layouts/admin', [
+                'pageTitle' => 'Pedido não encontrado',
+                'order' => null,
+            ]);
+        }
+
+        if ((string) ($order['status'] ?? '') === 'pending_payment') {
+            try {
+                $reconciled = (new PagarmeOrderReconciliationService(null, $pdo))->reconcileOrder($code);
+                if ($reconciled) {
+                    $statement->execute([$code]);
+                    $refreshedOrder = $statement->fetch();
+                    if (is_array($refreshedOrder)) {
+                        $order = $refreshedOrder;
+                    }
+                }
+            } catch (Throwable $exception) {
+                Logger::exception($exception, [
+                    'order_code' => $code,
+                    'order_id' => (int) $order['id'],
+                ], 'pagarme_reconciliation');
+            }
+        }
+
+        $sub = $pdo->prepare(
+            'SELECT so.*,st.name store_name,s.trade_name,sh.id shipment_id,sh.external_id,sh.service_name,
+                    sh.carrier_name,sh.tracking_code,sh.tracking_url,sh.status shipment_status,sh.raw_status,sh.last_synced_at
+             FROM seller_orders so
+             JOIN stores st ON st.id=so.store_id
+             JOIN sellers s ON s.id=so.seller_id
+             LEFT JOIN shipments sh ON sh.seller_order_id=so.id
+             WHERE so.order_id=?
+             ORDER BY so.id'
+        );
+        $sub->execute([$order['id']]);
+        $sellerOrders = $sub->fetchAll();
+
+        $items = $pdo->prepare('SELECT * FROM order_items WHERE seller_order_id=? ORDER BY id');
+        foreach ($sellerOrders as &$sellerOrder) {
+            $items->execute([$sellerOrder['id']]);
+            $sellerOrder['items'] = $items->fetchAll();
+        }
+        unset($sellerOrder);
+
+        $payment = $pdo->prepare('SELECT * FROM payments WHERE order_id=? ORDER BY id DESC');
+        $payment->execute([$order['id']]);
+        $history = $pdo->prepare('SELECT * FROM order_status_history WHERE order_id=? ORDER BY created_at DESC,id DESC');
+        $history->execute([$order['id']]);
+        $address = $pdo->prepare('SELECT * FROM order_addresses WHERE order_id=?');
+        $address->execute([$order['id']]);
+
+        return $this->page('admin/orders/show', 'layouts/admin', [
+            'pageTitle' => 'Pedido ' . $code,
+            'order' => $order,
+            'sellerOrders' => $sellerOrders,
+            'payments' => $payment->fetchAll(),
+            'history' => $history->fetchAll(),
+            'address' => $address->fetch() ?: null,
+            'trackingConfigured' => (new MelhorEnvioTrackingService())->configured(),
+        ]);
     }
 
     public function sync(string $code, string $shipmentId): string
