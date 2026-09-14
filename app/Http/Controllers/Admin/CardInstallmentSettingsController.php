@@ -13,7 +13,7 @@ use Throwable;
 
 final class CardInstallmentSettingsController extends Controller
 {
-    private const INSTALLMENTS = [3, 4, 5, 6];
+    private const INSTALLMENTS = [6, 7, 8, 9, 10, 11, 12];
 
     public function show(): string
     {
@@ -41,17 +41,17 @@ final class CardInstallmentSettingsController extends Controller
                 $values[$key] = number_format($rate, 4, '.', '');
             }
 
-            $base = $values['pagarme_card_mdr_3x'];
-            foreach ([4, 5, 6] as $installments) {
+            $base = $values['pagarme_card_mdr_6x'];
+            foreach ([7, 8, 9, 10, 11, 12] as $installments) {
                 $key = 'pagarme_card_mdr_' . $installments . 'x';
                 if ($values[$key] === null) {
                     continue;
                 }
                 if ($base === null) {
-                    throw new RuntimeException('Informe a taxa contratada de 3x antes de habilitar parcelas maiores.');
+                    throw new RuntimeException('Informe a taxa contratada de 6x antes de habilitar parcelas maiores.');
                 }
                 if ((float) $values[$key] < (float) $base) {
-                    throw new RuntimeException("A taxa de {$installments}x não pode ser menor que a taxa-base de 3x.");
+                    throw new RuntimeException("A taxa de {$installments}x não pode ser menor que a taxa-base de 6x.");
                 }
             }
 
