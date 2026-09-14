@@ -1,2 +1,69 @@
-<?php $editing=!empty($store); ?><div class="dashboard-heading"><div><span class="eyebrow">LOJAS</span><h2><?= $editing?'Editar loja':'Criar loja' ?></h2><p>Defina o vendedor proprietário e as configurações compartilhadas.</p></div></div>
-<form class="panel resource-form" method="post" action="<?= e($editing?url('/admin/lojas/'.$store['id']):url('/admin/lojas')) ?>"><?= csrf_field() ?><?php if($editing):?><input type="hidden" name="_method" value="PUT"><?php endif;?><div class="form-grid"><label>Nome<input name="name" required value="<?= e($store['name']??'') ?>"></label><label>Slug<input name="slug" value="<?= e($store['slug']??'') ?>" placeholder="gerado pelo nome"></label><label>Vendedor<select name="seller_id" required><option value="">Selecione</option><?php foreach($sellers as $seller):?><option value="<?= $seller['id'] ?>" <?= (int)($store['seller_id']??0)===(int)$seller['id']?'selected':'' ?>><?= e($seller['trade_name']) ?></option><?php endforeach;?></select></label><label>Status<select name="status"><option value="active">Ativa</option><option value="draft" <?= ($store['status']??'')==='draft'?'selected':'' ?>>Rascunho</option><option value="inactive" <?= ($store['status']??'')==='inactive'?'selected':'' ?>>Inativa</option></select></label><label class="form-grid__full">Descrição<textarea name="description" rows="4"><?= e($store['description']??'') ?></textarea></label><label>Logo em /uploads<input name="logo_url" value="<?= e($store['logo_url']??'') ?>" placeholder="logos/minha-loja.png"></label><label>Banner em /uploads<input name="banner_url" value="<?= e($store['banner_url']??'') ?>" placeholder="banners/minha-loja.jpg"></label><?php if($editing):?><label>Frete igual à loja<select name="shipping_source_store_id"><option value="">Configuração própria</option><?php foreach($sellerStores as $source):if((int)$source['seller_id']!==(int)$store['seller_id']||(int)$source['id']===(int)$store['id'])continue;?><option value="<?= $source['id'] ?>" <?= (int)($store['shipping_source_store_id']??0)===(int)$source['id']?'selected':'' ?>><?= e($source['name']) ?></option><?php endforeach;?></select></label><?php endif;?></div><div class="form-actions"><a class="button button--secondary" href="<?= e(url('/admin/lojas')) ?>">Cancelar</a><button class="button button--primary">Salvar loja</button></div></form>
+<?php
+$editing = !empty($store);
+$commissionValue = $editing && array_key_exists('commission_rate', $store) && $store['commission_rate'] !== null
+    ? number_format((float) $store['commission_rate'], 2, '.', '')
+    : '';
+?>
+<div class="dashboard-heading">
+    <div>
+        <span class="eyebrow">LOJAS</span>
+        <h2><?= $editing ? 'Editar loja' : 'Criar loja' ?></h2>
+        <p>Defina o vendedor proprietário, as condições comerciais e as configurações compartilhadas.</p>
+    </div>
+</div>
+<form class="panel resource-form" method="post" action="<?= e($editing ? url('/admin/lojas/' . $store['id']) : url('/admin/lojas')) ?>">
+    <?= csrf_field() ?>
+    <?php if ($editing): ?><input type="hidden" name="_method" value="PUT"><?php endif; ?>
+
+    <div class="form-grid">
+        <label>Nome<input name="name" required value="<?= e($store['name'] ?? '') ?>"></label>
+        <label>Slug<input name="slug" value="<?= e($store['slug'] ?? '') ?>" placeholder="gerado pelo nome"></label>
+        <label>Vendedor
+            <select name="seller_id" required>
+                <option value="">Selecione</option>
+                <?php foreach ($sellers as $seller): ?>
+                    <option value="<?= (int) $seller['id'] ?>" <?= (int) ($store['seller_id'] ?? 0) === (int) $seller['id'] ? 'selected' : '' ?>><?= e($seller['trade_name']) ?> · padrão <?= number_format((float) $seller['commission_rate'], 2, ',', '.') ?>%</option>
+                <?php endforeach; ?>
+            </select>
+        </label>
+        <label>Status
+            <select name="status">
+                <option value="active">Ativa</option>
+                <option value="draft" <?= ($store['status'] ?? '') === 'draft' ? 'selected' : '' ?>>Rascunho</option>
+                <option value="inactive" <?= ($store['status'] ?? '') === 'inactive' ? 'selected' : '' ?>>Inativa</option>
+            </select>
+        </label>
+        <label class="form-grid__full">Descrição<textarea name="description" rows="4"><?= e($store['description'] ?? '') ?></textarea></label>
+        <label>Logo em /uploads<input name="logo_url" value="<?= e($store['logo_url'] ?? '') ?>" placeholder="logos/minha-loja.png"></label>
+        <label>Banner em /uploads<input name="banner_url" value="<?= e($store['banner_url'] ?? '') ?>" placeholder="banners/minha-loja.jpg"></label>
+        <?php if ($editing): ?>
+            <label>Frete igual à loja
+                <select name="shipping_source_store_id">
+                    <option value="">Configuração própria</option>
+                    <?php foreach ($sellerStores as $source): if ((int) $source['seller_id'] !== (int) $store['seller_id'] || (int) $source['id'] === (int) $store['id']) continue; ?>
+                        <option value="<?= (int) $source['id'] ?>" <?= (int) ($store['shipping_source_store_id'] ?? 0) === (int) $source['id'] ? 'selected' : '' ?>><?= e($source['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+        <?php endif; ?>
+    </div>
+
+    <div class="panel-head">
+        <div>
+            <small>CONDIÇÕES COMERCIAIS</small>
+            <h3>Comissão da Tuffer</h3>
+            <p>Defina uma taxa específica para esta loja ou mantenha o padrão configurado no vendedor.</p>
+        </div>
+    </div>
+    <div class="form-grid">
+        <label>Comissão específica da loja (%)
+            <input name="commission_rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" value="<?= e($commissionValue) ?>" placeholder="Usar padrão do vendedor">
+            <small class="table-subtitle">Deixe em branco para herdar automaticamente a comissão padrão exibida ao lado do vendedor. Alterações valem somente para novos pedidos.</small>
+        </label>
+    </div>
+
+    <div class="form-actions">
+        <a class="button button--secondary" href="<?= e(url('/admin/lojas')) ?>">Cancelar</a>
+        <button class="button button--primary">Salvar loja</button>
+    </div>
+</form>

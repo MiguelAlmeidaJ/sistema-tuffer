@@ -292,7 +292,7 @@ final class OrderPlacementService
         if ($sellerId < 1 || $storeId < 1) {
             throw new RuntimeException('Uma das lojas do carrinho não está disponível.');
         }
-        $commission = $this->commissionRate($sellerId);
+        $commission = $this->commissionRate($sellerId, $storeId);
         $products = $this->cents($group['subtotal']);
         $discount = $this->cents($group['discount'] ?? 0);
         $shippingCents = $this->cents($shipping['price']);
@@ -377,10 +377,15 @@ final class OrderPlacementService
         return (int) $this->pdo->lastInsertId();
     }
 
-    private function commissionRate(int $sellerId): float
+    private function commissionRate(int $sellerId, int $storeId): float
     {
-        $statement = $this->pdo->prepare('SELECT commission_rate FROM sellers WHERE id=? AND status=?');
-        $statement->execute([$sellerId, 'active']);
+        $statement = $this->pdo->prepare(
+            "SELECT COALESCE(st.commission_rate,s.commission_rate)
+               FROM stores st
+               JOIN sellers s ON s.id=st.seller_id
+              WHERE st.id=? AND st.seller_id=? AND st.status='active' AND s.status='active'"
+        );
+        $statement->execute([$storeId, $sellerId]);
         $value = $statement->fetchColumn();
         if ($value === false) {
             throw new RuntimeException('Uma das lojas não está habilitada para receber pedidos.');
