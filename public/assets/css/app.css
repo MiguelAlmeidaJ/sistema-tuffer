@@ -25,6 +25,7 @@
 @import url('./seller/order-fiscal.css?v=20260910-manual-nfe');
 @import url('./admin/catalog.css');
 @import url('./admin/settings.css');
+@import url('./admin/order-shipping-replacement.css?v=20260915-admin-label-replacement');
 @import url('./growth.css');
 
 .icon-action--cart .cart-count {

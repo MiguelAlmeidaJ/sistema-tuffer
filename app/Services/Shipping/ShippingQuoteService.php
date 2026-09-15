@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Shipping;
 
+use App\Core\Database;
 use App\Core\Session;
 use App\Services\Cart\CartService;
-use DateTimeImmutable;
 use App\Services\Settings\PlatformSettings;
+use DateTimeImmutable;
 
 final class ShippingQuoteService
 {
@@ -41,31 +42,7 @@ final class ShippingQuoteService
                 continue;
             }
             $result = $this->request($origin, $postalCode, $group['items']);
-            $options = [];
-            foreach ($result as $quote) {
-                if (!is_array($quote) || isset($quote['error']) || !isset($quote['id'])) continue;
-                $carrier = (string) ($quote['company']['name'] ?? 'Transportadora');
-                if (!$this->supportsCentralizedPurchase($carrier)) continue;
-                $price = (float) ($quote['custom_price'] ?? $quote['price'] ?? 0);
-                if ($price <= 0) continue;
-                $days = (int) ($quote['custom_delivery_time'] ?? $quote['delivery_time'] ?? 0);
-                $range = $quote['custom_delivery_range'] ?? $quote['delivery_range'] ?? [];
-                $minDays = max(1, (int) ($range['min'] ?? $days ?: 1));
-                $maxDays = max($minDays, (int) ($range['max'] ?? $days ?: $minDays));
-                $options[] = [
-                    'id' => (string) $quote['id'],
-                    'service' => (string) ($quote['name'] ?? 'Entrega'),
-                    'carrier' => $carrier,
-                    'price' => round($price, 2),
-                    'packages' => $this->packages($quote['packages'] ?? [], $group['items']),
-                    'min_days' => $minDays,
-                    'max_days' => $maxDays,
-                    'arrival_min' => $this->businessDate($minDays),
-                    'arrival_max' => $this->businessDate($maxDays),
-                ];
-            }
-            usort($options, static fn(array $a, array $b): int => $a['price'] <=> $b['price']);
-            $options = array_slice($options, 0, 4);
+            $options = $this->normalizeOptions($result, $group['items'], 4);
             $selected = $options[0]['id'] ?? null;
             $state['stores'][$storeId] = ['store_id' => $storeId, 'store_name' => $group['store_name'], 'options' => $options, 'selected' => $selected, 'message' => $options ? null : ($this->lastError ?? 'Nenhuma modalidade disponível para este CEP.')];
             if ($options) $state['shipping_total'] += (float) $options[0]['price'];
@@ -73,6 +50,106 @@ final class ShippingQuoteService
         $state['shipping_total'] = round($state['shipping_total'], 2);
         Session::put($cacheKey, ['fingerprint' => $fingerprint, 'state' => $state]);
         return $state;
+    }
+
+    /** @return array{configured:bool,options:array<int,array<string,mixed>>,message:?string} */
+    public function quotesForSellerOrder(int $sellerOrderId): array
+    {
+        $configured = $this->configured();
+        $state = ['configured' => $configured, 'options' => [], 'message' => null];
+        if (!$configured) {
+            $state['message'] = 'A integração com o Melhor Envio não está configurada.';
+            return $state;
+        }
+
+        $pdo = Database::connection();
+        $contextStatement = $pdo->prepare(
+            'SELECT so.id,so.store_id,o.id order_id,oa.postal_code destination_postal_code,
+                    COALESCE(st.shipping_source_store_id,st.id) origin_store_id
+             FROM seller_orders so
+             JOIN orders o ON o.id=so.order_id
+             JOIN stores st ON st.id=so.store_id
+             LEFT JOIN order_addresses oa ON oa.order_id=o.id
+             WHERE so.id=? LIMIT 1'
+        );
+        $contextStatement->execute([$sellerOrderId]);
+        $context = $contextStatement->fetch();
+        if (!is_array($context)) {
+            $state['message'] = 'Pedido da loja não encontrado para recotação.';
+            return $state;
+        }
+
+        $originStatement = $pdo->prepare(
+            'SELECT postal_code FROM store_addresses
+             WHERE store_id=? AND is_shipping_origin=1
+             ORDER BY id LIMIT 1'
+        );
+        $originStatement->execute([(int) $context['origin_store_id']]);
+        $origin = preg_replace('/\D+/', '', (string) $originStatement->fetchColumn()) ?? '';
+        $destination = preg_replace('/\D+/', '', (string) ($context['destination_postal_code'] ?? '')) ?? '';
+        if (strlen($origin) !== 8) {
+            $state['message'] = 'A loja não possui CEP de origem de frete válido.';
+            return $state;
+        }
+        if (strlen($destination) !== 8) {
+            $state['message'] = 'O pedido não possui CEP de entrega válido.';
+            return $state;
+        }
+
+        $itemsStatement = $pdo->prepare(
+            'SELECT oi.product_variant_id variant_id,oi.quantity,oi.unit_price,
+                    COALESCE(pv.weight,p.weight,0.1) shipping_weight,
+                    COALESCE(pv.width,p.width,11) shipping_width,
+                    COALESCE(pv.height,p.height,2) shipping_height,
+                    COALESCE(pv.length,p.length,16) shipping_length
+             FROM order_items oi
+             LEFT JOIN product_variants pv ON pv.id=oi.product_variant_id
+             LEFT JOIN products p ON p.id=oi.product_id
+             WHERE oi.seller_order_id=?
+             ORDER BY oi.id'
+        );
+        $itemsStatement->execute([$sellerOrderId]);
+        $items = $itemsStatement->fetchAll();
+        if ($items === []) {
+            $state['message'] = 'O pedido não possui itens para recotar o frete.';
+            return $state;
+        }
+
+        $result = $this->request($origin, $destination, $items);
+        $state['options'] = $this->normalizeOptions($result, $items, 12);
+        $state['message'] = $state['options'] ? null : ($this->lastError ?? 'Nenhuma modalidade alternativa disponível para esta rota.');
+        return $state;
+    }
+
+    /** @param array<int,mixed> $result @param array<int,array<string,mixed>> $items @return array<int,array<string,mixed>> */
+    private function normalizeOptions(array $result, array $items, int $limit): array
+    {
+        $options = [];
+        foreach ($result as $quote) {
+            if (!is_array($quote) || isset($quote['error']) || !isset($quote['id'])) continue;
+            $carrier = (string) ($quote['company']['name'] ?? 'Transportadora');
+            if (!$this->supportsCentralizedPurchase($carrier)) continue;
+            $price = (float) ($quote['custom_price'] ?? $quote['price'] ?? 0);
+            if ($price <= 0) continue;
+            $days = (int) ($quote['custom_delivery_time'] ?? $quote['delivery_time'] ?? 0);
+            $range = $quote['custom_delivery_range'] ?? $quote['delivery_range'] ?? [];
+            $minDays = max(1, (int) ($range['min'] ?? $days ?: 1));
+            $maxDays = max($minDays, (int) ($range['max'] ?? $days ?: $minDays));
+            $options[] = [
+                'id' => (string) $quote['id'],
+                'service' => (string) ($quote['name'] ?? 'Entrega'),
+                'carrier' => $carrier,
+                'company_id' => isset($quote['company']['id']) ? (string) $quote['company']['id'] : null,
+                'price' => round($price, 2),
+                'packages' => $this->packages($quote['packages'] ?? [], $items),
+                'min_days' => $minDays,
+                'max_days' => $maxDays,
+                'arrival_min' => $this->businessDate($minDays),
+                'arrival_max' => $this->businessDate($maxDays),
+            ];
+        }
+        usort($options, static fn(array $a, array $b): int => $a['price'] <=> $b['price']);
+        return array_slice($options, 0, max(1, $limit));
     }
 
     /** @param array<int,array<string,mixed>> $items @return array<int,mixed> */
@@ -84,7 +161,7 @@ final class ShippingQuoteService
         $endpoint = str_ends_with($base, '/api/v2') ? $base . '/me/shipment/calculate' : $base . '/api/v2/me/shipment/calculate';
         $this->lastError = null;
         $products = array_map(static fn(array $item): array => [
-            'id' => (string) $item['variant_id'],
+            'id' => (string) ($item['variant_id'] ?? ''),
             'width' => max(11, (float) $item['shipping_width']),
             'height' => max(2, (float) $item['shipping_height']),
             'length' => max(16, (float) $item['shipping_length']),
