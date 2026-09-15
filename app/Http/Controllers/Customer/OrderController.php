@@ -18,13 +18,61 @@ final class OrderController extends Controller
 {
     public function index(): string
     {
+        $pdo = Database::connection();
+        $userId = Auth::id();
         $type = ($_GET['tipo'] ?? '') === 'atacado' ? 'wholesale' : '';
-        $sql = 'SELECT code,grand_total,status,created_at,order_type FROM orders WHERE user_id=?';
-        if ($type !== '') $sql .= ' AND order_type=?';
-        $sql .= ' ORDER BY created_at DESC';
-        $statement = Database::connection()->prepare($sql);
-        $statement->execute($type !== '' ? [Auth::id(), $type] : [Auth::id()]);
-        return $this->page('customer/orders/index', 'layouts/customer', ['pageTitle' => $type ? 'Pedidos de atacado' : 'Meus pedidos', 'orders' => $statement->fetchAll()]);
+        $situation = in_array($_GET['situacao'] ?? '', ['andamento', 'concluidos', 'cancelados'], true)
+            ? (string) $_GET['situacao']
+            : '';
+        $search = mb_substr(trim((string) ($_GET['q'] ?? '')), 0, 60);
+
+        $where = ['user_id=?'];
+        $params = [$userId];
+        if ($type !== '') {
+            $where[] = 'order_type=?';
+            $params[] = $type;
+        }
+        if ($situation === 'andamento') {
+            $where[] = "status IN ('pending','pending_payment','paid','processing')";
+        } elseif ($situation === 'concluidos') {
+            $where[] = "status='completed'";
+        } elseif ($situation === 'cancelados') {
+            $where[] = "status='cancelled'";
+        }
+        if ($search !== '') {
+            $where[] = 'code LIKE ?';
+            $params[] = '%' . $search . '%';
+        }
+
+        $sql = 'SELECT code,grand_total,status,created_at,order_type FROM orders WHERE '
+            . implode(' AND ', $where)
+            . ' ORDER BY created_at DESC,id DESC';
+        $statement = $pdo->prepare($sql);
+        $statement->execute($params);
+        $orders = $statement->fetchAll();
+
+        $summarySql = "SELECT COUNT(*) total,
+                              COALESCE(SUM(status IN ('pending','pending_payment','paid','processing')),0) ongoing,
+                              COALESCE(SUM(status='completed'),0) completed,
+                              COALESCE(SUM(status='cancelled'),0) cancelled
+                       FROM orders WHERE user_id=?";
+        $summaryParams = [$userId];
+        if ($type !== '') {
+            $summarySql .= ' AND order_type=?';
+            $summaryParams[] = $type;
+        }
+        $summaryStatement = $pdo->prepare($summarySql);
+        $summaryStatement->execute($summaryParams);
+        $summary = $summaryStatement->fetch() ?: [];
+
+        return $this->page('customer/orders/index', 'layouts/customer', [
+            'pageTitle' => $type ? 'Pedidos de atacado' : 'Meus pedidos',
+            'orders' => $orders,
+            'summary' => $summary,
+            'situation' => $situation,
+            'search' => $search,
+            'type' => $type,
+        ]);
     }
 
     public function show(string $code): string
