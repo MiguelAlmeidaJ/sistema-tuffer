@@ -15,7 +15,9 @@ use App\Services\Orders\OrderCouponService;
 use App\Services\Orders\OrderInventoryService;
 use App\Services\Payments\Pagarme\PagarmeOrderReconciliationService;
 use App\Services\Payments\Pagarme\PagarmePixRefundService;
+use App\Services\Shipping\MelhorEnvioLabelReplacementService;
 use App\Services\Shipping\MelhorEnvioTrackingService;
+use App\Services\Shipping\ShippingQuoteService;
 use PDO;
 use RuntimeException;
 use Throwable;
@@ -125,8 +127,12 @@ final class OrderController extends Controller
         }
 
         $sub = $pdo->prepare(
-            'SELECT so.*,st.name store_name,s.trade_name,sh.id shipment_id,sh.external_id,sh.service_name,
-                    sh.carrier_name,sh.tracking_code,sh.tracking_url,sh.status shipment_status,sh.raw_status,sh.last_synced_at
+            'SELECT so.*,st.name store_name,s.trade_name,sh.id shipment_id,sh.service_id,sh.external_id,sh.service_name,
+                    sh.carrier_name,sh.tracking_code,sh.tracking_url,sh.status shipment_status,sh.raw_status,sh.last_synced_at,
+                    sh.shipping_cost,sh.label_purchase_status,sh.label_actual_cost,sh.label_error,sh.label_url,sh.invoice_key,
+                    (SELECT fd.access_key FROM fiscal_documents fd
+                      WHERE fd.seller_order_id=so.id AND fd.document_type=\'nfe\' AND fd.revision=1
+                      ORDER BY fd.id DESC LIMIT 1) fiscal_access_key
              FROM seller_orders so
              JOIN stores st ON st.id=so.store_id
              JOIN sellers s ON s.id=so.seller_id
@@ -137,10 +143,39 @@ final class OrderController extends Controller
         $sub->execute([$order['id']]);
         $sellerOrders = $sub->fetchAll();
 
+        $replacementService = new MelhorEnvioLabelReplacementService($pdo);
+        $replacementConfigured = $replacementService->configured();
+        $replaceShipmentId = max(0, (int) ($_GET['trocar_remessa'] ?? 0));
+        $quoteService = new ShippingQuoteService();
+
         $items = $pdo->prepare('SELECT * FROM order_items WHERE seller_order_id=? ORDER BY id');
         foreach ($sellerOrders as &$sellerOrder) {
             $items->execute([$sellerOrder['id']]);
             $sellerOrder['items'] = $items->fetchAll();
+            $sellerOrder['replacement_quote'] = null;
+            $sellerOrder['replacement_history'] = [];
+            if ($replaceShipmentId > 0
+                && (int) ($sellerOrder['shipment_id'] ?? 0) === $replaceShipmentId
+                && $replacementConfigured) {
+                $sellerOrder['replacement_quote'] = $quoteService->quotesForSellerOrder((int) $sellerOrder['id']);
+            }
+        }
+        unset($sellerOrder);
+
+        $replacementHistory = $pdo->prepare(
+            'SELECT r.*,u.name changed_by_name
+               FROM shipment_label_replacements r
+               LEFT JOIN users u ON u.id=r.changed_by
+              WHERE r.order_id=?
+              ORDER BY r.created_at DESC,r.id DESC'
+        );
+        $replacementHistory->execute([(int) $order['id']]);
+        $historyByShipment = [];
+        foreach ($replacementHistory->fetchAll() as $replacement) {
+            $historyByShipment[(int) $replacement['shipment_id']][] = $replacement;
+        }
+        foreach ($sellerOrders as &$sellerOrder) {
+            $sellerOrder['replacement_history'] = $historyByShipment[(int) ($sellerOrder['shipment_id'] ?? 0)] ?? [];
         }
         unset($sellerOrder);
 
@@ -159,6 +194,8 @@ final class OrderController extends Controller
             'history' => $history->fetchAll(),
             'address' => $address->fetch() ?: null,
             'trackingConfigured' => (new MelhorEnvioTrackingService())->configured(),
+            'labelReplacementConfigured' => $replacementConfigured,
+            'replaceShipmentId' => $replaceShipmentId,
         ]);
     }
 
@@ -312,6 +349,62 @@ final class OrderController extends Controller
             Session::flash('error', $exception->getMessage());
         }
         return Response::redirect('/admin/pedidos/' . $code);
+    }
+
+    public function replaceShipment(string $code, string $shipmentId): string
+    {
+        $id = (int) $shipmentId;
+        $serviceId = trim((string) ($_POST['service_id'] ?? ''));
+        $reason = mb_substr(trim((string) ($_POST['reason'] ?? '')), 0, 500);
+        $confirmed = !empty($_POST['confirm_replacement']);
+        $redirect = '/admin/pedidos/' . rawurlencode($code) . '#remessa-' . $id;
+
+        if (!$confirmed) {
+            Session::flash('error', 'Confirme que deseja cancelar a etiqueta atual e gerar uma nova.');
+            return Response::redirect($redirect);
+        }
+        if ($serviceId === '') {
+            Session::flash('error', 'Selecione a nova transportadora/modalidade.');
+            return Response::redirect($redirect);
+        }
+        if (mb_strlen($reason) < 5) {
+            Session::flash('error', 'Informe brevemente o motivo da troca de transportadora.');
+            return Response::redirect($redirect);
+        }
+
+        $statement = Database::connection()->prepare(
+            'SELECT sh.id FROM shipments sh
+             JOIN seller_orders so ON so.id=sh.seller_order_id
+             JOIN orders o ON o.id=so.order_id
+             WHERE o.code=? AND sh.id=? LIMIT 1'
+        );
+        $statement->execute([$code, $id]);
+        if ((int) $statement->fetchColumn() !== $id || $id < 1) {
+            Session::flash('error', 'Remessa não encontrada neste pedido.');
+            return Response::redirect('/admin/pedidos/' . rawurlencode($code));
+        }
+
+        try {
+            $result = (new MelhorEnvioLabelReplacementService())->replace(
+                $id,
+                $serviceId,
+                (int) Auth::id(),
+                $reason
+            );
+            $cost = $result['actual_cost'] ?? $result['expected_cost'];
+            Session::flash(
+                'success',
+                'Transportadora alterada para ' . $result['carrier'] . ' · ' . $result['service']
+                . '. Nova etiqueta ' . ($result['status'] === 'ready' ? 'pronta' : 'em processamento')
+                . ' (custo R$ ' . number_format((float) $cost, 2, ',', '.') . '). O pedido, o valor cobrado do cliente e a NF-e foram mantidos.'
+            );
+        } catch (RuntimeException $exception) {
+            Session::flash('error', $exception->getMessage());
+        } catch (Throwable $exception) {
+            Logger::exception($exception, ['order_code' => $code, 'shipment_id' => $id], 'admin_shipping_replacement');
+            Session::flash('error', 'Não foi possível trocar a transportadora desta remessa agora.');
+        }
+        return Response::redirect($redirect);
     }
 
     public function refundPix(string $code, string $paymentId): string
