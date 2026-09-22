@@ -46,7 +46,7 @@ final class SellerOrderTrackingExperienceTest extends TestCase
         $view = file_get_contents($this->root . '/resources/views/seller/orders/tracking.php');
 
         self::assertIsString($view);
-        self::assertStringContainsString('Histórico de movimentações', $view);
+        self::assertStringContainsString('HISTÓRICO DE MOVIMENTAÇÕES', $view);
         self::assertStringContainsString('$trackingEvents', $view);
         self::assertStringContainsString('name="return_to" value="tracking"', $view);
         self::assertStringContainsString('Abrir rastreio oficial', $view);
