@@ -39,17 +39,113 @@ final class OrderController extends Controller
 
     public function show(string $code): string
     {
-        $context = new SellerStoreContext(); $store = $context->current(); $pdo = Database::connection();
-        $statement = $pdo->prepare('SELECT so.*,o.code order_code,o.status order_status,o.order_type,o.grand_total order_grand_total,o.created_at order_created_at,u.name customer_name,u.email customer_email,u.phone customer_phone,u.document customer_document FROM seller_orders so JOIN orders o ON o.id=so.order_id JOIN users u ON u.id=o.user_id WHERE so.code=? AND so.store_id=?');
-        $statement->execute([$code,$store['id']]); $order=$statement->fetch();
-        if(!$order){http_response_code(404);return $this->page('seller/orders/show','layouts/seller',['pageTitle'=>'Pedido não encontrado','order'=>null,'currentStore'=>$store,'sellerStores'=>$context->stores()]);}
-        $items=$pdo->prepare('SELECT * FROM order_items WHERE seller_order_id=? ORDER BY id');$items->execute([$order['id']]);
-        $shipment=$pdo->prepare('SELECT * FROM shipments WHERE seller_order_id=?');$shipment->execute([$order['id']]);$shipmentRow=$shipment->fetch()?:null;
-        $events=[];if($shipmentRow){$event=$pdo->prepare('SELECT * FROM shipment_tracking_events WHERE shipment_id=? ORDER BY occurred_at DESC,id DESC');$event->execute([$shipmentRow['id']]);$events=$event->fetchAll();}
-        $address=$pdo->prepare('SELECT * FROM order_addresses WHERE order_id=?');$address->execute([$order['order_id']]);$addressRow=$address->fetch()?:null;
-        $fiscalProfile=$pdo->prepare('SELECT enabled,issuance_mode,provider,nfe_series FROM store_fiscal_profiles WHERE store_id=? AND seller_id=? LIMIT 1');$fiscalProfile->execute([$order['store_id'],$order['seller_id']]);$fiscalProfileRow=$fiscalProfile->fetch()?:null;
-        $fiscalDocument=$pdo->prepare("SELECT * FROM fiscal_documents WHERE seller_order_id=? AND document_type='nfe' AND revision=1 LIMIT 1");$fiscalDocument->execute([$order['id']]);$fiscalDocumentRow=$fiscalDocument->fetch()?:null;
-        return $this->page('seller/orders/show','layouts/seller',['pageTitle'=>'Pedido '.$code,'order'=>$order,'items'=>$items->fetchAll(),'shipment'=>$shipmentRow,'trackingEvents'=>$events,'address'=>$addressRow,'fiscalProfile'=>$fiscalProfileRow,'fiscalDocument'=>$fiscalDocumentRow,'trackingConfigured'=>(new MelhorEnvioTrackingService())->configured(),'labelPurchaseConfigured'=>(new MelhorEnvioLabelService())->configured(),'currentStore'=>$store,'sellerStores'=>$context->stores()]);
+        $context = new SellerStoreContext();
+        $store = $context->current();
+        $data = $this->orderDetailData($code, (int) $store['id']);
+
+        if ($data === null) {
+            http_response_code(404);
+            return $this->page('seller/orders/show', 'layouts/seller', [
+                'pageTitle' => 'Pedido não encontrado',
+                'order' => null,
+                'currentStore' => $store,
+                'sellerStores' => $context->stores(),
+            ]);
+        }
+
+        return $this->page('seller/orders/show', 'layouts/seller', $data + [
+            'pageTitle' => 'Pedido ' . $code,
+            'trackingConfigured' => (new MelhorEnvioTrackingService())->configured(),
+            'labelPurchaseConfigured' => (new MelhorEnvioLabelService())->configured(),
+            'currentStore' => $store,
+            'sellerStores' => $context->stores(),
+        ]);
+    }
+
+    public function tracking(string $code): string
+    {
+        $context = new SellerStoreContext();
+        $store = $context->current();
+        $data = $this->orderDetailData($code, (int) $store['id']);
+
+        if ($data === null) {
+            http_response_code(404);
+            return $this->page('seller/orders/tracking', 'layouts/seller', [
+                'pageTitle' => 'Rastreamento não encontrado',
+                'order' => null,
+                'shipment' => null,
+                'trackingEvents' => [],
+                'address' => null,
+                'currentStore' => $store,
+                'sellerStores' => $context->stores(),
+                'trackingConfigured' => (new MelhorEnvioTrackingService())->configured(),
+            ]);
+        }
+
+        return $this->page('seller/orders/tracking', 'layouts/seller', $data + [
+            'pageTitle' => 'Rastreamento ' . $code,
+            'trackingConfigured' => (new MelhorEnvioTrackingService())->configured(),
+            'currentStore' => $store,
+            'sellerStores' => $context->stores(),
+        ]);
+    }
+
+    /** @return array<string,mixed>|null */
+    private function orderDetailData(string $code, int $storeId): ?array
+    {
+        $pdo = Database::connection();
+        $statement = $pdo->prepare(
+            'SELECT so.*,o.code order_code,o.status order_status,o.order_type,o.grand_total order_grand_total,o.created_at order_created_at,
+                    u.name customer_name,u.email customer_email,u.phone customer_phone,u.document customer_document
+             FROM seller_orders so
+             JOIN orders o ON o.id=so.order_id
+             JOIN users u ON u.id=o.user_id
+             WHERE so.code=? AND so.store_id=?'
+        );
+        $statement->execute([$code, $storeId]);
+        $order = $statement->fetch();
+        if (!is_array($order)) return null;
+
+        $items = $pdo->prepare(
+            "SELECT oi.*,
+                    (SELECT pm.secure_url FROM product_media pm
+                     WHERE pm.product_id=oi.product_id AND pm.resource_type='image'
+                     ORDER BY pm.is_cover DESC,pm.sort_order,pm.id LIMIT 1) product_image
+             FROM order_items oi
+             WHERE oi.seller_order_id=?
+             ORDER BY oi.id"
+        );
+        $items->execute([$order['id']]);
+
+        $shipment = $pdo->prepare('SELECT * FROM shipments WHERE seller_order_id=? LIMIT 1');
+        $shipment->execute([$order['id']]);
+        $shipmentRow = $shipment->fetch() ?: null;
+
+        $events = [];
+        if (is_array($shipmentRow)) {
+            $event = $pdo->prepare('SELECT * FROM shipment_tracking_events WHERE shipment_id=? ORDER BY occurred_at DESC,id DESC');
+            $event->execute([$shipmentRow['id']]);
+            $events = $event->fetchAll();
+        }
+
+        $address = $pdo->prepare('SELECT * FROM order_addresses WHERE order_id=? LIMIT 1');
+        $address->execute([$order['order_id']]);
+
+        $fiscalProfile = $pdo->prepare('SELECT enabled,issuance_mode,provider,nfe_series FROM store_fiscal_profiles WHERE store_id=? AND seller_id=? LIMIT 1');
+        $fiscalProfile->execute([$order['store_id'], $order['seller_id']]);
+
+        $fiscalDocument = $pdo->prepare("SELECT * FROM fiscal_documents WHERE seller_order_id=? AND document_type='nfe' AND revision=1 LIMIT 1");
+        $fiscalDocument->execute([$order['id']]);
+
+        return [
+            'order' => $order,
+            'items' => $items->fetchAll(),
+            'shipment' => $shipmentRow,
+            'trackingEvents' => $events,
+            'address' => $address->fetch() ?: null,
+            'fiscalProfile' => $fiscalProfile->fetch() ?: null,
+            'fiscalDocument' => $fiscalDocument->fetch() ?: null,
+        ];
     }
 
     public function registerInvoice(string $code): string
@@ -118,8 +214,36 @@ final class OrderController extends Controller
 
     public function sync(string $code): string
     {
-        $store=(new SellerStoreContext())->current();$statement=Database::connection()->prepare('SELECT sh.id,sh.status,so.order_id FROM shipments sh JOIN seller_orders so ON so.id=sh.seller_order_id WHERE so.code=? AND so.store_id=?');$statement->execute([$code,$store['id']]);$shipment=$statement->fetch();
-        try{if(!$shipment)throw new RuntimeException('Remessa não encontrada.');$updated=(new MelhorEnvioTrackingService())->syncShipment((int)$shipment['id'],true);if(($updated['status']??'')==='delivered'&&$shipment['status']!=='delivered')(new OrderMailService())->send((int)$shipment['order_id'],'order_delivered_'.$shipment['id'],'Seu pedido foi entregue','A transportadora confirmou a entrega do pedido '.$code.'.');Session::flash('success','Rastreamento sincronizado com o Melhor Envio.');}catch(Throwable $exception){Session::flash('error',$exception->getMessage());}
-        return Response::redirect('/vendedor/pedidos/'.$code);
+        $store = (new SellerStoreContext())->current();
+        $returnTo = (string) ($_POST['return_to'] ?? '') === 'tracking'
+            ? '/vendedor/pedidos/' . $code . '/rastreamento'
+            : '/vendedor/pedidos/' . $code;
+        $statement = Database::connection()->prepare(
+            'SELECT sh.id,sh.status,so.order_id
+             FROM shipments sh
+             JOIN seller_orders so ON so.id=sh.seller_order_id
+             WHERE so.code=? AND so.store_id=?'
+        );
+        $statement->execute([$code, $store['id']]);
+        $shipment = $statement->fetch();
+
+        try {
+            if (!$shipment) throw new RuntimeException('Remessa não encontrada.');
+            $updated = (new MelhorEnvioTrackingService())->syncShipment((int) $shipment['id'], true);
+            if (($updated['status'] ?? '') === 'delivered' && $shipment['status'] !== 'delivered') {
+                (new OrderMailService())->send(
+                    (int) $shipment['order_id'],
+                    'order_delivered_' . $shipment['id'],
+                    'Seu pedido foi entregue',
+                    'A transportadora confirmou a entrega do pedido ' . $code . '.'
+                );
+            }
+            Session::flash('success', 'Rastreamento sincronizado com o Melhor Envio.');
+        } catch (Throwable $exception) {
+            Session::flash('error', $exception->getMessage());
+        }
+
+        return Response::redirect($returnTo);
     }
+
 }

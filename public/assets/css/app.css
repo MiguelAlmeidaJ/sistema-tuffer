@@ -23,6 +23,7 @@
 @import url('./seller/product-list.css');
 @import url('./seller/orders.css?v=20260806-seller-orders-redesign');
 @import url('./seller/order-fiscal.css?v=20260910-manual-nfe');
+@import url('./seller/order-detail.css?v=20260922-order-tracking');
 @import url('./admin/catalog.css');
 @import url('./admin/settings.css');
 @import url('./admin/order-shipping-replacement.css?v=20260915-admin-label-replacement');
