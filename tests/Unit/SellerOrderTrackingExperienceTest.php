@@ -48,7 +48,7 @@ final class SellerOrderTrackingExperienceTest extends TestCase
         self::assertIsString($view);
         self::assertStringContainsString('Histórico de movimentações', $view);
         self::assertStringContainsString('$trackingEvents', $view);
-        self::assertStringContainsString("return_to" value="tracking", $view);
+        self::assertStringContainsString('name="return_to" value="tracking"', $view);
         self::assertStringContainsString('Abrir rastreio oficial', $view);
         self::assertStringNotContainsString('CTE Campinas', $view);
     }
