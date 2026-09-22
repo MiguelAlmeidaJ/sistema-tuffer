@@ -62,6 +62,32 @@ final class MelhorEnvioTrackingService
                 $event = $pdo->prepare('INSERT IGNORE INTO shipment_tracking_events(shipment_id,provider_event_key,event_code,description,city,state,occurred_at,raw_payload) VALUES(?,?,?,?,?,?,?,?)');
                 $event->execute([$shipmentId, $eventKey, $rawStatus ?: $status, $this->description($status, $rawStatus), $tracking['city'] ?? null, $tracking['state'] ?? null, $occurredAt, $payload]);
             }
+            foreach ($this->movementEvents($tracking) as $movement) {
+                $movementKey = hash(
+                    'sha256',
+                    $shipmentId . '|movement|' . $movement['code'] . '|' . $movement['occurred_at'] . '|' . $movement['description']
+                );
+                $movementPayload = json_encode(
+                    $movement['raw'],
+                    JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+                );
+                $event = $pdo->prepare(
+                    'INSERT IGNORE INTO shipment_tracking_events
+                        (shipment_id,provider_event_key,event_code,description,city,state,occurred_at,raw_payload)
+                     VALUES(?,?,?,?,?,?,?,?)'
+                );
+                $event->execute([
+                    $shipmentId,
+                    $movementKey,
+                    $movement['code'] ?: null,
+                    $movement['description'],
+                    $movement['city'] ?: null,
+                    $movement['state'] ?: null,
+                    $movement['occurred_at'],
+                    $movementPayload,
+                ]);
+            }
+
             if ($status === 'delivered') {
                 $pdo->prepare("UPDATE seller_orders SET status='delivered' WHERE id=? AND status IN ('paid','processing','shipped')")->execute([$shipment['seller_order_id']]);
                 $remaining = $pdo->prepare("SELECT COUNT(*) FROM seller_orders WHERE order_id=? AND status<>'delivered'");
@@ -162,6 +188,85 @@ final class MelhorEnvioTrackingService
             'exception' => 'A transportadora informou uma ocorrência na entrega.',
             default => 'Status atualizado pelo Melhor Envio: ' . ($rawStatus ?: 'pendente') . '.',
         };
+    }
+
+    /**
+     * Normaliza históricos detalhados quando o provedor os inclui junto ao rastreamento.
+     *
+     * @param array<string,mixed> $tracking
+     * @return array<int,array{code:string,description:string,city:string,state:string,occurred_at:string,raw:array<string,mixed>}>
+     */
+    private function movementEvents(array $tracking): array
+    {
+        $candidates = [];
+        foreach (['events', 'history', 'movements', 'tracking_events'] as $key) {
+            if (isset($tracking[$key]) && is_array($tracking[$key])) {
+                $candidates = array_merge($candidates, array_is_list($tracking[$key]) ? $tracking[$key] : array_values($tracking[$key]));
+            }
+        }
+        if (isset($tracking['data']) && is_array($tracking['data'])) {
+            foreach (['events', 'history', 'movements', 'tracking_events'] as $key) {
+                if (isset($tracking['data'][$key]) && is_array($tracking['data'][$key])) {
+                    $rows = $tracking['data'][$key];
+                    $candidates = array_merge($candidates, array_is_list($rows) ? $rows : array_values($rows));
+                }
+            }
+        }
+
+        $events = [];
+        foreach ($candidates as $row) {
+            if (!is_array($row)) continue;
+
+            $code = mb_strtolower(trim((string) (
+                $row['status'] ?? $row['event'] ?? $row['code'] ?? $row['type'] ?? ''
+            )));
+            $description = trim((string) (
+                $row['description'] ?? $row['message'] ?? $row['title'] ?? $row['detail'] ?? ''
+            ));
+
+            $location = is_array($row['location'] ?? null) ? $row['location'] : [];
+            $city = trim((string) ($row['city'] ?? $row['city_name'] ?? $location['city'] ?? ''));
+            $state = strtoupper(trim((string) (
+                $row['state'] ?? $row['uf'] ?? $location['state'] ?? $location['uf'] ?? ''
+            )));
+            if (strlen($state) > 2) $state = mb_substr($state, 0, 2);
+
+            $rawDate = $row['occurred_at']
+                ?? $row['created_at']
+                ?? $row['updated_at']
+                ?? $row['datetime']
+                ?? $row['date']
+                ?? $row['timestamp']
+                ?? null;
+            if (is_numeric($rawDate)) {
+                $occurredAt = date('Y-m-d H:i:s', (int) $rawDate);
+            } else {
+                $occurredAt = $this->date($rawDate);
+            }
+            if ($occurredAt === null && is_string($row['date'] ?? null) && is_string($row['time'] ?? null)) {
+                $occurredAt = $this->date(trim($row['date'] . ' ' . $row['time']));
+            }
+
+            if ($occurredAt === null || ($code === '' && $description === '')) continue;
+            if ($description === '') {
+                $description = $this->description($this->localStatus($code), $code);
+            }
+
+            $events[] = [
+                'code' => $code,
+                'description' => mb_substr($description, 0, 500),
+                'city' => mb_substr($city, 0, 120),
+                'state' => $state,
+                'occurred_at' => $occurredAt,
+                'raw' => $row,
+            ];
+        }
+
+        usort(
+            $events,
+            static fn(array $a, array $b): int => strcmp($a['occurred_at'], $b['occurred_at'])
+        );
+        return $events;
     }
 
     private function trustedTrackingUrl(string $url): bool
