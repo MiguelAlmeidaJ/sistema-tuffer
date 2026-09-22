@@ -25,7 +25,7 @@ final class SellerOrderTrackingExperienceTest extends TestCase
         self::assertStringContainsString("/pedidos/{code}/rastreamento", $routes);
         self::assertStringContainsString('public function tracking(string $code): string', $controller);
         self::assertStringContainsString("'seller/orders/tracking'", $controller);
-        self::assertStringContainsString("'return_to' ?? ''", $controller);
+        self::assertStringContainsString("\$_POST['return_to'] ?? ''", $controller);
     }
 
     public function testOrderDetailPromotesTrackingAndKeepsOperationalActions(): void
