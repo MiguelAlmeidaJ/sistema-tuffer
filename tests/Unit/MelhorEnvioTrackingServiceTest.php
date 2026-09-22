@@ -27,6 +27,35 @@ final class MelhorEnvioTrackingServiceTest extends TestCase
         self::assertSame($expected, $method->invoke(new MelhorEnvioTrackingService(), $url));
     }
 
+    public function testNormalizesDetailedProviderMovementHistoryWhenAvailable(): void
+    {
+        $method = new ReflectionMethod(MelhorEnvioTrackingService::class, 'movementEvents');
+        $events = $method->invoke(new MelhorEnvioTrackingService(), [
+            'events' => [
+                [
+                    'status' => 'posted',
+                    'description' => 'Objeto postado na agência.',
+                    'city' => 'Marília',
+                    'state' => 'SP',
+                    'occurred_at' => '2026-09-16T20:36:00-03:00',
+                ],
+                [
+                    'event' => 'received',
+                    'message' => 'Objeto recebido na unidade.',
+                    'location' => ['city' => 'Campinas', 'state' => 'SP'],
+                    'created_at' => '2026-09-16T23:12:00-03:00',
+                ],
+            ],
+        ]);
+
+        self::assertCount(2, $events);
+        self::assertSame('posted', $events[0]['code']);
+        self::assertSame('Marília', $events[0]['city']);
+        self::assertSame('received', $events[1]['code']);
+        self::assertSame('Campinas', $events[1]['city']);
+        self::assertSame('Objeto recebido na unidade.', $events[1]['description']);
+    }
+
     /** @return array<string,array{string,string}> */
     public static function providerStatuses(): array
     {
