@@ -8,10 +8,12 @@ use App\Core\Database;
 use App\Services\Fiscal\FiscalConnectorManager;
 use App\Services\Fiscal\FiscalOrchestratorService;
 use App\Services\Fiscal\FiscalWebhookService;
+use App\Services\Mail\OrderMailService;
 use App\Services\Mail\PasswordResetMailService;
 use App\Services\Payments\PagarmeClient;
 use App\Services\Payments\PagarmeWebhookProcessor;
 use App\Services\Payments\Pagarme\PagarmeOrderService;
+use App\Services\Shipping\MelhorEnvioTrackingService;
 use RuntimeException;
 
 final class JobProcessor
@@ -29,6 +31,7 @@ final class JobProcessor
             'fiscal.review_refund'=>(new FiscalOrchestratorService())->reviewRefund((int)($payload['order_id']??0),(bool)($payload['full_refund']??false)),
             'fiscal.deliver_webhook'=>(new FiscalWebhookService())->deliver((int)($payload['delivery_id']??0)),
             'fiscal.process_connector'=>(new FiscalConnectorManager())->processRun((int)($payload['run_id']??0)),
+            'shipping.sync_tracking'=>$this->syncShipmentTracking((int)($payload['shipment_id']??0)),
             default=>throw new RuntimeException('Tipo de job não suportado.'),
         };
     }
@@ -52,6 +55,32 @@ final class JobProcessor
         $pdo=Database::connection();$stmt=$pdo->prepare("SELECT id FROM seller_orders WHERE order_id=? AND status IN ('paid','processing','shipped','delivered') ORDER BY id");$stmt->execute([$orderId]);
         $webhooks=new FiscalWebhookService($pdo);$connectors=new FiscalConnectorManager($pdo);
         foreach($stmt->fetchAll(\PDO::FETCH_COLUMN) as $sellerOrderId){$sellerOrderId=(int)$sellerOrderId;$webhooks->enqueueReady($sellerOrderId);$connectors->enqueueSellerOrder($sellerOrderId);}
+    }
+
+    private function syncShipmentTracking(int $shipmentId): void
+    {
+        if ($shipmentId < 1) throw new RuntimeException('Remessa enfileirada inválida.');
+
+        $pdo = Database::connection();
+        $statement = $pdo->prepare(
+            'SELECT sh.status,so.order_id,so.code
+             FROM shipments sh
+             JOIN seller_orders so ON so.id=sh.seller_order_id
+             WHERE sh.id=? LIMIT 1'
+        );
+        $statement->execute([$shipmentId]);
+        $before = $statement->fetch();
+        if (!is_array($before)) throw new RuntimeException('Remessa enfileirada não encontrada.');
+
+        $updated = (new MelhorEnvioTrackingService($pdo))->syncShipment($shipmentId, false);
+        if (($updated['status'] ?? '') === 'delivered' && ($before['status'] ?? '') !== 'delivered') {
+            (new OrderMailService())->send(
+                (int) $before['order_id'],
+                'order_delivered_' . $shipmentId,
+                'Seu pedido foi entregue',
+                'A transportadora confirmou a entrega do pedido ' . (string) $before['code'] . '.'
+            );
+        }
     }
 
     private function processWebhook(int $webhookId): void

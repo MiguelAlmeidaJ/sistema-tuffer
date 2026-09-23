@@ -30,6 +30,20 @@ C:\laragon\bin\php\php-8.3.30-Win32-vs16-x64\php.exe C:\laragon\www\tuffer-new\s
 
 Em produção, reinicie automaticamente o processo contínuo com Supervisor, systemd, NSSM ou serviço equivalente. Jobs falhos usam backoff exponencial, jobs travados há mais de 15 minutos são recuperados e o painel `/admin/monitoramento` mostra estados e tentativas. O monitor operacional alerta quando houver jobs falhos, travados ou atrasados.
 
+## Rastreamento automático de remessas
+
+O próprio worker da fila agenda a sincronização das remessas do Melhor Envio. Com o worker ativo, envios com etiqueta/ID externo e status pendente, postado, em trânsito ou com ocorrência são verificados automaticamente, normalmente a cada cinco minutos.
+
+A fila `shipping` faz parte da lista padrão do worker:
+
+```powershell
+C:\\laragon\\bin\\php\\php-8.3.30-Win32-vs16-x64\\php.exe C:\\laragon\\www\\tuffer-new\\scripts\\queue-worker.php --sleep=2 --max-runtime=3600
+```
+
+Não é necessário o vendedor abrir o pedido nem clicar em **Atualizar rastreamento** para que uma entrega seja reconhecida. O botão permanece apenas para uma consulta manual imediata. Quando a transportadora confirmar a entrega, o status da remessa/pedido e a notificação ao cliente são atualizados pelo job `shipping.sync_tracking`.
+
+Se o worker for executado por tarefa agendada em vez de processo contínuo, mantenha `queue-worker.php --once` rodando pelo menos uma vez por minuto.
+
 ## Pedidos com pagamento expirado
 
 Execute a cada cinco minutos para cancelar localmente pagamentos vencidos e liberar estoque e cupons reservados:

@@ -35,6 +35,7 @@
 ## Processos operacionais
 
 - [ ] Manter `scripts/queue-worker.php` supervisionado continuamente.
+- [ ] Confirmar que a fila padrão inclui `shipping` e que o worker atualiza automaticamente remessas do Melhor Envio sem ação do vendedor.
 - [ ] Agendar `scripts/expire-pending-orders.php` e `scripts/monitor-health.php` conforme o volume da operação.
 - [ ] Agendar `scripts/sync-pagarme-recipients.php` para reconciliar bloqueios e aprovações de recebedores.
 - [ ] Agendar o reconciliador Pagar.me para recuperar estados remotos e detectar divergências.
