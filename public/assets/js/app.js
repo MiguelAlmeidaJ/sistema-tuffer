@@ -175,15 +175,59 @@ quickCartModal?.querySelector('[data-quick-cart-increase]')?.addEventListener('c
 quickCartQuantity?.addEventListener('change',()=>normalizeQuickCartQuantity(quickCartQuantity.value));
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&quickCartModal&&!quickCartModal.hidden)closeQuickCart()});
 
-document.querySelector('[data-variant-select]')?.addEventListener('change',event=>{
-  const option=event.target.selectedOptions[0];
+const syncProductVariantPresentation=option=>{
+  if(!option)return;
+  const price=Number(option.dataset.price||0);
+  const regular=Number(option.dataset.regularPrice||price);
+  const discount=Number(option.dataset.discount||0);
   const stock=Number(option.dataset.stock||0);
   const quantity=document.querySelector('[data-product-quantity]');
   const button=document.querySelector('[data-add-button]');
+  const mobileButton=document.querySelector('[data-mobile-add]');
   const status=document.querySelector('[data-stock-status]');
-  if(quantity)quantity.max=String(Math.max(1,stock));
+  const currentPrice=document.querySelector('[data-price-current]');
+  const regularPrice=document.querySelector('[data-price-regular]');
+  const discountBadge=document.querySelector('[data-price-discount]');
+  const discountRow=document.querySelector('[data-price-discount-row]');
+  const installment=document.querySelector('[data-price-installment]');
+  const mobilePrice=document.querySelector('[data-mobile-product-price]');
+  const money=value=>Number(value||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  if(quantity){
+    quantity.max=String(Math.max(1,stock));
+    if(Number(quantity.value)>stock&&stock>0)quantity.value=String(stock);
+  }
   if(button)button.disabled=stock<1;
-  if(status){status.textContent=stock>0?'Em estoque · envio disponível':'Produto temporariamente sem estoque';status.className='stock-status '+(stock>0?'is-available':'is-unavailable')}
+  if(mobileButton)mobileButton.disabled=stock<1;
+  if(status){
+    status.innerHTML='<span></span>'+(stock>0?'Em estoque · envio disponível':'Produto temporariamente sem estoque');
+    status.className='stock-status '+(stock>0?'is-available':'is-unavailable');
+  }
+  if(currentPrice)currentPrice.textContent=money(price);
+  if(mobilePrice)mobilePrice.textContent=money(price);
+  if(installment)installment.textContent=`ou 6x de ${money(price/6)} sem juros`;
+  if(discountRow){
+    discountRow.hidden=discount<=0;
+    if(regularPrice)regularPrice.textContent=money(regular);
+    if(discountBadge)discountBadge.textContent=`-${discount}%`;
+  }
+};
+const productVariantSelect=document.querySelector('[data-variant-select]');
+productVariantSelect?.addEventListener('change',event=>syncProductVariantPresentation(event.target.selectedOptions[0]));
+if(productVariantSelect)syncProductVariantPresentation(productVariantSelect.selectedOptions[0]);
+
+const normalizeProductQuantity=value=>{
+  const input=document.querySelector('[data-product-quantity]');
+  if(!input)return;
+  const minimum=Math.max(1,Number(input.min||1));
+  const maximum=Math.max(minimum,Number(input.max||minimum));
+  input.value=String(Math.max(minimum,Math.min(maximum,Number(value)||minimum)));
+};
+document.querySelector('[data-product-quantity-decrease]')?.addEventListener('click',()=>normalizeProductQuantity(Number(document.querySelector('[data-product-quantity]')?.value||1)-1));
+document.querySelector('[data-product-quantity-increase]')?.addEventListener('click',()=>normalizeProductQuantity(Number(document.querySelector('[data-product-quantity]')?.value||1)+1));
+document.querySelector('[data-product-quantity]')?.addEventListener('change',event=>normalizeProductQuantity(event.target.value));
+document.querySelector('[data-mobile-add]')?.addEventListener('click',()=>{
+  const addButton=document.querySelector('[data-add-button]');
+  if(addButton&&!addButton.disabled)addButton.click();
 });
 
 document.querySelector('[data-shipping-calculator]')?.addEventListener('submit',async event=>{
