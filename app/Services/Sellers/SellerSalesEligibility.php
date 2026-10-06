@@ -31,8 +31,11 @@ final class SellerSalesEligibility
                 && (new PagarmeClient())->configured();
         }
 
+        $sellerRecipient = (string) ($seller['pagarme_recipient_id'] ?? '');
+        $platformRecipient = $this->platformRecipientId();
         $legacy = (int) ($seller['payment_enabled'] ?? 0) === 1
-            && PagarmeRecipientId::isValid((string) ($seller['pagarme_recipient_id'] ?? ''))
+            && PagarmeRecipientId::isValid($sellerRecipient)
+            && ($platformRecipient === '' || !hash_equals($platformRecipient, $sellerRecipient))
             && ($seller['payment_onboarding_status'] ?? null) === 'active';
 
         $provider = !array_key_exists('recipient_status', $seller)
