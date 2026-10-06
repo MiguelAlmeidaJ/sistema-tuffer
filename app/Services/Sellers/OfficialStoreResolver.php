@@ -21,17 +21,39 @@ final class OfficialStoreResolver
     /** @return array<string,mixed>|null */
     public function find(): ?array
     {
-        $rows = $this->pdo()->query(
-            "SELECT s.*,st.id official_store_id,st.name official_store_name,st.slug official_store_slug,st.status official_store_status
+        $sellerIds = $this->pdo()->query(
+            "SELECT DISTINCT s.id
              FROM stores st
              JOIN sellers s ON s.id=st.seller_id
              WHERE st.is_official_store=1
-             ORDER BY st.status='active' DESC,st.id"
-        )->fetchAll();
-        if (count($rows) > 1) {
-            throw new RuntimeException('Existe mais de um seller identificado como loja oficial.');
+             ORDER BY s.id"
+        )->fetchAll(PDO::FETCH_COLUMN);
+
+        if (count($sellerIds) > 1) {
+            throw new RuntimeException('As lojas oficiais estão vinculadas a mais de um vendedor.');
         }
-        return is_array($rows[0] ?? null) ? $rows[0] : null;
+        if ($sellerIds === []) {
+            return null;
+        }
+
+        $statement = $this->pdo()->prepare(
+            "SELECT s.*,st.id official_store_id,st.name official_store_name,
+                    st.slug official_store_slug,st.status official_store_status
+             FROM sellers s
+             JOIN stores st ON st.seller_id=s.id
+             WHERE s.id=? AND st.is_official_store=1
+             ORDER BY
+                (LOWER(st.slug)='tuffer-oficial') DESC,
+                (LOWER(st.name)='tuffer oficial') DESC,
+                (LOWER(st.slug) LIKE 'tuffer%') DESC,
+                (LOWER(st.name) LIKE 'tuffer%') DESC,
+                (st.status='active') DESC,
+                st.id
+             LIMIT 1"
+        );
+        $statement->execute([(int) $sellerIds[0]]);
+        $seller = $statement->fetch();
+        return is_array($seller) ? $seller : null;
     }
 
     /** @return array<string,mixed> */
