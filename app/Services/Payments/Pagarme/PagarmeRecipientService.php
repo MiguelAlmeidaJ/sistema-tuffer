@@ -31,9 +31,6 @@ final class PagarmeRecipientService
     /** @return array<string,mixed>|null */
     public function accountForSeller(int $sellerId): ?array
     {
-        if ($this->isOfficialSeller($sellerId)) {
-            return null;
-        }
         $statement = $this->pdo->prepare(
             "SELECT * FROM seller_payment_accounts WHERE seller_id=? AND provider='pagarme' AND environment=? LIMIT 1"
         );
@@ -77,9 +74,6 @@ final class PagarmeRecipientService
             $seller = $statement->fetch();
             if (!is_array($seller) || ($seller['status'] ?? null) !== 'active') {
                 throw new RuntimeException('O vendedor precisa estar aprovado pela Tuffer antes da configuração financeira.');
-            }
-            if ((int) ($seller['is_official_store'] ?? 0) === 1) {
-                throw new RuntimeException('A loja oficial usa exclusivamente o recebedor global da plataforma.');
             }
             $existing = $this->accountForSeller($sellerId);
             if (is_array($existing) && $this->validRecipientId((string) ($existing['recipient_id'] ?? ''))) {
@@ -439,12 +433,6 @@ final class PagarmeRecipientService
         return PagarmeRecipientId::isValid($recipientId);
     }
 
-    private function isOfficialSeller(int $sellerId): bool
-    {
-        $statement = $this->pdo->prepare('SELECT is_official_store FROM sellers WHERE id=? LIMIT 1');
-        $statement->execute([$sellerId]);
-        return (int) $statement->fetchColumn() === 1;
-    }
 
     private function trustedKycUrl(string $url): string
     {
