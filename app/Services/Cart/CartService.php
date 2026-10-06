@@ -7,6 +7,7 @@ namespace App\Services\Cart;
 use App\Core\Auth;
 use App\Core\Database;
 use App\Core\Session;
+use App\Services\Sellers\SellerSalesEligibility;
 use RuntimeException;
 use Throwable;
 
@@ -69,8 +70,8 @@ final class CartService
     AND s.pagarme_recipient_id IS NOT NULL)) GROUP BY pv.id,p.id,p.seller_id,p.store_id");
         $statement->execute([$variantId]);
         $variant = $statement->fetch();
-        if (!$variant) {
-            throw new RuntimeException('Produto indisponível.');
+        if (!$variant || !(new SellerSalesEligibility($pdo))->storeCanSell((int) ($variant['store_id'] ?? 0))) {
+            throw new RuntimeException('Produto indisponível para venda no momento.');
         }
         $cartId = $this->id(true);
         $existing = $pdo->prepare('SELECT quantity FROM cart_items WHERE cart_id=? AND product_variant_id=?');
@@ -124,31 +125,27 @@ final class CartService
     public function removePaymentBlockedItems(): int
     {
         $cartId = $this->id();
-        if (!$cartId) return 0;
-        $statement = Database::connection()->prepare(
-            "DELETE ci FROM cart_items ci
-             JOIN sellers s ON s.id=ci.seller_id
-             JOIN stores st ON st.id=ci.store_id
-             WHERE ci.cart_id=? AND (
-                s.status<>'active'
-                OR (
-                    st.is_official_store=0
-                    AND (s.payment_enabled<>1 OR s.payment_onboarding_status<>'active' OR s.pagarme_recipient_id IS NULL)
-                )
-                OR (
-                    st.is_official_store=1
-                    AND NOT EXISTS(
-                        SELECT 1 FROM marketplace_payment_accounts mpa
-                        WHERE mpa.provider='pagarme'
-                          AND mpa.payment_enabled=1
-                          AND mpa.recipient_status='active'
-                          AND mpa.kyc_status IN ('approved','legacy_not_required')
-                    )
-                )
-             )"
-        );
+        if (!$cartId) {
+            return 0;
+        }
+
+        $pdo = Database::connection();
+        $statement = $pdo->prepare('SELECT DISTINCT store_id FROM cart_items WHERE cart_id=?');
         $statement->execute([$cartId]);
-        return $statement->rowCount();
+        $eligibility = new SellerSalesEligibility($pdo);
+        $removed = 0;
+
+        foreach ($statement->fetchAll() as $row) {
+            $storeId = (int) ($row['store_id'] ?? 0);
+            if ($storeId > 0 && $eligibility->storeCanSell($storeId)) {
+                continue;
+            }
+            $delete = $pdo->prepare('DELETE FROM cart_items WHERE cart_id=? AND store_id=?');
+            $delete->execute([$cartId, $storeId]);
+            $removed += $delete->rowCount();
+        }
+
+        return $removed;
     }
 
     public function saveForLater(int $itemId): void
@@ -170,7 +167,17 @@ final class CartService
     AND s.payment_enabled=1
     AND s.payment_onboarding_status='active'
     AND s.pagarme_recipient_id IS NOT NULL)) GROUP BY ci.id,p.id,pv.id,st.id ORDER BY st.name,ci.created_at");
-        $statement->execute([$cartId]);return $statement->fetchAll();
+        $statement->execute([$cartId]);
+        $rows = $statement->fetchAll();
+        $eligibility = new SellerSalesEligibility(Database::connection());
+        $allowed = [];
+        return array_values(array_filter($rows, static function(array $row) use ($eligibility, &$allowed): bool {
+            $storeId = (int) ($row['store_id'] ?? 0);
+            if (!array_key_exists($storeId, $allowed)) {
+                $allowed[$storeId] = $storeId > 0 && $eligibility->storeCanSell($storeId);
+            }
+            return $allowed[$storeId];
+        }));
     }
 
     /** @return array{items:array<int,array<string,mixed>>,groups:array<int,array<string,mixed>>,count:int,subtotal:float} */
@@ -186,16 +193,14 @@ final class CartService
 
     public function count(): int
     {
-        try{$id=$this->id();if(!$id)return 0;$s=Database::connection()->prepare("SELECT COALESCE(SUM(ci.quantity),0) FROM cart_items ci JOIN products p ON p.store_id=ci.store_id AND p.seller_id=ci.seller_id JOIN product_variants pv ON pv.id=ci.product_variant_id AND pv.product_id=p.id JOIN stores st ON st.id=ci.store_id JOIN sellers se ON se.id=ci.seller_id WHERE ci.cart_id=? AND p.status='active' AND p.platform_paused=0 AND pv.status='active' AND st.status='active' AND se.status='active' AND ((st.is_official_store=1 AND EXISTS(
-    SELECT 1 FROM marketplace_payment_accounts mpa
-    WHERE mpa.provider='pagarme'
-      AND mpa.payment_enabled=1
-      AND mpa.recipient_status='active'
-      AND mpa.kyc_status IN ('approved','legacy_not_required')
-)) OR (st.is_official_store=0
-    AND se.payment_enabled=1
-    AND se.payment_onboarding_status='active'
-    AND se.pagarme_recipient_id IS NOT NULL))");$s->execute([$id]);return (int)$s->fetchColumn();}catch(Throwable){return 0;}
+        try {
+            return array_sum(array_map(
+                static fn(array $item): int => (int) ($item['quantity'] ?? 0),
+                $this->items()
+            ));
+        } catch (Throwable) {
+            return 0;
+        }
     }
 
     public function applyCoupon(string $code): void
