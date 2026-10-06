@@ -83,16 +83,6 @@ final class PagarmePlatformAccountService
                 $maskedAccount,
                 $enabled ? date('Y-m-d H:i:s') : null,
             ]);
-            $this->pdo->prepare(
-                "UPDATE sellers SET pagarme_recipient_id=?,payment_enabled=?,
-                    payment_onboarding_status=?,payment_block_reason=?
-                 WHERE is_official_store=1"
-            )->execute([
-                $recipientId,
-                $enabled ? 1 : 0,
-                $enabled ? 'active' : 'platform_pending',
-                $enabled ? null : 'Recebedor da plataforma aguardando aprovação',
-            ]);
             return $this->account() ?? [];
         } catch (Throwable $exception) {
             $this->recordFailure($recipientId, $exception);
@@ -128,10 +118,5 @@ final class PagarmePlatformAccountService
             $recipientId,
             mb_substr(strip_tags($exception->getMessage()), 0, 500),
         ]);
-        $this->pdo->prepare(
-            "UPDATE sellers SET payment_enabled=0,payment_onboarding_status='platform_pending',
-                payment_block_reason='Falha ao validar o recebedor da plataforma'
-             WHERE is_official_store=1"
-        )->execute();
     }
 }
