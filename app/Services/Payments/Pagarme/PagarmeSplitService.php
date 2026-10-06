@@ -40,17 +40,18 @@ final class PagarmeSplitService
 
         $payment = $this->payment($paymentId);
         $statement = $this->pdo->prepare(
-            "SELECT so.id seller_order_id,so.seller_id,so.products_total,so.shipping_total,
+            "SELECT so.id seller_order_id,so.seller_id,so.store_id,so.products_total,so.shipping_total,
                     so.discount_total,so.commission_rate,so.commission_total,so.seller_net_total,
-                    s.pagarme_recipient_id,s.is_official_store,
+                    s.pagarme_recipient_id,st.is_official_store,
                     COALESCE(SUM(CASE WHEN oc.funding_source='seller' THEN oc.discount_amount_cents ELSE 0 END),0) seller_discount_cents,
                     COALESCE(SUM(CASE WHEN oc.funding_source='platform' THEN oc.discount_amount_cents ELSE 0 END),0) platform_discount_cents
              FROM seller_orders so
              JOIN sellers s ON s.id=so.seller_id
+             JOIN stores st ON st.id=so.store_id
              LEFT JOIN order_coupons oc ON oc.seller_order_id=so.id
              WHERE so.order_id=?
-             GROUP BY so.id,so.seller_id,so.products_total,so.shipping_total,so.discount_total,
-                      so.commission_rate,so.commission_total,so.seller_net_total,s.pagarme_recipient_id,s.is_official_store
+             GROUP BY so.id,so.seller_id,so.store_id,so.products_total,so.shipping_total,so.discount_total,
+                      so.commission_rate,so.commission_total,so.seller_net_total,s.pagarme_recipient_id,st.is_official_store
              ORDER BY so.seller_id,so.id"
         );
         $statement->execute([$payment['order_id']]);
@@ -70,7 +71,7 @@ final class PagarmeSplitService
             if (!PagarmeRecipientId::isValid($recipientId)) {
                 throw new RuntimeException('Um vendedor não possui recebedor Pagar.me válido.');
             }
-            $key = 'seller:' . $sellerId;
+            $key = 'store:' . (int) $sellerOrder['store_id'] . ':seller:' . $sellerId;
             $participants[$key] ??= [
                 'participant_key' => $key,
                 'participant_type' => 'seller',
