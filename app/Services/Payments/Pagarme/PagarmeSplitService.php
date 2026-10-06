@@ -39,22 +39,25 @@ final class PagarmeSplitService
         }
 
         $payment = $this->payment($paymentId);
+        $environment = $this->recipientService->environment();
         $statement = $this->pdo->prepare(
             "SELECT so.id seller_order_id,so.seller_id,so.store_id,so.products_total,so.shipping_total,
                     so.discount_total,so.commission_rate,so.commission_total,so.seller_net_total,
-                    s.pagarme_recipient_id,st.is_official_store,
+                    spa.recipient_id pagarme_recipient_id,st.is_official_store,
                     COALESCE(SUM(CASE WHEN oc.funding_source='seller' THEN oc.discount_amount_cents ELSE 0 END),0) seller_discount_cents,
                     COALESCE(SUM(CASE WHEN oc.funding_source='platform' THEN oc.discount_amount_cents ELSE 0 END),0) platform_discount_cents
              FROM seller_orders so
              JOIN sellers s ON s.id=so.seller_id
              JOIN stores st ON st.id=so.store_id
+             LEFT JOIN seller_payment_accounts spa
+               ON spa.seller_id=s.id AND spa.provider='pagarme' AND spa.environment=?
              LEFT JOIN order_coupons oc ON oc.seller_order_id=so.id
              WHERE so.order_id=?
              GROUP BY so.id,so.seller_id,so.store_id,so.products_total,so.shipping_total,so.discount_total,
-                      so.commission_rate,so.commission_total,so.seller_net_total,s.pagarme_recipient_id,st.is_official_store
+                      so.commission_rate,so.commission_total,so.seller_net_total,spa.recipient_id,st.is_official_store
              ORDER BY so.seller_id,so.id"
         );
-        $statement->execute([$payment['order_id']]);
+        $statement->execute([$environment, $payment['order_id']]);
         $sellerOrders = $statement->fetchAll();
         if ($sellerOrders === []) {
             throw new RuntimeException('O pedido não possui vendedores para criar o split.');
@@ -68,8 +71,12 @@ final class PagarmeSplitService
             $recipientId = (int) ($sellerOrder['is_official_store'] ?? 0) === 1
                 ? trim((string) ($_ENV['PAGARME_PLATFORM_RECIPIENT_ID'] ?? ''))
                 : trim((string) $sellerOrder['pagarme_recipient_id']);
-            if (!PagarmeRecipientId::isValid($recipientId)) {
-                throw new RuntimeException('Um vendedor não possui recebedor Pagar.me válido.');
+            $platformRecipientId = trim((string) ($_ENV['PAGARME_PLATFORM_RECIPIENT_ID'] ?? ''));
+            if (!PagarmeRecipientId::isValid($recipientId)
+                || ((int) ($sellerOrder['is_official_store'] ?? 0) !== 1
+                    && $platformRecipientId !== ''
+                    && hash_equals($platformRecipientId, $recipientId))) {
+                throw new RuntimeException('Uma loja não oficial não possui recebedor Pagar.me próprio e válido.');
             }
             $key = 'store:' . (int) $sellerOrder['store_id'] . ':seller:' . $sellerId;
             $participants[$key] ??= [
