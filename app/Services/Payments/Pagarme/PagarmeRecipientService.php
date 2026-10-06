@@ -37,7 +37,10 @@ final class PagarmeRecipientService
         $statement->execute([$sellerId, $this->environment()]);
         $account = $statement->fetch();
         if (is_array($account)) {
-            return $account;
+            $platformRecipient = trim((string) ($_ENV['PAGARME_PLATFORM_RECIPIENT_ID'] ?? ''));
+            if ($platformRecipient === '' || !hash_equals($platformRecipient, (string) ($account['recipient_id'] ?? ''))) {
+                return $account;
+            }
         }
 
         $legacy = $this->pdo->prepare(
@@ -48,7 +51,9 @@ final class PagarmeRecipientService
         );
         $legacy->execute([$sellerId]);
         $recipientId = (string) ($legacy->fetchColumn() ?: '');
-        if (!$this->validRecipientId($recipientId)) {
+        $platformRecipient = trim((string) ($_ENV['PAGARME_PLATFORM_RECIPIENT_ID'] ?? ''));
+        if (!$this->validRecipientId($recipientId)
+            || ($platformRecipient !== '' && hash_equals($platformRecipient, $recipientId))) {
             return null;
         }
         $this->pdo->prepare(
