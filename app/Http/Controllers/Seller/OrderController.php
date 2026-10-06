@@ -32,7 +32,7 @@ final class OrderController extends Controller
         if ($search !== '') { $sql .= ' AND (so.code LIKE ? OR o.code LIKE ? OR u.name LIKE ? OR u.email LIKE ?)'; $term='%'.$search.'%'; array_push($params,$term,$term,$term,$term); }
         $sql .= ' ORDER BY so.created_at DESC LIMIT 100';
         $statement = Database::connection()->prepare($sql); $statement->execute($params);
-        $counts = Database::connection()->prepare("SELECT COUNT(*) total,SUM(status='pending_payment') pending_payment,SUM(status='paid') paid,SUM(status='processing') processing,SUM(status='shipped') shipped,SUM(status='delivered') delivered,COALESCE(SUM(seller_net_total),0) net_total FROM seller_orders WHERE store_id=?");
+        $counts = Database::connection()->prepare("SELECT COUNT(*) total,SUM(status='pending_payment') pending_payment,SUM(status='paid') paid,SUM(status='processing') processing,SUM(status='shipped') shipped,SUM(status='delivered') delivered,COALESCE(SUM(CASE WHEN status IN ('paid','processing','shipped','delivered') THEN seller_net_total ELSE 0 END),0) net_total FROM seller_orders WHERE store_id=?");
         $counts->execute([$store['id']]);
         return $this->page('seller/orders/index', 'layouts/seller', ['pageTitle'=>'Pedidos','orders'=>$statement->fetchAll(),'counts'=>$counts->fetch(),'currentStore'=>$store,'sellerStores'=>$context->stores(),'filters'=>['status'=>$status,'q'=>$search]]);
     }
