@@ -45,7 +45,7 @@ final class DashboardController extends Controller
             'chart' => $this->chart($daily->fetchAll()),
             'currentStore' => $store,
             'sellerStores' => $context->stores(),
-            'paymentEnabled' => (new SellerSalesEligibility())->sellerCanSell((int) $store['seller_id']),
+            'paymentEnabled' => (new SellerSalesEligibility())->storeCanSell((int) $store['id']),
         ]);
     }
 
