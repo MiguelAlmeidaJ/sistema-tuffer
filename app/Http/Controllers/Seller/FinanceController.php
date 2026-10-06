@@ -47,7 +47,8 @@ final class FinanceController extends Controller
         $seller = $this->sellerForStore((int) $store['seller_id']);
         $wallet = null;
         $walletWarning = null;
-        if ($seller && (int) ($seller['is_official_store'] ?? 0) !== 1) {
+        $officialStore = (int) ($store['is_official_store'] ?? 0) === 1;
+        if ($seller && !$officialStore) {
             try {
                 $wallet = (new SellerWalletService())->snapshot((int) $seller['id']);
             } catch (Throwable $exception) {
@@ -64,6 +65,7 @@ final class FinanceController extends Controller
             'wallet' => $wallet,
             'walletWarning' => $walletWarning,
             'canWithdraw' => (Auth::user()['type'] ?? null) === 'seller',
+            'officialStore' => $officialStore,
         ]);
     }
 
@@ -71,7 +73,7 @@ final class FinanceController extends Controller
     {
         $store = (new SellerStoreContext())->current();
         $seller = $this->sellerForStore((int) $store['seller_id']);
-        if (!$seller || (int) ($seller['is_official_store'] ?? 0) === 1) {
+        if (!$seller || (int) ($store['is_official_store'] ?? 0) === 1) {
             Session::flash('error', 'A carteira da loja oficial é administrada pela conta global da Tuffer.');
             return Response::redirect('/vendedor/financeiro?aba=carteira');
         }
@@ -97,7 +99,7 @@ final class FinanceController extends Controller
     private function sellerForStore(int $sellerId): ?array
     {
         $statement = Database::connection()->prepare(
-            'SELECT id,trade_name,is_official_store,payment_enabled,pagarme_recipient_id
+            'SELECT id,trade_name,payment_enabled,pagarme_recipient_id
              FROM sellers WHERE id=? LIMIT 1'
         );
         $statement->execute([$sellerId]);
