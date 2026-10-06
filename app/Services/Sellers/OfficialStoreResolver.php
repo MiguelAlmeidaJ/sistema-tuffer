@@ -22,7 +22,11 @@ final class OfficialStoreResolver
     public function find(): ?array
     {
         $rows = $this->pdo()->query(
-            'SELECT * FROM sellers WHERE is_official_store=1 ORDER BY status=\'active\' DESC,id'
+            "SELECT s.*,st.id official_store_id,st.name official_store_name,st.slug official_store_slug,st.status official_store_status
+             FROM stores st
+             JOIN sellers s ON s.id=st.seller_id
+             WHERE st.is_official_store=1
+             ORDER BY st.status='active' DESC,st.id"
         )->fetchAll();
         if (count($rows) > 1) {
             throw new RuntimeException('Existe mais de um seller identificado como loja oficial.');
@@ -34,21 +38,18 @@ final class OfficialStoreResolver
     public function active(): array
     {
         $seller = $this->find();
-        if (!is_array($seller) || ($seller['status'] ?? null) !== 'active') {
+        if (!is_array($seller)
+            || ($seller['status'] ?? null) !== 'active'
+            || ($seller['official_store_status'] ?? null) !== 'active') {
             throw new RuntimeException('A loja oficial não foi configurada ou está inativa.');
-        }
-        $statement = $this->pdo()->prepare("SELECT COUNT(*) FROM stores WHERE seller_id=? AND status='active'");
-        $statement->execute([(int) $seller['id']]);
-        if ((int) $statement->fetchColumn() < 1) {
-            throw new RuntimeException('A loja oficial não possui uma loja operacional ativa.');
         }
         return $seller;
     }
 
-    public function isOfficial(int $sellerId): bool
+    public function isOfficial(int $storeId): bool
     {
-        $statement = $this->pdo()->prepare('SELECT is_official_store FROM sellers WHERE id=?');
-        $statement->execute([$sellerId]);
+        $statement = $this->pdo()->prepare('SELECT is_official_store FROM stores WHERE id=?');
+        $statement->execute([$storeId]);
         return (int) $statement->fetchColumn() === 1;
     }
 
