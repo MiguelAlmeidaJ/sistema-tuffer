@@ -75,7 +75,7 @@ $statusLabels = [
         </div>
     </section>
 <?php else: ?>
-    <?php if (!empty($seller['is_official_store'])): ?>
+    <?php if (!empty($officialStore)): ?>
         <section class="panel">
             <div class="panel-head"><h3>Carteira da loja oficial</h3></div>
             <p>Os recebimentos desta loja usam a conta global da Tuffer. Transferências são administradas pelo financeiro da plataforma.</p>
