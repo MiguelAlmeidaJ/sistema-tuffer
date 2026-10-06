@@ -13,6 +13,7 @@ use App\Http\Controllers\Controller;
 use App\Services\Payments\Pagarme\PagarmePlatformAccountService;
 use App\Services\Payments\Pagarme\PagarmeRecipientService;
 use App\Services\Payments\PagarmeClient;
+use App\Services\Stores\SellerStoreContext;
 use Throwable;
 
 final class PaymentSettingsController extends Controller
@@ -24,7 +25,8 @@ final class PaymentSettingsController extends Controller
             http_response_code(403);
             return $this->page('errors/403', 'layouts/seller', ['pageTitle' => 'Acesso negado']);
         }
-        $officialStore = (int) ($seller['is_official_store'] ?? 0) === 1;
+        $currentStore = (new SellerStoreContext())->current();
+        $officialStore = (int) ($currentStore['is_official_store'] ?? 0) === 1;
         $service = new PagarmeRecipientService();
         $platformService = new PagarmePlatformAccountService();
         $account = $officialStore
@@ -53,7 +55,7 @@ final class PaymentSettingsController extends Controller
             'paymentConfigured' => (new PagarmeClient())->configured(),
             'syncWarning' => $syncWarning,
             'officialStore' => $officialStore,
-            'currentStore' => (new \App\Services\Stores\SellerStoreContext())->current(),
+            'currentStore' => $currentStore,
         ]);
     }
 
@@ -64,8 +66,9 @@ final class PaymentSettingsController extends Controller
             http_response_code(403);
             return Response::redirect('/vendedor');
         }
-        if ((int) ($seller['is_official_store'] ?? 0) === 1) {
-            Session::flash('error', 'A loja oficial usa o recebedor global definido pelo administrador.');
+        $currentStore = (new SellerStoreContext())->current();
+        if ((int) ($currentStore['is_official_store'] ?? 0) === 1) {
+            Session::flash('error', 'A Tuffer Oficial usa o recebedor global definido pelo administrador.');
             return Response::redirect('/vendedor/configuracoes/recebimentos');
         }
         try {
@@ -90,7 +93,8 @@ final class PaymentSettingsController extends Controller
             return Response::redirect('/vendedor');
         }
         try {
-            $officialStore = (int) ($seller['is_official_store'] ?? 0) === 1;
+            $currentStore = (new SellerStoreContext())->current();
+            $officialStore = (int) ($currentStore['is_official_store'] ?? 0) === 1;
             $account = $officialStore
                 ? $this->platformAccountForView((new PagarmePlatformAccountService())->synchronize())
                 : (new PagarmeRecipientService())->synchronizeStatus((int) $seller['id']);
@@ -114,8 +118,9 @@ final class PaymentSettingsController extends Controller
             http_response_code(403);
             return Response::redirect('/vendedor');
         }
-        if ((int) ($seller['is_official_store'] ?? 0) === 1) {
-            Session::flash('error', 'O KYC da loja oficial pertence à conta global e deve ser administrado fora do painel do vendedor.');
+        $currentStore = (new SellerStoreContext())->current();
+        if ((int) ($currentStore['is_official_store'] ?? 0) === 1) {
+            Session::flash('error', 'O KYC da Tuffer Oficial pertence à conta global e deve ser administrado fora do painel do vendedor.');
             return Response::redirect('/vendedor/configuracoes/recebimentos');
         }
         try {
