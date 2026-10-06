@@ -90,8 +90,8 @@ final class OrderPlacementService
             if ($cart['items'] === []) {
                 throw new RuntimeException('Seu carrinho está vazio.');
             }
-            (new SellerSalesEligibility($this->pdo))->assertAllCanSell(array_map(
-                static fn(array $item): int => (int) ($item['seller_id'] ?? 0),
+            (new SellerSalesEligibility($this->pdo))->assertAllStoresCanSell(array_map(
+                static fn(array $item): int => (int) ($item['store_id'] ?? 0),
                 $cart['items']
             ));
             if (!($cart['minimums_met'] ?? false)) {
