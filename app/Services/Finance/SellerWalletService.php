@@ -23,8 +23,10 @@ final class SellerWalletService
     {
         $account = $this->account($sellerId);
         $recipientId = (string) ($account['recipient_id'] ?? '');
+        $platformRecipient = trim((string) ($_ENV['PAGARME_PLATFORM_RECIPIENT_ID'] ?? ''));
 
-        if (!PagarmeRecipientId::isValid($recipientId)) {
+        if (!PagarmeRecipientId::isValid($recipientId)
+            || ($platformRecipient !== '' && hash_equals($platformRecipient, $recipientId))) {
             return [
                 'configured' => false,
                 'available_cents' => 0,
@@ -72,7 +74,9 @@ final class SellerWalletService
 
         $account = $this->account($sellerId);
         $recipientId = (string) ($account['recipient_id'] ?? '');
-        if (!PagarmeRecipientId::isValid($recipientId)) {
+        $platformRecipient = trim((string) ($_ENV['PAGARME_PLATFORM_RECIPIENT_ID'] ?? ''));
+        if (!PagarmeRecipientId::isValid($recipientId)
+            || ($platformRecipient !== '' && hash_equals($platformRecipient, $recipientId))) {
             throw new RuntimeException('O vendedor ainda não possui um recebedor Pagar.me válido.');
         }
         if ((int) ($account['enabled_for_sales'] ?? 0) !== 1) {
