@@ -31,6 +31,9 @@ final class CartController extends Controller
         $assistantService = new PurchaseAssistantService();
         $customerState = $assistantService->customerState(Auth::user());
         $purchaseAssistant = $assistantService->forCart($cart, $shipping, $customerState);
+        if (!empty(Auth::user()['id']) && (Auth::user()['type'] ?? '') === 'admin' && !empty($customerState['signed_in']) && empty($customerState['authenticated'])) {
+            $purchaseAssistant['action_url'] = '/admin';
+        }
 
         return $this->page('public/cart/index', 'layouts/public', [
             'pageTitle' => 'Carrinho',
