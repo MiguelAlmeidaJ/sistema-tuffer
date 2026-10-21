@@ -62,6 +62,48 @@ final class OrderController extends Controller
         ]);
     }
 
+    public function resendPayment(string $code): string
+    {
+        $context = new SellerStoreContext();
+        $store = $context->current();
+        $data = $this->orderDetailData($code, (int) $store['id']);
+        $back = '/vendedor/pedidos/' . rawurlencode($code);
+        if ($data === null) {
+            Session::flash('error', 'Pedido não encontrado nesta loja.');
+            return Response::redirect('/vendedor/pedidos');
+        }
+
+        $order = $data['order'];
+        if ((string) ($order['order_status'] ?? '') !== 'pending_payment') {
+            Session::flash('error', 'Este pedido não está aguardando pagamento.');
+            return Response::redirect($back);
+        }
+
+        $base = rtrim(trim((string) ($_ENV['APP_URL'] ?? getenv('APP_URL') ?: '')), '/');
+        $parts = parse_url($base);
+        if (($parts['scheme'] ?? '') !== 'https' || empty($parts['host']) || isset($parts['user']) || isset($parts['pass'])) {
+            Session::flash('error', 'Configure APP_URL com o endereço HTTPS público da loja antes de enviar o link.');
+            return Response::redirect($back);
+        }
+
+        // Link autenticado para o pedido principal: o cliente visualiza Pix ou checkout
+        // existente e pode acionar a recuperação sem duplicar cobranças.
+        $link = $base . '/minha-conta/pedidos/' . rawurlencode((string) $order['order_code']);
+        $sent = (new OrderMailService())->send(
+            (int) $order['order_id'],
+            'payment_reminder_' . date('YmdHi'),
+            'Continue o pagamento do seu pedido Tuffer',
+            'Seu pedido ' . $order['order_code'] . ' está aguardando pagamento.' . "\n\n"
+                . 'Entre na sua conta para consultar ou atualizar a cobrança com segurança: ' . $link
+                . "\n\n" . 'Se você já pagou, não faça um novo pagamento; aguarde a confirmação.'
+        );
+
+        Session::flash($sent ? 'success' : 'error', $sent
+            ? 'Lembrete de pagamento colocado na fila de e-mails da cliente.'
+            : 'Não foi possível agendar o envio do lembrete.');
+        return Response::redirect($back);
+    }
+
     public function tracking(string $code): string
     {
         $context = new SellerStoreContext();

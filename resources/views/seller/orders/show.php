@@ -81,6 +81,12 @@ $recentEvents=array_slice($trackingEvents,0,3);
             <?php if($shipment):?><a class="button button--primary" href="<?=e(url('/vendedor/pedidos/'.$order['code'].'/rastreamento'))?>">Ver rastreamento</a><?php endif;?>
             <?php if($labelReady):?><a class="button button--secondary" href="<?=e($shipment['label_url'])?>" target="_blank" rel="noopener noreferrer">Reimprimir etiqueta</a><?php endif;?>
             <?php if($trackingConfigured&&!empty($shipment['external_id'])):?><form method="post" action="<?=e(url('/vendedor/pedidos/'.$order['code'].'/sincronizar-rastreio'))?>"><?=csrf_field()?><button class="button button--secondary">Atualizar rastreamento</button></form><?php endif;?>
+            <?php if (($order['order_status'] ?? '') === 'pending_payment'): ?>
+            <form method="post" action="<?=e(url('/vendedor/pedidos/'.$order['code'].'/reenviar-pagamento'))?>" onsubmit="return confirm('Enviar um lembrete com acesso ao pagamento para o e-mail da cliente?')">
+                <?=csrf_field()?>
+                <button type="submit" class="button button--secondary">Reenviar acesso ao pagamento</button>
+            </form>
+            <?php endif; ?>
             <a class="button button--secondary" href="#fiscal">Dados da NF-e</a>
         </div>
     </section>
