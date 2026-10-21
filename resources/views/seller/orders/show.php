@@ -84,12 +84,6 @@ $recentEvents=array_slice($trackingEvents,0,3);
             <?php if($shipment):?><a class="button button--primary" href="<?=e(url('/vendedor/pedidos/'.$order['code'].'/rastreamento'))?>">Ver rastreamento</a><?php endif;?>
             <?php if($labelReady):?><a class="button button--secondary" href="<?=e($shipment['label_url'])?>" target="_blank" rel="noopener noreferrer">Reimprimir etiqueta</a><?php endif;?>
             <?php if($trackingConfigured&&!empty($shipment['external_id'])):?><form method="post" action="<?=e(url('/vendedor/pedidos/'.$order['code'].'/sincronizar-rastreio'))?>"><?=csrf_field()?><button class="button button--secondary">Atualizar rastreamento</button></form><?php endif;?>
-            <?php if (($order['order_status'] ?? '') === 'pending_payment'): ?>
-            <form method="post" action="<?=e(url('/vendedor/pedidos/'.$order['code'].'/reenviar-pagamento'))?>" onsubmit="return confirm('Enviar um lembrete com acesso ao pagamento para o e-mail da cliente?')">
-                <?=csrf_field()?>
-                <button type="submit" class="button button--secondary">Reenviar acesso ao pagamento</button>
-            </form>
-            <?php endif; ?>
             <a class="button button--secondary" href="#fiscal">Dados da NF-e</a>
         </div>
     </section>
@@ -194,6 +188,7 @@ $recentEvents=array_slice($trackingEvents,0,3);
 </div>
 <div class="order-copy-toast" data-copy-toast role="status" aria-live="polite">Copiado</div>
 <script>
+document.querySelectorAll('a[href="#fiscal"],a[href="#logistica"]').forEach(function(link){link.addEventListener('click',function(){const target=document.querySelector(link.getAttribute('href'));if(target&&target.tagName==='DETAILS')target.open=true;});});
 document.addEventListener('click',function(event){const button=event.target.closest('[data-copy]');if(!button)return;const text=button.getAttribute('data-copy')||'';const done=function(){const toast=document.querySelector('[data-copy-toast]');if(!toast)return;toast.textContent='Copiado para a área de transferência';toast.classList.add('is-visible');window.setTimeout(function(){toast.classList.remove('is-visible');},1800);};if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(text).then(done).catch(function(){});return;}const area=document.createElement('textarea');area.value=text;area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();try{document.execCommand('copy');done();}catch(e){}area.remove();});
 </script>
 <?php endif;?>
