@@ -185,6 +185,9 @@ final class PurchaseAssistantService
     ): array {
         $deliveryReady = $this->deliveryReady($cart, $shipping);
 
+        if (!$customer['authenticated'] && !empty($customer['signed_in'])) {
+            return $this->build('checkout', 'attention', 'Você já está conectado à Tuffer', 'Esta sessão é de vendedor ou administração. Para comprar, utilize uma conta de cliente.', 'Ir para meu painel', '/vendedor', $customer, false, false, 'account');
+        }
         if (!$customer['authenticated']) {
             return $this->build('checkout', 'info', 'Vamos continuar de onde você parou', 'Entre ou crie sua conta. Seu carrinho continua salvo e você volta direto para esta etapa.', 'Entrar ou criar conta', '/entrar?redirect=/checkout', $customer, false, false, 'account');
         }
