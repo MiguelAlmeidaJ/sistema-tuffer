@@ -3,7 +3,7 @@ $shippingTotal=(float)($shipping['shipping_total']??0);
 $grandTotal=max(0,(float)$cart['total']+$shippingTotal);
 ?>
 <?php if (!empty($removedPaymentBlocked)): ?><div class="container"><div class="settings-note"><span>!</span><p>Alguns itens ficaram indisponíveis para pagamento e foram retirados. Revise o carrinho abaixo.</p></div></div><?php endif; ?>
-<nav class="commerce-breadcrumb container" aria-label="Navegação estrutural"><a href="<?=e(url('/'))?>">Início</a><span>›</span><strong>Carrinho</strong></nav>
+<?php $purchaseFlowStep='cart'; require dirname(__DIR__,2).'/components/public/purchase-flow-progress.php'; ?>
 <section class="cart-heading cart-heading--compact container"><div class="cart-heading__context"><strong><?=($cart['type']??'retail')==='wholesale'?'Compra no atacado':'Minha sacola'?></strong><span aria-hidden="true">·</span><span><?=$cart['count']?> <?=$cart['count']===1?'produto':'produtos'?></span></div><div class="cart-mode-actions"><a href="<?=e(url('/produtos'))?>">← Continuar comprando</a><?php if(($cart['type']??'retail')==='wholesale'):?><form method="post" action="<?=e(url('/carrinho/modo'))?>"><?=csrf_field()?><input type="hidden" name="mode" value="retail"><button>Voltar ao modo varejo</button></form><?php endif;?></div></section>
 <?php if(($cart['type']??'retail')==='wholesale'):?><div class="wholesale-cart-notice container"><strong>Você está comprando no atacado</strong><span>O carrinho de varejo permanece separado.</span></div><?php endif;?>
 <div class="container"><?php require dirname(__DIR__,2).'/components/public/purchase-assistant.php'; ?></div>
