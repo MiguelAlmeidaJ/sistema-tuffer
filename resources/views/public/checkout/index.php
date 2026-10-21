@@ -6,11 +6,19 @@ $assistantService=new \App\Services\Checkout\PurchaseAssistantService();
 $customerState=$assistantService->customerState($authUser??null,$addresses!==[]);
 $profileComplete=$customerState['profile_complete'];
 $purchaseAssistant=$assistantService->forCheckout($cart,$shipping,$customerState,(bool)$paymentConfigured,(bool)$shippingConfigured);
+if (!empty($customerState['signed_in']) && empty($customerState['authenticated'])) {
+    $role=(string)($authUser['type']??'');
+    $purchaseAssistant['title']='Você já está conectado à Tuffer';
+    $purchaseAssistant['message']='Esta sessão é de vendedor ou administração. Para comprar, o checkout atualmente exige uma conta de cliente.';
+    $purchaseAssistant['action_label']='Ir para meu painel';
+    $purchaseAssistant['action_url']=$role==='admin'?'/admin':'/vendedor';
+    $purchaseAssistant['tone']='attention';
+}
 $cardConfigured=(bool)($cardConfigured??false);
 ?>
-<div class="checkout-progress"><div class="container"><span class="is-complete"><i>✓</i><b>Carrinho</b></span><em></em><span class="is-current"><i>2</i><b>Entrega e pagamento</b></span><em></em><span><i>3</i><b>Confirmação</b></span></div></div>
+<?php $purchaseFlowStep='checkout'; require dirname(__DIR__,2).'/components/public/purchase-flow-progress.php'; ?>
 <nav class="commerce-breadcrumb checkout-container container" aria-label="Navegação estrutural"><a href="<?=e(url('/carrinho'))?>">← Voltar ao carrinho</a></nav>
-<section class="checkout-heading checkout-container container"><span class="eyebrow">FINALIZAR COMPRA</span><h1>Checkout seguro</h1><p>Conclua uma etapa por vez e revise tudo antes do pagamento.</p></section>
+<section class="checkout-heading checkout-heading--compact checkout-container container"><strong>Minha sacola</strong><span aria-hidden="true">·</span><span>Entrega e pagamento</span></section>
 <div class="checkout-container container"><?php require dirname(__DIR__,2).'/components/public/purchase-assistant.php'; ?></div>
 <form class="checkout-layout checkout-container container" action="<?=e(url('/checkout/finalizar'))?>" method="post" data-checkout data-checkout-card data-quotes-url="<?=e(url('/checkout/cotacoes'))?>" data-payment-configured="<?=$paymentConfigured?'1':'0'?>" data-shipping-configured="<?=$shippingConfigured?'1':'0'?>" data-customer="<?=$isCustomer?'1':'0'?>" data-profile-complete="<?=$profileComplete?'1':'0'?>" data-card-configured="<?=$cardConfigured?'1':'0'?>" data-pagarme-public-key="<?=e((string)($pagarmePublicKey??''))?>" data-card-token-url="<?=e((string)($cardTokenUrl??''))?>"><?=csrf_field()?>
 <input type="hidden" name="card_token" value="">
