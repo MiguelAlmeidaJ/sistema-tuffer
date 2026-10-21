@@ -233,3 +233,11 @@
         grid-template-columns: 1fr 1fr;
     }
 }
+
+/* Carrinho: cabeçalho compacto e assistente integrado à compra. */
+.cart-heading--compact{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-top:10px;margin-bottom:18px;padding-block:8px}
+.cart-heading--compact .cart-heading__context{display:flex;align-items:center;flex-wrap:wrap;gap:10px;color:#6b6662;font-size:13px}
+.cart-heading--compact .cart-heading__context strong{font-size:14px;color:#191919}
+.cart-heading--compact .cart-mode-actions{margin-left:auto}
+.cart-heading--compact + .container .purchase-assistant{border-radius:18px;box-shadow:0 12px 35px rgba(22,19,16,.05);border:1px solid #e9e5df}
+@media(max-width:700px){.cart-heading--compact{align-items:flex-start;flex-direction:column;margin-bottom:12px}.cart-heading--compact .cart-mode-actions{margin-left:0}}
