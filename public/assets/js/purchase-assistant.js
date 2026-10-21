@@ -47,6 +47,7 @@ document.querySelectorAll('[data-purchase-assistant][data-purchase-assistant-con
   };
   const sync=()=>{
     const customer=form.dataset.customer==='1';
+    const staffSession=assistant.dataset.signedIn==='1'&&!customer;
     const profileComplete=form.dataset.profileComplete==='1';
     const hasAddress=!!form.querySelector('[name="address_id"]:checked');
     const delivery=shippingComplete();
@@ -58,6 +59,7 @@ document.querySelectorAll('[data-purchase-assistant][data-purchase-assistant-con
     setSteps({account:customer,profile:customer&&profileComplete,address:hasAddress,shipping:delivery,payment:paymentDone});
     lockForProfile(customer&&!profileComplete);
 
+    if(staffSession){setCopy('attention','Você já está conectado à Tuffer','Esta sessão não é de cliente. Para concluir compras, utilize uma conta de cliente.','Ir para meu painel',assistant.dataset.staffPanelUrl);return}
     if(!customer){setCopy('info','Vamos continuar de onde você parou','Entre ou crie sua conta. Seu carrinho continua salvo e você volta direto para esta etapa.','Entrar ou criar conta',assistant.dataset.loginUrl);return}
     if(!profileComplete){setCopy('attention','Só faltam seus dados de compra','Complete CPF/CNPJ e telefone com DDD. Depois de salvar, você volta automaticamente para o checkout.','Completar meus dados',assistant.dataset.profileUrl);return}
     if(!hasAddress){setCopy('attention','Agora escolha onde receber','Cadastre seu endereço. Ao informar o CEP, preenchemos automaticamente os dados disponíveis.','Adicionar endereço',assistant.dataset.addressUrl);return}
