@@ -2,6 +2,9 @@
 <section class="panel"><div class="empty-state"><h3>Pedido não encontrado</h3><p>Este pedido não pertence à loja selecionada.</p></div></section>
 <?php else:?>
 <?php
+$paymentAccessUrl=absolute_url('/minha-conta/pedidos/'.rawurlencode((string)$order['order_code']));
+$paymentShareText='Olá! Para continuar o pagamento do seu pedido '.(string)$order['order_code'].', acesse sua conta Tuffer pelo link: '.$paymentAccessUrl;
+$isPendingPayment=(string)($order['order_status']??'')==='pending_payment';
 $fiscalMode=(string)($fiscalProfile['issuance_mode']??'manual');
 $fiscalEnabled=!empty($fiscalProfile['enabled']);
 $fiscalEligible=in_array((string)$order['status'],['paid','processing','shipped','delivered'],true);
@@ -81,16 +84,29 @@ $recentEvents=array_slice($trackingEvents,0,3);
             <?php if($shipment):?><a class="button button--primary" href="<?=e(url('/vendedor/pedidos/'.$order['code'].'/rastreamento'))?>">Ver rastreamento</a><?php endif;?>
             <?php if($labelReady):?><a class="button button--secondary" href="<?=e($shipment['label_url'])?>" target="_blank" rel="noopener noreferrer">Reimprimir etiqueta</a><?php endif;?>
             <?php if($trackingConfigured&&!empty($shipment['external_id'])):?><form method="post" action="<?=e(url('/vendedor/pedidos/'.$order['code'].'/sincronizar-rastreio'))?>"><?=csrf_field()?><button class="button button--secondary">Atualizar rastreamento</button></form><?php endif;?>
-            <?php if (($order['order_status'] ?? '') === 'pending_payment'): ?>
-            <form method="post" action="<?=e(url('/vendedor/pedidos/'.$order['code'].'/reenviar-pagamento'))?>" onsubmit="return confirm('Enviar um lembrete com acesso ao pagamento para o e-mail da cliente?')">
-                <?=csrf_field()?>
-                <button type="submit" class="button button--secondary">Reenviar acesso ao pagamento</button>
-            </form>
-            <?php endif; ?>
             <a class="button button--secondary" href="#fiscal">Dados da NF-e</a>
         </div>
     </section>
 
+    <?php if($isPendingPayment): ?>
+    <section class="panel seller-order-payment-callout" aria-labelledby="payment-action-title">
+        <div class="seller-order-payment-callout__copy">
+            <span class="seller-order-payment-callout__eyebrow">PRÓXIMA AÇÃO · PAGAMENTO PENDENTE</span>
+            <h3 id="payment-action-title">Ajude a cliente a concluir o pagamento</h3>
+            <p>Compartilhe o acesso seguro ao pedido. A cliente entrará na própria conta para consultar o Pix ou continuar o pagamento disponível.</p>
+            <small>Este é o link de acesso ao pedido, não uma nova cobrança. Se o pagamento não foi gerado, será necessário recuperá-lo.</small>
+        </div>
+        <div class="seller-order-payment-callout__actions">
+            <button type="button" class="button button--primary" data-copy="<?=e($paymentAccessUrl)?>">Copiar link de pagamento</button>
+            <a class="button button--secondary" href="<?=e('https://wa.me/?text='.rawurlencode($paymentShareText))?>" target="_blank" rel="noopener noreferrer">Compartilhar no WhatsApp ↗</a>
+            <form method="post" action="<?=e(url('/vendedor/pedidos/'.$order['code'].'/reenviar-pagamento'))?>" onsubmit="return confirm('Enviar um lembrete com acesso ao pagamento por e-mail?')">
+                <?=csrf_field()?>
+                <button type="submit" class="seller-order-link-button">Enviar por e-mail</button>
+            </form>
+        </div>
+    </section>
+    <?php endif; ?>
+    <details class="seller-order-disclosure"><summary><span><strong>Etapas de entrega</strong><small>Acompanhe preparação, postagem e entrega</small></span><span aria-hidden="true">⌄</span></summary>
     <section class="panel seller-order-progress">
         <div class="seller-order-section-title"><span>STATUS DO PEDIDO</span><h3>Da aprovação à entrega</h3></div>
         <div class="seller-order-progress__track">
@@ -102,6 +118,7 @@ $recentEvents=array_slice($trackingEvents,0,3);
         </div>
     </section>
 
+    </details>
     <div class="seller-order-summary-grid">
         <article class="panel seller-order-summary-card"><span>CLIENTE</span><h3><?=e($order['customer_name'])?></h3><p><?=e((string)($order['customer_document']?:'Documento não informado'))?><br><?=e($order['customer_email'])?><br><?=e($order['customer_phone']?:'Telefone não informado')?></p><button type="button" class="seller-order-link-button" data-copy="<?=e($customerCopy)?>">Copiar dados</button></article>
         <article class="panel seller-order-summary-card"><span>ENDEREÇO DE ENTREGA</span><?php if($address):?><h3><?=e($address['city'].' / '.$address['state'])?></h3><p><?=e($address['street'].', '.$address['number'])?><br><?=e($address['neighborhood'])?><br>CEP <?=e($address['postal_code'])?></p><button type="button" class="seller-order-link-button" data-copy="<?=e($addressCopy)?>">Copiar endereço</button><?php else:?><h3>Não informado</h3><p>O pedido não possui endereço salvo.</p><?php endif;?></article>
@@ -109,7 +126,8 @@ $recentEvents=array_slice($trackingEvents,0,3);
         <article class="panel seller-order-summary-card"><span>NF-e</span><div class="seller-order-summary-card__badge <?= $fiscalAuthorized?'is-success':'' ?>"><?=e($fiscalStatusLabel)?></div><?php if($fiscalDocument):?><h3>Nº <?=e((string)$fiscalDocument['number'])?> · série <?=e((string)$fiscalDocument['series'])?></h3><p class="seller-order-break">Chave <?=e((string)$fiscalDocument['access_key'])?></p><button type="button" class="seller-order-link-button" data-copy="<?=e((string)$fiscalDocument['access_key'])?>">Copiar chave</button><?php else:?><h3>Documento pendente</h3><p>Use a área fiscal abaixo para concluir esta etapa.</p><a class="seller-order-link-button" href="#fiscal">Ir para dados fiscais</a><?php endif;?></article>
     </div>
 
-    <section class="panel seller-order-fiscal seller-order-fiscal--refined" id="fiscal">
+    <details class="seller-order-disclosure" id="fiscal"><summary><span><strong>Dados da nota fiscal</strong><small>Cliente, endereço e informações para emissão</small></span><span aria-hidden="true">⌄</span></summary>
+    <section class="panel seller-order-fiscal seller-order-fiscal--refined">
         <div class="seller-order-fiscal__head">
             <div><small>EMISSÃO FISCAL</small><h3>Dados para emissão da NF-e</h3><p>Informações deste subpedido prontas para copiar para o Tiny, FFAdmin ou outro emissor da loja.</p></div>
             <span class="seller-order-fiscal__status seller-order-fiscal__status--<?=e($fiscalStatus)?>"><?=e($fiscalStatusLabel)?></span>
@@ -136,12 +154,14 @@ $recentEvents=array_slice($trackingEvents,0,3);
         </div>
     </section>
 
+    </details>
     <section class="panel seller-order-items">
         <div class="seller-order-section-head"><div><span>ITENS DA LOJA</span><h3>Produtos deste pedido</h3></div><strong><?=count($items)?> <?=count($items)===1?'item':'itens'?></strong></div>
         <div class="seller-order-items__table"><table><thead><tr><th>Produto</th><th>SKU</th><th>Qtd.</th><th>Unitário</th><th>Subtotal</th></tr></thead><tbody><?php foreach($items as $item):?><tr><td><div class="seller-order-product"><?php if(!empty($item['product_image'])):?><img src="<?=e($item['product_image'])?>" alt=""><?php else:?><span>□</span><?php endif;?><strong><?=e($item['product_name'])?></strong></div></td><td><?=e((string)($item['sku']?:'—'))?></td><td><?=(int)$item['quantity']?></td><td><?=$money((float)$item['unit_price'])?></td><td><strong><?=$money((float)$item['total'])?></strong></td></tr><?php endforeach;?></tbody></table></div>
     </section>
 
-    <section class="panel seller-order-logistics" id="logistica">
+    <details class="seller-order-disclosure" id="logistica"><summary><span><strong>Logística e rastreamento</strong><small>Transportadora, etiqueta e movimentações</small></span><span aria-hidden="true">⌄</span></summary>
+    <section class="panel seller-order-logistics">
         <div class="seller-order-section-head"><div><span>LOGÍSTICA</span><h3>Despacho, etiqueta e rastreamento</h3></div><?php if($shipment):?><a class="button button--secondary" href="<?=e(url('/vendedor/pedidos/'.$order['code'].'/rastreamento'))?>">Ver rastreamento completo →</a><?php endif;?></div>
         <?php if($shipment):?>
             <div class="seller-order-logistics__grid">
@@ -158,13 +178,17 @@ $recentEvents=array_slice($trackingEvents,0,3);
         <?php else:?><div class="seller-order-empty-logistics">Não há remessa vinculada a este pedido.</div><?php endif;?>
     </section>
 
+    </details>
+    <details class="seller-order-disclosure"><summary><span><strong>Financeiro e atalhos operacionais</strong><small>Comissão, líquido e outras ações da venda</small></span><span aria-hidden="true">⌄</span></summary>
     <div class="seller-order-bottom-grid">
         <section class="panel seller-order-finance"><div class="seller-order-section-title"><span>FINANCEIRO DA LOJA</span><h3>Quanto esta venda gera para você</h3></div><dl><div><dt>Produtos</dt><dd><?=$money((float)$order['products_total'])?></dd></div><div><dt>Frete</dt><dd><?=$money((float)$order['shipping_total'])?></dd></div><div><dt>Desconto</dt><dd><?=$money((float)$order['discount_total'])?></dd></div><div><dt>Comissão</dt><dd>- <?=$money((float)$order['commission_total'])?></dd></div><div class="is-total"><dt>Líquido da loja</dt><dd><?=$money((float)$order['seller_net_total'])?></dd></div></dl></section>
         <section class="panel seller-order-actions-card"><div class="seller-order-section-title"><span>AÇÕES DO PEDIDO</span><h3>Atalhos operacionais</h3></div><?php if($order['status']==='paid'):?><form method="post" action="<?=e(url('/vendedor/pedidos/'.$order['code'].'/preparar'))?>"><?=csrf_field()?><button class="seller-order-action-row"><strong>Iniciar preparação</strong><span>Confirme que a separação dos itens começou.</span></button></form><?php endif;?><?php if($shipment):?><a class="seller-order-action-row" href="<?=e(url('/vendedor/pedidos/'.$order['code'].'/rastreamento'))?>"><strong>Rastreamento completo</strong><span>Veja o histórico detalhado da transportadora.</span></a><?php endif;?><a class="seller-order-action-row" href="#fiscal"><strong>Dados da NF-e</strong><span>Confira ou registre o documento fiscal.</span></a></section>
     </div>
+</details>
 </div>
 <div class="order-copy-toast" data-copy-toast role="status" aria-live="polite">Copiado</div>
 <script>
+document.querySelectorAll('a[href="#fiscal"],a[href="#logistica"]').forEach(function(link){link.addEventListener('click',function(){const target=document.querySelector(link.getAttribute('href'));if(target&&target.tagName==='DETAILS')target.open=true;});});
 document.addEventListener('click',function(event){const button=event.target.closest('[data-copy]');if(!button)return;const text=button.getAttribute('data-copy')||'';const done=function(){const toast=document.querySelector('[data-copy-toast]');if(!toast)return;toast.textContent='Copiado para a área de transferência';toast.classList.add('is-visible');window.setTimeout(function(){toast.classList.remove('is-visible');},1800);};if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(text).then(done).catch(function(){});return;}const area=document.createElement('textarea');area.value=text;area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();try{document.execCommand('copy');done();}catch(e){}area.remove();});
 </script>
 <?php endif;?>
