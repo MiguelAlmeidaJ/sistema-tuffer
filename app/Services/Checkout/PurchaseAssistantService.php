@@ -15,7 +15,7 @@ final class PurchaseAssistantService
     {
         $isCustomer = ($user['type'] ?? null) === 'customer' && !empty($user['id']);
         if (!$isCustomer) {
-            return ['authenticated' => false, 'profile_complete' => false, 'has_address' => false];
+            return ['authenticated' => false, 'profile_complete' => false, 'has_address' => false, 'signed_in' => !empty($user['id'])];
         }
 
         $pdo = Database::connection();
@@ -37,6 +37,7 @@ final class PurchaseAssistantService
             'authenticated' => true,
             'profile_complete' => $profileComplete,
             'has_address' => (bool) $hasAddress,
+            'signed_in' => true,
         ];
     }
 
@@ -74,6 +75,21 @@ final class PurchaseAssistantService
                 'Uma das lojas ainda não atingiu o mínimo da compra. Ajuste as quantidades indicadas e eu libero o próximo passo.',
                 'Ver itens para ajustar',
                 '#cart-stores',
+                $customer,
+                $deliveryReady,
+                false,
+                'account'
+            );
+        }
+
+        if (!$customer['authenticated'] && !empty($customer['signed_in'])) {
+            return $this->build(
+                'cart',
+                'attention',
+                'Você já está conectado à Tuffer',
+                'Esta sessão é de vendedor ou administração. Para finalizar compras, o checkout atualmente exige uma conta de cliente.',
+                'Ir para minha conta',
+                '/vendedor',
                 $customer,
                 $deliveryReady,
                 false,
