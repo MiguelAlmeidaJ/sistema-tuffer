@@ -241,3 +241,12 @@
 .cart-heading--compact .cart-mode-actions{margin-left:auto}
 .cart-heading--compact + .container .purchase-assistant{border-radius:18px;box-shadow:0 12px 35px rgba(22,19,16,.05);border:1px solid #e9e5df}
 @media(max-width:700px){.cart-heading--compact{align-items:flex-start;flex-direction:column;margin-bottom:12px}.cart-heading--compact .cart-mode-actions{margin-left:0}}
+
+/* Fluxo consistente: carrinho, checkout e confirmação. */
+.purchase-flow-progress{margin-bottom:22px}
+.purchase-flow-progress a{color:inherit;text-decoration:none;font-weight:inherit}
+.purchase-flow-progress a:hover{text-decoration:underline}
+.checkout-heading--compact{display:flex;align-items:center;gap:10px;margin-top:4px;margin-bottom:16px;padding:4px 0;color:#6b6662;font-size:13px}
+.checkout-heading--compact strong{font-size:14px;color:#171717}
+.checkout-heading--compact + .container .purchase-assistant{border:1px solid #e9e5df;border-radius:18px;box-shadow:0 12px 35px rgba(22,19,16,.05)}
+@media(max-width:700px){.purchase-flow-progress{margin-bottom:14px}.checkout-heading--compact{flex-wrap:wrap}}
