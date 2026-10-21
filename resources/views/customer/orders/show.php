@@ -2,6 +2,10 @@
 <section class="panel"><?php $emptyTitle='Pedido não encontrado'; $emptyText='Verifique o código e tente novamente.'; require dirname(__DIR__,2).'/components/dashboard/empty-state.php'; ?></section>
 <?php else: ?>
 <?php
+$purchaseFlowStep='confirmation';
+?>
+<?php require dirname(__DIR__,2).'/components/public/purchase-flow-progress.php'; ?>
+<?php
 $isCardPayment = ($payment['method'] ?? '') === 'card';
 $paymentStatus = (string) ($payment['status'] ?? '');
 $displayOrderStatus = $order['status'];

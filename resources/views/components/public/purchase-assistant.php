@@ -7,6 +7,8 @@ $actionHref = str_starts_with($actionUrl, '#') ? $actionUrl : url($actionUrl);
 <section class="purchase-assistant purchase-assistant--<?= e((string) ($assistant['tone'] ?? 'info')) ?>"
          data-purchase-assistant
          data-purchase-assistant-context="<?= e((string) ($assistant['context'] ?? 'cart')) ?>"
+         data-signed-in="<?= !empty($authUser['id']) ? '1' : '0' ?>"
+         data-staff-panel-url="<?=e(url(($authUser['type']??'')==='admin'?'/admin':'/vendedor'))?>"
          data-login-url="<?= e(url('/entrar?redirect=/checkout')) ?>"
          data-profile-url="<?= e(url('/minha-conta/perfil?return=/checkout')) ?>"
          data-address-url="<?= e(url('/minha-conta/enderecos/novo?return=/checkout')) ?>"
