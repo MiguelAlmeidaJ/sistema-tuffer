@@ -12,6 +12,7 @@ use App\Core\Session;
 use App\Http\Controllers\Controller;
 use App\Services\Finance\MarketplaceFinancialLedgerService;
 use App\Services\Orders\OrderCouponService;
+use App\Services\Payments\ManualPaymentApprovalService;
 use App\Services\Orders\OrderInventoryService;
 use App\Services\Payments\Pagarme\PagarmeOrderReconciliationService;
 use App\Services\Payments\Pagarme\PagarmePixRefundService;
@@ -102,7 +103,40 @@ final class OrderController extends Controller
         $order = $statement->fetch();
         if (!$order) {
             http_response_code(404);
-            return $this->page('admin/orders/show', 'layouts/admin', [
+            $manualApprovalStmt = $pdo->prepare(
+            "SELECT p.id,p.method,p.provider,p.integration_type,p.status,p.amount_cents,
+                    p.external_order_id,p.external_charge_id,p.external_checkout_id,p.checkout_url,p.pix_qr_code,
+                    aj.status job_status,aj.attempts,aj.last_error
+             FROM payments p
+             LEFT JOIN async_jobs aj ON aj.unique_key=CONCAT('pagarme-payment-link:',p.id)
+             WHERE p.order_id=? ORDER BY p.id DESC"
+        );
+        $manualApprovalStmt->execute([(int) $order['id']]);
+        $manualPayments = $manualApprovalStmt->fetchAll();
+        $candidate = count($manualPayments) === 1 ? $manualPayments[0] : null;
+        $manualApprovalEligible = $order['status'] === 'pending_payment'
+            && is_array($candidate)
+            && $candidate['provider'] === 'pagarme'
+            && $candidate['integration_type'] === 'payment_link'
+            && $candidate['method'] === 'pix'
+            && $candidate['status'] === 'pending'
+            && (int) $candidate['amount_cents'] === (int) round((float) $order['grand_total'] * 100)
+            && (int) $candidate['attempts'] > 0
+            && in_array($candidate['job_status'], ['pending', 'failed'], true)
+            && stripos((string) ($candidate['last_error'] ?? ''), 'The type field is required') !== false;
+        foreach (['external_order_id','external_charge_id','external_checkout_id','checkout_url','pix_qr_code'] as $field) {
+            if (trim((string) ($candidate[$field] ?? '')) !== '') {
+                $manualApprovalEligible = false;
+            }
+        }
+        $manualApprovalAudit = $pdo->prepare(
+            "SELECT ma.*,u.name approved_by_name FROM manual_payment_approvals ma
+             JOIN users u ON u.id=ma.approved_by WHERE ma.order_id=? LIMIT 1"
+        );
+        $manualApprovalAudit->execute([(int) $order['id']]);
+        $manualApproval = $manualApprovalAudit->fetch() ?: null;
+
+        return $this->page('admin/orders/show', 'layouts/admin', [
                 'pageTitle' => 'Pedido não encontrado',
                 'order' => null,
             ]);
@@ -193,10 +227,37 @@ final class OrderController extends Controller
             'payments' => $payment->fetchAll(),
             'history' => $history->fetchAll(),
             'address' => $address->fetch() ?: null,
+            'manualApprovalEligible' => $manualApprovalEligible,
+            'manualApproval' => $manualApproval,
             'trackingConfigured' => (new MelhorEnvioTrackingService())->configured(),
             'labelReplacementConfigured' => $replacementConfigured,
             'replaceShipmentId' => $replaceShipmentId,
         ]);
+    }
+
+    public function approveManualPayment(string $code): string
+    {
+        $reference = trim((string) ($_POST['external_reference'] ?? ''));
+        $reason = trim((string) ($_POST['reason'] ?? ''));
+        $confirmed = ($_POST['received_confirmed'] ?? '') === '1';
+        try {
+            if (!$confirmed) {
+                throw new RuntimeException('Confirme o recebimento integral em extrato antes de aprovar.');
+            }
+            (new ManualPaymentApprovalService(Database::connection()))->approve(
+                $code,
+                (int) Auth::id(),
+                $reference,
+                $reason
+            );
+            Session::flash('success', 'Recebimento externo registrado. Pedido liberado com auditoria manual.');
+        } catch (RuntimeException $exception) {
+            Session::flash('error', $exception->getMessage());
+        } catch (Throwable $exception) {
+            Logger::exception($exception, ['order_code' => $code], 'manual_payment_approval');
+            Session::flash('error', 'Não foi possível aprovar o recebimento. Confira a migração e os registros do pedido.');
+        }
+        return Response::redirect('/admin/pedidos/' . rawurlencode($code));
     }
 
     public function cancel(string $code): string

@@ -46,6 +46,7 @@ $router->group(['prefix' => '/admin', 'middleware' => ['auth', 'role:admin']], s
     $router->post('/monitoramento/jobs/{id}/tentar-novamente', [MonitoringController::class, 'retryJob'], ['csrf']);
     $router->get('/pedidos/{code}', [OrderController::class, 'show']);
     $router->post('/pedidos/{code}/cancelar', [OrderController::class, 'cancel'], ['csrf']);
+    $router->post('/pedidos/{code}/aprovar-manualmente', [OrderController::class, 'approveManualPayment'], ['csrf']);
     $router->post('/pedidos/{code}/remessas/{shipmentId}/sincronizar', [OrderController::class, 'sync'], ['csrf']);
     $router->post('/pedidos/{code}/remessas/{shipmentId}/trocar-transportadora', [OrderController::class, 'replaceShipment'], ['csrf']);
     $router->post('/pedidos/{code}/pagamentos/{paymentId}/estornar-pix', [OrderController::class, 'refundPix'], ['csrf']);
