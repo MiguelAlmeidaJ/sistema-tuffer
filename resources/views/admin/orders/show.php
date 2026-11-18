@@ -4,25 +4,23 @@
 
 <?php if (!empty($manualApprovalEligible)): ?>
 <section class="panel" style="margin-bottom:1.25rem;border:1px solid #d6b680">
-    <div class="panel-head"><div><small>EXCEÇÃO DE PAGAMENTO</small><h3>Aprovação manual de recebimento externo</h3></div></div>
-    <p>Este Pix falhou na criação do link da Pagar.me. <strong>Isso não prova pagamento.</strong> Aprove apenas após conferir no extrato da conta o recebimento integral de <strong><?=$money((float)$order['grand_total'])?></strong>. Nenhuma transferência ou split será feito automaticamente.</p>
-    <form method="post" action="<?=e(url('/admin/pedidos/'.$order['code'].'/aprovar-manualmente'))?>" data-confirm="Confirmou o valor integral no extrato bancário? Esta ação libera o pedido e baixa o estoque.">
+    <div class="panel-head"><div><small>LIBERAÇÃO ADMINISTRATIVA</small><h3>Liberar pedido para produção</h3></div></div>
+    <p>Libera o pedido para a esteira de produção <strong>sem Pagar.me ou Asaas</strong>. O pagamento continuará <strong>não confirmado</strong> no financeiro. A autorização ficará registrada e a reserva de estoque será baixada.</p>
+    <form method="post" action="<?=e(url('/admin/pedidos/'.$order['code'].'/aprovar-manualmente'))?>" data-confirm="Liberar este pedido para produção SEM confirmação de pagamento?">
         <?=csrf_field()?>
-        <p><label>Referência bancária verificável<br><input type="text" name="external_reference" required minlength="6" maxlength="150" placeholder="ID / EndToEndId da transação" style="width:100%;max-width:580px"></label></p>
-        <p><label>Justificativa da conferência<br><textarea name="reason" required minlength="12" maxlength="500" rows="3" style="width:100%" placeholder="Banco e data do recebimento; forma de conferência..."></textarea></label></p>
-        <p><label class="checkbox"><input type="checkbox" name="received_confirmed" value="1" required> Conferi o extrato bancário e confirmo que o valor integral foi recebido fora da Pagar.me.</label></p>
-        <button class="button button--primary" type="submit">Confirmar recebimento e liberar pedido</button>
+        <p><label>Justificativa administrativa<br><textarea name="reason" required minlength="12" maxlength="500" rows="3" style="width:100%" placeholder="Ex.: Pedido de teste liberado para produção durante troca do gateway."></textarea></label></p>
+        <p><label class="checkbox"><input type="checkbox" name="operational_confirmed" value="1" required> Entendo que estou autorizando a produção sem confirmação financeira e assumo a responsabilidade por esta liberação.</label></p>
+        <button class="button button--primary" type="submit">Liberar para produção</button>
     </form>
 </section>
 <?php endif; ?>
 <?php if (!empty($manualApproval)): ?>
 <section class="panel" style="margin-bottom:1.25rem">
-    <div class="panel-head"><div><small>AUDITORIA</small><h3>Pagamento aprovado manualmente</h3></div></div>
+    <div class="panel-head"><div><small>AUDITORIA</small><h3>Liberação operacional manual</h3></div></div>
     <p>Responsável: <?=e((string)$manualApproval['approved_by_name'])?> · <?=e(date('d/m/Y H:i',strtotime((string)$manualApproval['created_at'])))?><br>
-    Valor: <?=$money(((int)$manualApproval['amount_cents']) / 100)?><br>
-    Referência: <?=e((string)$manualApproval['external_reference'])?><br>
-    Justificativa: <?=e((string)$manualApproval['reason'])?></p>
-    <p><small>Confirmação administrativa de recebimento externo; não representa confirmação da Pagar.me nem split automático.</small></p>
+    Valor do pedido: <?=$money(((int)$manualApproval['amount_cents']) / 100)?><br>
+    Motivo: <?=e((string)$manualApproval['reason'])?></p>
+    <p><small>Esta ação não confirma recebimento, liquidação, pagamento, split ou repasses.</small></p>
 </section>
 <?php endif; ?>
 <div class="admin-order-shipments">

@@ -103,39 +103,6 @@ final class OrderController extends Controller
         $order = $statement->fetch();
         if (!$order) {
             http_response_code(404);
-            $manualApprovalStmt = $pdo->prepare(
-            "SELECT p.id,p.method,p.provider,p.integration_type,p.status,p.amount_cents,
-                    p.external_order_id,p.external_charge_id,p.external_checkout_id,p.checkout_url,p.pix_qr_code,
-                    aj.status job_status,aj.attempts,aj.last_error
-             FROM payments p
-             LEFT JOIN async_jobs aj ON aj.unique_key=CONCAT('pagarme-payment-link:',p.id)
-             WHERE p.order_id=? ORDER BY p.id DESC"
-        );
-        $manualApprovalStmt->execute([(int) $order['id']]);
-        $manualPayments = $manualApprovalStmt->fetchAll();
-        $candidate = count($manualPayments) === 1 ? $manualPayments[0] : null;
-        $manualApprovalEligible = $order['status'] === 'pending_payment'
-            && is_array($candidate)
-            && $candidate['provider'] === 'pagarme'
-            && $candidate['integration_type'] === 'payment_link'
-            && $candidate['method'] === 'pix'
-            && $candidate['status'] === 'pending'
-            && (int) $candidate['amount_cents'] === (int) round((float) $order['grand_total'] * 100)
-            && (int) $candidate['attempts'] > 0
-            && in_array($candidate['job_status'], ['pending', 'failed'], true)
-            && stripos((string) ($candidate['last_error'] ?? ''), 'The type field is required') !== false;
-        foreach (['external_order_id','external_charge_id','external_checkout_id','checkout_url','pix_qr_code'] as $field) {
-            if (trim((string) ($candidate[$field] ?? '')) !== '') {
-                $manualApprovalEligible = false;
-            }
-        }
-        $manualApprovalAudit = $pdo->prepare(
-            "SELECT ma.*,u.name approved_by_name FROM manual_payment_approvals ma
-             JOIN users u ON u.id=ma.approved_by WHERE ma.order_id=? LIMIT 1"
-        );
-        $manualApprovalAudit->execute([(int) $order['id']]);
-        $manualApproval = $manualApprovalAudit->fetch() ?: null;
-
         return $this->page('admin/orders/show', 'layouts/admin', [
                 'pageTitle' => 'Pedido não encontrado',
                 'order' => null,
@@ -220,6 +187,37 @@ final class OrderController extends Controller
         $address = $pdo->prepare('SELECT * FROM order_addresses WHERE order_id=?');
         $address->execute([$order['id']]);
 
+        $manualApprovalStmt = $pdo->prepare(
+            "SELECT p.id,p.method,p.provider,p.integration_type,p.status,p.amount_cents,
+                    p.external_order_id,p.external_charge_id,p.external_checkout_id,p.checkout_url,p.pix_qr_code,
+                    aj.status job_status
+             FROM payments p
+             LEFT JOIN async_jobs aj ON aj.unique_key=CONCAT('pagarme-payment-link:',p.id)
+             WHERE p.order_id=? ORDER BY p.id DESC"
+        );
+        $manualApprovalStmt->execute([(int) $order['id']]);
+        $manualPayments = $manualApprovalStmt->fetchAll();
+        $candidate = count($manualPayments) === 1 ? $manualPayments[0] : null;
+        $manualApprovalEligible = $order['status'] === 'pending_payment'
+            && is_array($candidate)
+            && $candidate['provider'] === 'pagarme'
+            && $candidate['integration_type'] === 'payment_link'
+            && $candidate['method'] === 'pix'
+            && in_array($candidate['status'], ['pending','failed','waiting_payment'], true)
+            && (int) $candidate['amount_cents'] === (int) round((float) $order['grand_total'] * 100)
+            && in_array($candidate['job_status'], [null,'pending','failed','completed'], true);
+        foreach (['external_order_id','external_charge_id','external_checkout_id','checkout_url','pix_qr_code'] as $field) {
+            if (trim((string) ($candidate[$field] ?? '')) !== '') {
+                $manualApprovalEligible = false;
+            }
+        }
+        $manualApprovalAudit = $pdo->prepare(
+            "SELECT ma.*,u.name approved_by_name FROM manual_payment_approvals ma
+             JOIN users u ON u.id=ma.approved_by WHERE ma.order_id=? LIMIT 1"
+        );
+        $manualApprovalAudit->execute([(int) $order['id']]);
+        $manualApproval = $manualApprovalAudit->fetch() ?: null;
+
         return $this->page('admin/orders/show', 'layouts/admin', [
             'pageTitle' => 'Pedido ' . $code,
             'order' => $order,
@@ -237,12 +235,12 @@ final class OrderController extends Controller
 
     public function approveManualPayment(string $code): string
     {
-        $reference = trim((string) ($_POST['external_reference'] ?? ''));
+        $reference = '';
         $reason = trim((string) ($_POST['reason'] ?? ''));
-        $confirmed = ($_POST['received_confirmed'] ?? '') === '1';
+        $confirmed = ($_POST['operational_confirmed'] ?? '') === '1';
         try {
             if (!$confirmed) {
-                throw new RuntimeException('Confirme o recebimento integral em extrato antes de aprovar.');
+                throw new RuntimeException('Confirme que deseja liberar o pedido sem validar o pagamento.');
             }
             (new ManualPaymentApprovalService(Database::connection()))->approve(
                 $code,
@@ -250,7 +248,7 @@ final class OrderController extends Controller
                 $reference,
                 $reason
             );
-            Session::flash('success', 'Recebimento externo registrado. Pedido liberado com auditoria manual.');
+            Session::flash('success', 'Pedido liberado para produção. Pagamento permanece sem confirmação financeira.');
         } catch (RuntimeException $exception) {
             Session::flash('error', $exception->getMessage());
         } catch (Throwable $exception) {
