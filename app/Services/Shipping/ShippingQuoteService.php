@@ -34,7 +34,7 @@ final class ShippingQuoteService
         $cartId = (new CartService())->id();
         $cacheKey = 'shipping_quotes_' . ($cartId ?: 'guest');
         $fingerprint = hash('sha256', json_encode([
-            'central-label-v3-quantity-packaging',
+            'central-label-v4-automatic-kit-stack',
             $postalCode,
             array_map(static fn(array $group): array => [
                 $group['store_id'],
@@ -140,7 +140,7 @@ final class ShippingQuoteService
 
         $itemsStatement = $pdo->prepare(
             'SELECT oi.product_variant_id variant_id,oi.quantity,oi.unit_price,
-                    COALESCE(pv.weight,p.weight,0.1) shipping_weight,
+                    COALESCE(IF(p.piece_weight_grams IS NOT NULL,p.weight,pv.weight),p.weight,0.1) shipping_weight,
                     COALESCE(pv.width,p.width,11) shipping_width,
                     COALESCE(pv.height,p.height,2) shipping_height,
                     COALESCE(pv.length,p.length,16) shipping_length
@@ -259,58 +259,29 @@ final class ShippingQuoteService
     private function volumeForQuantity(array $items): ?array
     {
         $total = array_sum(array_map(
-            static fn(array $item): int => max(1, (int) ($item['quantity'] ?? 1)),
-            $items
+            static fn(array $item): int => max(1,(int)($item['quantity']??1)), $items
         ));
         if ($total <= 1) return null;
-        if (count($items) !== 1) {
-            throw new RuntimeException(
-                'Frete de vários produtos requer conferência da embalagem final. ' .
-                'Entre em contato com a loja para confirmar as dimensões e o valor.'
-            );
+        if (count($items)!==1) {
+            throw new RuntimeException('Carrinho com diferentes produtos: confira a caixa completa antes de cotar. A Tuffer não presume que produtos diferentes cabem na mesma caixa.');
         }
-        $item = $items[0];
-        $qty = (int) ($item['quantity'] ?? 0);
-        $variantId = (int) ($item['variant_id'] ?? 0);
-        if ($qty < 2 || $variantId < 1) {
-            throw new RuntimeException('Não foi possível identificar a embalagem do lote.');
+        $item=$items[0];
+        $quantity=max(1,(int)$item['quantity']);
+        // Empilhamento conservador de kits: peso e altura crescem com a quantidade.
+        // Não reutilizar a altura de UM kit para 24 kits.
+        $weight=(float)($item['shipping_weight']??0)*$quantity;
+        $height=(float)($item['shipping_height']??0)*$quantity;
+        $width=(float)($item['shipping_width']??0);
+        $length=(float)($item['shipping_length']??0);
+        if ($weight<=0 || $height<2 || $width<11 || $length<16 || $weight>30 || $height>100) {
+            throw new RuntimeException('O lote excede as medidas seguras para uma caixa estimada. Defina o volume real e consulte a transportadora antes de informar o frete ao cliente.');
         }
-        $stmt = Database::connection()->prepare(
-            'SELECT r.weight,r.width,r.height,r.length
-             FROM product_shipping_rules r
-             JOIN product_variants v ON v.product_id=r.product_id
-             WHERE v.id=? AND r.minimum_quantity<=?
-               AND (r.maximum_quantity IS NULL OR r.maximum_quantity>=?)
-             ORDER BY r.minimum_quantity DESC,r.id DESC LIMIT 1'
-        );
-        $stmt->execute([$variantId,$qty,$qty]);
-        $row = $stmt->fetch();
-        if (!is_array($row)) {
-            throw new RuntimeException(
-                "Frete para {$qty} unidades ainda não configurado. " .
-                'Cadastre o peso e as medidas da caixa pronta para este lote em ' .
-                'Produtos → Frete e dimensões → Dimensões por quantidade.'
-            );
-        }
-        $dims = [
-            'height' => (float) $row['height'],
-            'width' => (float) $row['width'],
-            'length' => (float) $row['length'],
-            'weight' => (float) $row['weight'],
+        return [
+            'height'=>round($height,2),
+            'width'=>round($width,2),
+            'length'=>round($length,2),
+            'weight'=>round($weight,3),
         ];
-        if ($dims['height'] < 2 || $dims['width'] < 11 || $dims['length'] < 16
-            || $dims['weight'] <= 0 || $dims['weight'] > 100) {
-            throw new RuntimeException('A embalagem do lote tem medidas inválidas ou incompletas.');
-        }
-        // Peso final nunca pode ser inferior ao peso dos produtos cadastrados.
-        $minimumWeight = max(0.1, (float) ($item['shipping_weight'] ?? 0)) * $qty;
-        if ($dims['weight'] + 0.001 < $minimumWeight) {
-            throw new RuntimeException(
-                'O peso da embalagem do lote está abaixo do peso total dos produtos. ' .
-                'Revise a faixa antes de cotar.'
-            );
-        }
-        return $dims;
     }
 
     /** @param array<int,array<string,mixed>> $items @return array<int,mixed> */

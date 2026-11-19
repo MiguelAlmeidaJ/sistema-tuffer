@@ -1,19 +1,20 @@
-# Correção de frete para lotes e atacado
+# Frete: cadastro simples de kit e peso por peça
 
-## Problema identificado
-A Tuffer oferecia `Dimensões por quantidade` no editor, mas não utilizava `product_shipping_rules` para calcular os fretes. A integração enviava apenas dimensões unitárias e quantidade, de modo que uma caixa real de 24 kits podia ficar diferente do empacotamento estimado pelo Melhor Envio. Fretes antigos não são alterados retroativamente.
+O cadastro da etapa 5 agora solicita **número de peças por kit** e **peso de uma peça em gramas**, calculando e salvando o peso do kit (kg). O preço continua por kit: o sistema não transforma 10 peças em 10 itens vendidos.
 
-## Correção
-- Pedidos com uma unidade continuam com cotação por `products`.
-- Pedidos com múltiplas unidades da **mesma variação** exigem uma faixa de embalagem em `product_shipping_rules`, cobrindo a quantidade total. A faixa representa **a caixa física final inteira**, inclusive embalagem, e o valor de peso precisa cobrir ao menos o peso dos itens.
-- O serviço envia as medidas da caixa por `volumes` à API do Melhor Envio e grava as mesmas medidas nas opções retornadas, para a criação posterior da etiqueta.
-- Se não houver faixa de embalagem, o checkout não apresenta preço baixo fictício; orienta a cadastrar a faixa.
-- Carrinho com mistura de produtos e quantidade total maior que um exige conferência manual de embalagem nesta primeira etapa de segurança. Não oferecemos preço de frete automático até existir empacotamento confiável para o conjunto.
-- Cache de frete de pedidos de múltiplas unidades não é reutilizado, pois alterações nas faixas devem aparecer imediatamente.
+## Exemplo
+- Kit com 10 calcinhas, 40 g por calcinha = 400 g por kit.
+- 24 kits = 240 calcinhas, 9,6 kg em produtos, SEM contar a caixa.
+- As medidas externas informadas na etapa 5 representam **um kit**.
+- Quando há vários kits da mesma variação, o cotador monta uma **estimativa conservadora** com altura de empilhamento (altura do kit × quantidade), largura e comprimento originais. A quantidade também multiplica o peso do kit.
+- Se passar de 30 kg, 100 cm de altura ou o carrinho misturar produtos diferentes, a cotação automática é bloqueada. É preciso definir embalagens reais e evitar valores fictícios.
+- A opção de “dimensões por faixa” foi removida do formulário simples. As faixas legadas permanecem no banco por compatibilidade, mas não são usadas nesta cotação.
+- O valor da transportadora pode variar por embalagem externa, peso da caixa, cubagem, agência, serviço e tarifa. **Peso automático não permite calcular dimensão física exata da caixa**.
 
-## Como corrigir o cadastro mostrado no incidente
-Para o kit que vende 24 unidades, confirme primeiro qual é a **caixa real que chegará à transportadora** e pese a caixa cheia. No editor do produto, etapa 5, cadastre uma faixa cobrindo 24 unidades e informe dimensões externas e peso final. A tela básica de peso e medidas pode continuar descrevendo 1 kit, mas a faixa de 24 deve descrever o pacote completo.
+## Publicação
+```bash
+git pull origin main
+composer migrate
+```
 
-Se o embarque real for em **2 ou mais caixas**, NÃO use o modelo de caixa única: contate a operação para cotar e emitir etiquetas individuais por volume. Para frete na transportadora, confirme se houve adicional por divergência de peso/dimensões, seguro, coleta ou praça/serviço.
-
-A mudança não reembolsa diferenças de frete anteriores e não garante coincidência com tarifa de balcão, que pode diferir do preço negociado na plataforma. O custo final deve ser confirmado nas condições do serviço contratado.
+A migração 049 adiciona `pieces_per_kit` e `piece_weight_grams` ao cadastro dos produtos. Os registros antigos não recebem uma quantidade de peças adivinhada: começam com 1, e a tela apresenta o peso antigo convertido em gramas para permitir revisão. **Revisar e salvar** o kit com a quantidade real de peças e o peso unitário. O fluxo continua com o checkout Asaas pausado até homologação.

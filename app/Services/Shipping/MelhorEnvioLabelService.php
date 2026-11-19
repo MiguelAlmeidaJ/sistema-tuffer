@@ -190,7 +190,7 @@ final class MelhorEnvioLabelService
         }
 
         $itemsStatement = $pdo->prepare(
-            'SELECT oi.*,COALESCE(pv.weight,p.weight,0.1) shipping_weight,
+            'SELECT oi.*,COALESCE(IF(p.piece_weight_grams IS NOT NULL,p.weight,pv.weight),p.weight,0.1) shipping_weight,
                     COALESCE(pv.width,p.width,11) shipping_width,
                     COALESCE(pv.height,p.height,2) shipping_height,
                     COALESCE(pv.length,p.length,16) shipping_length

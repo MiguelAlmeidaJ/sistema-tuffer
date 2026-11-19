@@ -154,9 +154,42 @@ if ($seoKeywordsValue === '' && trim((string) $value('name')) !== '') {
 
             <section class="product-form-section" data-product-step="5" hidden>
                 <header class="product-form-section__header"><span>5</span><div><h3>Frete e embalagem</h3><p>Informe as dimensões do pacote pronto para envio.</p></div></header>
-                <div class="shipping-layout"><div class="product-form-grid product-form-grid--three"><label class="product-field">Peso (kg)<input type="number" step="0.001" min="0" name="weight" value="<?= e($value('weight', '0.400')) ?>" data-quality-shipping></label><label class="product-field">Largura (cm)<input type="number" step="0.01" min="0" name="width" value="<?= e($value('width', 20)) ?>"></label><label class="product-field">Altura (cm)<input type="number" step="0.01" min="0" name="height" value="<?= e($value('height', 8)) ?>"></label><label class="product-field">Comprimento (cm)<input type="number" step="0.01" min="0" name="length" value="<?= e($value('length', 28)) ?>"></label><label class="product-field">Quantidade de volumes<input type="number" min="1" name="package_count" value="<?= e($value('package_count', 1)) ?>"></label></div><div class="package-guide" aria-label="Ilustração de embalagem"><span class="package-guide__box">TUFFER</span><i class="is-width">largura</i><i class="is-height">altura</i><i class="is-length">comprimento</i></div></div>
+                <?php
+                  $pieces = max(1, (int) $value('pieces_per_kit', 1));
+                  $grams = (float) ($value('piece_weight_grams') ?: ((float) $value('weight', 0.4) * 1000 / $pieces));
+                ?>
+                <div class="product-subsection">
+                  <div class="subsection-heading"><div><h4>O que o cliente compra?</h4><p>Informe quantas peças vêm em cada kit e o peso de uma única peça. A Tuffer calcula automaticamente o peso de cada kit e da quantidade comprada.</p></div></div>
+                  <div class="product-form-grid product-form-grid--three">
+                    <label class="product-field">Peças em cada kit<input type="number" name="pieces_per_kit" min="1" max="1000" step="1" value="<?= $pieces ?>" required data-kit-pieces></label>
+                    <label class="product-field">Peso de uma peça (g)<input type="number" name="piece_weight_grams" min="1" max="50000" step="0.1" value="<?= e(number_format($grams,1,'.','')) ?>" required data-kit-piece-weight></label>
+                    <label class="product-field">Peso calculado do kit (kg)<input type="text" value="<?= e(number_format($pieces*$grams/1000,3,',','.')) ?>" readonly data-kit-total-weight></label>
+                    <input type="hidden" name="weight" value="<?= e($value('weight', '0.400')) ?>" data-quality-shipping>
+                  </div>
+                </div>
+                <div class="product-subsection">
+                  <div class="subsection-heading"><div><h4>Medidas de um kit embalado</h4><p>Informe as dimensões externas de um kit pronto para envio. O peso do pedido será multiplicado pela quantidade de kits; as medidas finais do pacote podem variar conforme o agrupamento.</p></div></div>
+                  <div class="shipping-layout"><div class="product-form-grid product-form-grid--three">
+                    <label class="product-field">Largura (cm)<input type="number" step="0.01" min="11" name="width" value="<?= e($value('width', 25)) ?>"></label>
+                    <label class="product-field">Altura (cm)<input type="number" step="0.01" min="2" name="height" value="<?= e($value('height', 3)) ?>"></label>
+                    <label class="product-field">Comprimento (cm)<input type="number" step="0.01" min="16" name="length" value="<?= e($value('length', 24)) ?>"></label>
+                  </div><div class="package-guide" aria-label="Ilustração de embalagem"><span class="package-guide__box">TUFFER</span><i class="is-width">largura</i><i class="is-height">altura</i><i class="is-length">comprimento</i></div></div>
+                </div>
                 <div class="shipping-checks"><label class="product-check"><input type="checkbox" name="original_packaging" value="1" <?= $value('original_packaging') ? 'checked' : '' ?>><span><strong>Enviado na embalagem original</strong></span></label><label class="product-check"><input type="checkbox" name="combine_shipping" value="1" <?= $value('combine_shipping', 1) ? 'checked' : '' ?>><span><strong>Permite agrupar com outros produtos</strong></span></label></div>
-                <div class="product-subsection"><div class="subsection-heading"><div><h4>Dimensões por quantidade</h4><p>Obrigatório para cotar automaticamente pedidos com 2 ou mais unidades. Informe o peso e as medidas reais da caixa pronta para envio de cada faixa.</p></div><button type="button" class="text-button" data-add-shipping>+ Adicionar faixa</button></div><div class="dynamic-rows dynamic-rows--shipping" data-shipping-rows></div></div>
+                <p class="integration-notice">O cálculo automático do peso é exato para as peças cadastradas. A transportadora pode cobrar mais se a caixa utilizada tiver medidas diferentes, peso adicional de embalagem ou serviço distinto.</p>
+                <script>
+                document.addEventListener('input', function (e) {
+                    if (!e.target.matches('[data-kit-pieces], [data-kit-piece-weight]')) return;
+                    const form=e.target.closest('form'); if(!form)return;
+                    const pieces=Math.max(1, Number(form.querySelector('[data-kit-pieces]')?.value||1));
+                    const grams=Number(form.querySelector('[data-kit-piece-weight]')?.value||0);
+                    const kg=pieces*grams/1000;
+                    const output=form.querySelector('[data-kit-total-weight]');
+                    if(output)output.value=kg.toLocaleString('pt-BR',{minimumFractionDigits:3,maximumFractionDigits:3});
+                    const hidden=form.querySelector('input[name="weight"]');
+                    if(hidden)hidden.value=kg.toFixed(3);
+                });
+                </script>
                 <footer class="product-step-actions"><button type="button" class="text-button" data-previous-product-step>← Voltar</button><button type="button" class="button button--primary" data-next-product-step>Continuar para SEO →</button></footer>
             </section>
 

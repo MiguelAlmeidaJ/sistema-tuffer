@@ -236,7 +236,7 @@ final class ProductController extends Controller
     private function insertProduct(array $store): int
     {
         $data = $this->productData();
-        $statement = Database::connection()->prepare('INSERT INTO products (seller_id,store_id,brand_id,primary_category_id,name,slug,sku,description,short_description,product_type,status,featured,retail_enabled,wholesale_enabled,wholesale_min_quantity,maximum_order_quantity,allow_variant_mix,allow_backorder,stock_control,weight,width,height,length,package_count,original_packaging,combine_shipping,scheduled_at) VALUES (:seller_id,:store_id,:brand_id,:primary_category_id,:name,:slug,:sku,:description,:short_description,:product_type,:status,:featured,:retail_enabled,:wholesale_enabled,:wholesale_min_quantity,:maximum_order_quantity,:allow_variant_mix,:allow_backorder,:stock_control,:weight,:width,:height,:length,:package_count,:original_packaging,:combine_shipping,:scheduled_at)');
+        $statement = Database::connection()->prepare('INSERT INTO products (seller_id,store_id,brand_id,primary_category_id,name,slug,sku,description,short_description,product_type,status,featured,retail_enabled,wholesale_enabled,wholesale_min_quantity,maximum_order_quantity,allow_variant_mix,allow_backorder,stock_control,weight,width,height,length,package_count,pieces_per_kit,piece_weight_grams,original_packaging,combine_shipping,scheduled_at) VALUES (:seller_id,:store_id,:brand_id,:primary_category_id,:name,:slug,:sku,:description,:short_description,:product_type,:status,:featured,:retail_enabled,:wholesale_enabled,:wholesale_min_quantity,:maximum_order_quantity,:allow_variant_mix,:allow_backorder,:stock_control,:weight,:width,:height,:length,:package_count,:pieces_per_kit,:piece_weight_grams,:original_packaging,:combine_shipping,:scheduled_at)');
         $statement->execute(array_merge($data, ['seller_id' => $store['seller_id'], 'store_id' => $store['id']]));
         return (int) Database::connection()->lastInsertId();
     }
@@ -246,7 +246,7 @@ final class ProductController extends Controller
         $data = $this->productData($productId);
         $data['id'] = $productId;
         unset($data['featured']);
-        Database::connection()->prepare("UPDATE products SET brand_id=:brand_id,primary_category_id=:primary_category_id,name=:name,slug=:slug,sku=:sku,description=:description,short_description=:short_description,product_type=:product_type,status=:status,retail_enabled=:retail_enabled,wholesale_enabled=:wholesale_enabled,wholesale_min_quantity=:wholesale_min_quantity,maximum_order_quantity=:maximum_order_quantity,allow_variant_mix=:allow_variant_mix,allow_backorder=:allow_backorder,stock_control=:stock_control,weight=:weight,width=:width,height=:height,length=:length,package_count=:package_count,original_packaging=:original_packaging,combine_shipping=:combine_shipping,scheduled_at=:scheduled_at,moderation_status=IF(moderation_status IN ('changes_requested','rejected'),'pending',moderation_status) WHERE id=:id")->execute($data);
+        Database::connection()->prepare("UPDATE products SET brand_id=:brand_id,primary_category_id=:primary_category_id,name=:name,slug=:slug,sku=:sku,description=:description,short_description=:short_description,product_type=:product_type,status=:status,retail_enabled=:retail_enabled,wholesale_enabled=:wholesale_enabled,wholesale_min_quantity=:wholesale_min_quantity,maximum_order_quantity=:maximum_order_quantity,allow_variant_mix=:allow_variant_mix,allow_backorder=:allow_backorder,stock_control=:stock_control,weight=:weight,width=:width,height=:height,length=:length,package_count=:package_count,pieces_per_kit=:pieces_per_kit,piece_weight_grams=:piece_weight_grams,original_packaging=:original_packaging,combine_shipping=:combine_shipping,scheduled_at=:scheduled_at,moderation_status=IF(moderation_status IN ('changes_requested','rejected'),'pending',moderation_status) WHERE id=:id")->execute($data);
     }
 
     /** @return array<string,mixed> */
@@ -277,6 +277,15 @@ final class ProductController extends Controller
                 throw new RuntimeException('Conclua sua configuração de recebimento antes de publicar produtos.');
             }
         }
+        $pieces = max(1, min(1000, (int) ($_POST['pieces_per_kit'] ?? 1)));
+        $pieceWeight = (float) str_replace(',', '.', (string) ($_POST['piece_weight_grams'] ?? '0'));
+        if (!is_finite($pieceWeight) || $pieceWeight <= 0 || $pieceWeight > 50000) {
+            throw new RuntimeException('Informe o peso real de uma peça em gramas.');
+        }
+        $kitWeight = round($pieceWeight * $pieces / 1000, 3);
+        if ($kitWeight <= 0 || $kitWeight > 100) {
+            throw new RuntimeException('Peso calculado do kit fora do limite permitido.');
+        }
         return [
             'brand_id' => (int) ($_POST['brand_id'] ?? 0) ?: null,
             'primary_category_id' => $primaryCategoryId,
@@ -295,11 +304,13 @@ final class ProductController extends Controller
             'allow_variant_mix' => isset($_POST['wholesale_enabled'], $_POST['allow_variant_mix']) ? 1 : 0,
             'allow_backorder' => isset($_POST['allow_backorder']) ? 1 : 0,
             'stock_control' => ($_POST['stock_control'] ?? 'shared') === 'separate' ? 'separate' : 'shared',
-            'weight' => max(0, (float) ($_POST['weight'] ?? 0)),
+            'weight' => $kitWeight,
             'width' => max(0, (float) ($_POST['width'] ?? 0)),
             'height' => max(0, (float) ($_POST['height'] ?? 0)),
             'length' => max(0, (float) ($_POST['length'] ?? 0)),
-            'package_count' => max(1, (int) ($_POST['package_count'] ?? 1)),
+            'package_count' => 1,
+            'pieces_per_kit' => $pieces,
+            'piece_weight_grams' => $pieceWeight,
             'original_packaging' => isset($_POST['original_packaging']) ? 1 : 0,
             'combine_shipping' => isset($_POST['combine_shipping']) ? 1 : 0,
             'scheduled_at' => $scheduledTimestamp !== false ? date('Y-m-d H:i:s', $scheduledTimestamp) : null,

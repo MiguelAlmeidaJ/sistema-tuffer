@@ -10,36 +10,45 @@ use RuntimeException;
 
 final class ShippingBulkPackagingTest extends TestCase
 {
-    public function testSingleUnitCanUseStandardProductQuote(): void
+    private function volume(array $items): ?array
     {
         $method=(new ReflectionClass(ShippingQuoteService::class))->getMethod('volumeForQuantity');
         $method->setAccessible(true);
-        $service=new ShippingQuoteService();
-        self::assertNull($method->invoke($service,[[
-            'variant_id'=>9,'quantity'=>1,'shipping_weight'=>0.4,
-        ]]));
+        return $method->invoke(new ShippingQuoteService(),$items);
     }
 
-    public function testMixedBulkCartRequiresManualPackaging(): void
+    public function testSingleKitUsesOriginalDimensions(): void
     {
-        $method=(new ReflectionClass(ShippingQuoteService::class))->getMethod('volumeForQuantity');
-        $method->setAccessible(true);
+        self::assertNull($this->volume([['quantity'=>1,'shipping_weight'=>0.4]]));
+    }
+
+    public function testTwentyFourKitsMultiplyWeightAndStackHeight(): void
+    {
+        $volume=$this->volume([[
+            'quantity'=>24,'shipping_weight'=>0.4,
+            'shipping_width'=>25,'shipping_height'=>3,'shipping_length'=>24
+        ]]);
+        self::assertSame(9.6,$volume['weight']);
+        self::assertSame(72.0,$volume['height']);
+        self::assertSame(25.0,$volume['width']);
+        self::assertSame(24.0,$volume['length']);
+    }
+
+    public function testMixedProductCartDoesNotGuessPackaging(): void
+    {
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('embalagem final');
-        $method->invoke(new ShippingQuoteService(),[
-            ['variant_id'=>1,'quantity'=>24],
-            ['variant_id'=>2,'quantity'=>1],
+        $this->volume([
+            ['quantity'=>2,'shipping_weight'=>0.4],
+            ['quantity'=>1,'shipping_weight'=>0.8],
         ]);
     }
 
-    public function testBulkUsesQuantityRuleInsteadOfSingleProductDimensions(): void
+    public function testExcessiveSingleCartonIsNotQuoted(): void
     {
-        $source=file_get_contents(dirname(__DIR__,2).'/app/Services/Shipping/ShippingQuoteService.php');
-        self::assertStringContainsString('product_shipping_rules',$source);
-        self::assertStringContainsString("'volumes'",$source);
-        self::assertStringContainsString('$explicitVolume === null ? $this->packages',$source);
-        self::assertStringContainsString('minimum_quantity<=?',$source);
-        self::assertStringContainsString('maximum_quantity>=?',$source);
-        self::assertStringContainsString('!$containsBulk',$source);
+        $this->expectException(RuntimeException::class);
+        $this->volume([[
+            'quantity'=>40,'shipping_weight'=>1,
+            'shipping_width'=>25,'shipping_height'=>3,'shipping_length'=>24,
+        ]]);
     }
 }
