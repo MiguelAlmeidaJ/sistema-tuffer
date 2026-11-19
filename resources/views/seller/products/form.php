@@ -184,9 +184,7 @@ if ($seoKeywordsValue === '' && trim((string) $value('name')) !== '') {
                         <label class="product-field">Quantos kits cabem neste pacote?
                             <input type="number" name="shipping_box_capacity" min="2" max="100" step="1" placeholder="Ex.: 24" value="<?= e($value('shipping_box_capacity')) ?>">
                         </label>
-                        <label class="product-field">Peso da embalagem vazia (kg)
-                            <input type="number" name="shipping_box_tare_kg" min="0" max="30" step="0.001" placeholder="Ex.: 0.500" value="<?= e($value('shipping_box_tare_kg')) ?>">
-                        </label>
+                        
                         <label class="product-field">Largura do pacote fechado (cm)
                             <input type="number" name="shipping_box_width" min="11" max="100" step="0.01" placeholder="Medida real" value="<?= e($value('shipping_box_width')) ?>">
                         </label>
