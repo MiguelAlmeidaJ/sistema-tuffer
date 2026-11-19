@@ -10,6 +10,7 @@ ASAAS_API_KEY=CHAVE_SOMENTE_DO_SANDBOX
 ASAAS_WEBHOOK_TOKEN=TOKEN_DO_WEBHOOK_SANDBOX
 ASAAS_SANDBOX_TEST_EMAIL=EMAIL_DA_SUA_CONTA_CUSTOMER_DE_TESTE
 ASAAS_CHECKOUT_ENABLED=false
+ASAAS_PRODUCTION_APPROVED=false
 ```
 Não use credenciais de produção no Sandbox. `ASAAS_CHECKOUT_ENABLED=false` mantém todos os checkouts desabilitados até a conferência inicial.
 
@@ -28,3 +29,6 @@ Carrinho e checkout receberam hierarquia visual, cards mais legíveis, estados d
 
 ## Limitações
 Os testes unitários/CI não substituem os testes reais no Sandbox. O assistente não tem acesso à chave nem ao painel da sua conta e **não pode confirmar conexão real sem o script ser executado no servidor**. As tarifas do frete ainda precisam ser validadas para embalagem real de roupas, sobretudo em compras com múltiplas unidades.
+
+## Trava de produção
+Em produção, além da configuração do cliente Asaas e de `ASAAS_CHECKOUT_ENABLED=true`, a função exige `ASAAS_PRODUCTION_APPROVED=true`. Mantenha `false` até finalizar os testes e decidir conscientemente reabrir vendas reais. Não use chave de produção para testar.

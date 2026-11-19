@@ -10,7 +10,7 @@ final class AsaasSandboxAccessTest extends TestCase
 {
     public function testSandboxAllowsOnlyExplicitAuthorizedCustomer(): void
     {
-        $names=['ASAAS_ENV','ASAAS_API_KEY','ASAAS_WEBHOOK_TOKEN','ASAAS_CHECKOUT_ENABLED','ASAAS_SANDBOX_TEST_EMAIL'];
+        $names=['ASAAS_ENV','ASAAS_API_KEY','ASAAS_WEBHOOK_TOKEN','ASAAS_CHECKOUT_ENABLED','ASAAS_SANDBOX_TEST_EMAIL','ASAAS_PRODUCTION_APPROVED'];
         $prior=[];
         foreach ($names as $name) $prior[$name]=$_ENV[$name]??null;
         try {
@@ -24,6 +24,9 @@ final class AsaasSandboxAccessTest extends TestCase
             self::assertFalse(AsaasCheckoutAccess::allowed(['type'=>'admin','email'=>'homologacao@example.com']));
             self::assertFalse(AsaasCheckoutAccess::allowed(null));
             $_ENV['ASAAS_SANDBOX_TEST_EMAIL']='';
+            self::assertFalse(AsaasCheckoutAccess::allowed(['type'=>'customer','email'=>'homologacao@example.com']));
+            $_ENV['ASAAS_ENV']='production';
+            $_ENV['ASAAS_PRODUCTION_APPROVED']='false';
             self::assertFalse(AsaasCheckoutAccess::allowed(['type'=>'customer','email'=>'homologacao@example.com']));
         } finally {
             foreach ($prior as $name=>$value) {

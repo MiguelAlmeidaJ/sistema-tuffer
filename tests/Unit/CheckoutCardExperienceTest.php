@@ -33,7 +33,7 @@ final class CheckoutCardExperienceTest extends TestCase
     public function testCheckoutIsPausedUntilExplicitAsaasActivation(): void
     {
         $controller=file_get_contents($this->root.'/app/Http/Controllers/Public/CheckoutController.php');
-        self::assertStringContainsString('checkoutEnabled()',$controller);
+        self::assertStringContainsString('AsaasCheckoutAccess::allowed',$controller);
         $env=file_get_contents($this->root.'/.env.example');
         self::assertStringContainsString('ASAAS_CHECKOUT_ENABLED=false',$env);
     }

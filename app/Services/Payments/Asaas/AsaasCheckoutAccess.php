@@ -14,7 +14,10 @@ final class AsaasCheckoutAccess
         $client = new AsaasClient();
         if (!$client->checkoutEnabled()) return false;
         $environment = strtolower(trim((string) ($_ENV['ASAAS_ENV'] ?? 'sandbox')));
-        if ($environment !== 'sandbox') return true;
+        if ($environment === 'production') {
+            return filter_var($_ENV['ASAAS_PRODUCTION_APPROVED'] ?? false, FILTER_VALIDATE_BOOL);
+        }
+        if ($environment !== 'sandbox') return false;
         $testEmail = strtolower(trim((string) ($_ENV['ASAAS_SANDBOX_TEST_EMAIL'] ?? '')));
         if ($testEmail === '' || !filter_var($testEmail, FILTER_VALIDATE_EMAIL)) return false;
         return ($user['type'] ?? null) === 'customer'
