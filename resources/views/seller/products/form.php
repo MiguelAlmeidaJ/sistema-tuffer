@@ -175,6 +175,30 @@ if ($seoKeywordsValue === '' && trim((string) $value('name')) !== '') {
                     <label class="product-field">Comprimento (cm)<input type="number" step="0.01" min="16" name="length" value="<?= e($value('length', 24)) ?>"></label>
                   </div><div class="package-guide" aria-label="Ilustração de embalagem"><span class="package-guide__box">TUFFER</span><i class="is-width">largura</i><i class="is-height">altura</i><i class="is-length">comprimento</i></div></div>
                 </div>
+                <div class="product-subsection">
+                    <div class="subsection-heading"><div>
+                        <h4>Caixa real para vários kits</h4>
+                        <p>Para calcular o frete de 2 ou mais kits, informe como você realmente embala o pedido. Não use as dimensões de um único kit como se fossem da caixa inteira.</p>
+                    </div></div>
+                    <div class="product-form-grid product-form-grid--three">
+                        <label class="product-field">Quantos kits cabem nesta caixa?
+                            <input type="number" name="shipping_box_capacity" min="2" max="100" step="1" placeholder="Ex.: 24" value="<?= e($value('shipping_box_capacity')) ?>">
+                        </label>
+                        <label class="product-field">Peso da caixa vazia (kg)
+                            <input type="number" name="shipping_box_tare_kg" min="0" max="30" step="0.001" placeholder="Ex.: 0.500" value="<?= e($value('shipping_box_tare_kg')) ?>">
+                        </label>
+                        <label class="product-field">Largura externa da caixa (cm)
+                            <input type="number" name="shipping_box_width" min="11" max="100" step="0.01" placeholder="Medida real" value="<?= e($value('shipping_box_width')) ?>">
+                        </label>
+                        <label class="product-field">Altura externa da caixa (cm)
+                            <input type="number" name="shipping_box_height" min="2" max="100" step="0.01" placeholder="Medida real" value="<?= e($value('shipping_box_height')) ?>">
+                        </label>
+                        <label class="product-field">Comprimento externo da caixa (cm)
+                            <input type="number" name="shipping_box_length" min="16" max="100" step="0.01" placeholder="Medida real" value="<?= e($value('shipping_box_length')) ?>">
+                        </label>
+                    </div>
+                    <small>Preencha os cinco campos com medidas conferidas. Para pedidos acima da capacidade de uma caixa, o frete automático ficará indisponível até configurar o envio com vários volumes.</small>
+                </div>
                 <div class="shipping-checks"><label class="product-check"><input type="checkbox" name="original_packaging" value="1" <?= $value('original_packaging') ? 'checked' : '' ?>><span><strong>Enviado na embalagem original</strong></span></label><label class="product-check"><input type="checkbox" name="combine_shipping" value="1" <?= $value('combine_shipping', 1) ? 'checked' : '' ?>><span><strong>Permite agrupar com outros produtos</strong></span></label></div>
                 <p class="integration-notice">O cálculo automático do peso é exato para as peças cadastradas. A transportadora pode cobrar mais se a caixa utilizada tiver medidas diferentes, peso adicional de embalagem ou serviço distinto.</p>
                 <script>

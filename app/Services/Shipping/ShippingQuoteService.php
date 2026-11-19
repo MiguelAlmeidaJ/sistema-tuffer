@@ -34,7 +34,7 @@ final class ShippingQuoteService
         $cartId = (new CartService())->id();
         $cacheKey = 'shipping_quotes_' . ($cartId ?: 'guest');
         $fingerprint = hash('sha256', json_encode([
-            'central-label-v4-automatic-kit-stack',
+            'central-label-v5-verified-box',
             $postalCode,
             array_map(static fn(array $group): array => [
                 $group['store_id'],
@@ -42,6 +42,9 @@ final class ShippingQuoteService
                 array_map(static fn(array $item): array => [
                     $item['variant_id'], $item['quantity'], $item['shipping_weight'],
                     $item['shipping_width'], $item['shipping_height'], $item['shipping_length'],
+                    $item['shipping_box_capacity'] ?? null, $item['shipping_box_tare_kg'] ?? null,
+                    $item['shipping_box_width'] ?? null, $item['shipping_box_height'] ?? null,
+                    $item['shipping_box_length'] ?? null,
                 ], $group['items']),
             ], $cart['groups']),
         ], JSON_THROW_ON_ERROR));
@@ -143,7 +146,7 @@ final class ShippingQuoteService
                     COALESCE(IF(p.piece_weight_grams IS NOT NULL,p.weight,pv.weight),p.weight,0.1) shipping_weight,
                     COALESCE(pv.width,p.width,11) shipping_width,
                     COALESCE(pv.height,p.height,2) shipping_height,
-                    COALESCE(pv.length,p.length,16) shipping_length
+                    COALESCE(pv.length,p.length,16) shipping_length,p.shipping_box_capacity,p.shipping_box_tare_kg,p.shipping_box_width,p.shipping_box_height,p.shipping_box_length
              FROM order_items oi
              LEFT JOIN product_variants pv ON pv.id=oi.product_variant_id
              LEFT JOIN products p ON p.id=oi.product_id
@@ -259,28 +262,39 @@ final class ShippingQuoteService
     private function volumeForQuantity(array $items): ?array
     {
         $total = array_sum(array_map(
-            static fn(array $item): int => max(1,(int)($item['quantity']??1)), $items
+            static fn(array $item): int => max(1, (int) ($item['quantity'] ?? 1)), $items
         ));
         if ($total <= 1) return null;
-        if (count($items)!==1) {
-            throw new RuntimeException('Carrinho com diferentes produtos: confira a caixa completa antes de cotar. A Tuffer não presume que produtos diferentes cabem na mesma caixa.');
+        if (count($items) !== 1) {
+            throw new RuntimeException('Frete automático indisponível para mistura de produtos: confirme a embalagem real antes de cotar.');
         }
-        $item=$items[0];
-        $quantity=max(1,(int)$item['quantity']);
-        // Empilhamento conservador de kits: peso e altura crescem com a quantidade.
-        // Não reutilizar a altura de UM kit para 24 kits.
-        $weight=(float)($item['shipping_weight']??0)*$quantity;
-        $height=(float)($item['shipping_height']??0)*$quantity;
-        $width=(float)($item['shipping_width']??0);
-        $length=(float)($item['shipping_length']??0);
-        if ($weight<=0 || $height<2 || $width<11 || $length<16 || $weight>30 || $height>100) {
-            throw new RuntimeException('O lote excede as medidas seguras para uma caixa estimada. Defina o volume real e consulte a transportadora antes de informar o frete ao cliente.');
+        $item = $items[0];
+        $qty = max(1, (int) ($item['quantity'] ?? 1));
+        $capacity = (int) ($item['shipping_box_capacity'] ?? 0);
+        if ($capacity < 2) {
+            throw new RuntimeException('A caixa de envio para vários kits ainda não está cadastrada. Informe capacidade, peso e dimensões reais no produto.');
+        }
+        if ($qty > $capacity) {
+            throw new RuntimeException("O pedido tem {$qty} kits, mas a caixa cadastrada comporta {$capacity}. Configure envio de vários volumes antes de cotar.");
+        }
+        $tare = $item['shipping_box_tare_kg'] ?? null;
+        $width = (float) ($item['shipping_box_width'] ?? 0);
+        $height = (float) ($item['shipping_box_height'] ?? 0);
+        $length = (float) ($item['shipping_box_length'] ?? 0);
+        $unitWeight = (float) ($item['shipping_weight'] ?? 0);
+        if ($tare === null || (float) $tare < 0 || $unitWeight <= 0
+            || $width < 11 || $height < 2 || $length < 16) {
+            throw new RuntimeException('Caixa de envio incompleta. Meça a caixa com os kits antes de liberar cotação.');
+        }
+        $weight = round($unitWeight * $qty + (float) $tare, 3);
+        if ($weight <= 0 || $weight > 30 || max($width, $height, $length) > 100) {
+            throw new RuntimeException('Peso ou medidas do pacote acima do limite seguro para cotação automática.');
         }
         return [
-            'height'=>round($height,2),
-            'width'=>round($width,2),
-            'length'=>round($length,2),
-            'weight'=>round($weight,3),
+            'height' => round($height, 2),
+            'width' => round($width, 2),
+            'length' => round($length, 2),
+            'weight' => $weight,
         ];
     }
 

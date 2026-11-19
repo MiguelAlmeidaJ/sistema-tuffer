@@ -236,7 +236,7 @@ final class ProductController extends Controller
     private function insertProduct(array $store): int
     {
         $data = $this->productData();
-        $statement = Database::connection()->prepare('INSERT INTO products (seller_id,store_id,brand_id,primary_category_id,name,slug,sku,description,short_description,product_type,status,featured,retail_enabled,wholesale_enabled,wholesale_min_quantity,maximum_order_quantity,allow_variant_mix,allow_backorder,stock_control,weight,width,height,length,package_count,pieces_per_kit,piece_weight_grams,original_packaging,combine_shipping,scheduled_at) VALUES (:seller_id,:store_id,:brand_id,:primary_category_id,:name,:slug,:sku,:description,:short_description,:product_type,:status,:featured,:retail_enabled,:wholesale_enabled,:wholesale_min_quantity,:maximum_order_quantity,:allow_variant_mix,:allow_backorder,:stock_control,:weight,:width,:height,:length,:package_count,:pieces_per_kit,:piece_weight_grams,:original_packaging,:combine_shipping,:scheduled_at)');
+        $statement = Database::connection()->prepare('INSERT INTO products (seller_id,store_id,brand_id,primary_category_id,name,slug,sku,description,short_description,product_type,status,featured,retail_enabled,wholesale_enabled,wholesale_min_quantity,maximum_order_quantity,allow_variant_mix,allow_backorder,stock_control,weight,width,height,length,package_count,pieces_per_kit,piece_weight_grams,shipping_box_capacity,shipping_box_tare_kg,shipping_box_width,shipping_box_height,shipping_box_length,original_packaging,combine_shipping,scheduled_at) VALUES (:seller_id,:store_id,:brand_id,:primary_category_id,:name,:slug,:sku,:description,:short_description,:product_type,:status,:featured,:retail_enabled,:wholesale_enabled,:wholesale_min_quantity,:maximum_order_quantity,:allow_variant_mix,:allow_backorder,:stock_control,:weight,:width,:height,:length,:package_count,:pieces_per_kit,:piece_weight_grams,:shipping_box_capacity,:shipping_box_tare_kg,:shipping_box_width,:shipping_box_height,:shipping_box_length,:original_packaging,:combine_shipping,:scheduled_at)');
         $statement->execute(array_merge($data, ['seller_id' => $store['seller_id'], 'store_id' => $store['id']]));
         return (int) Database::connection()->lastInsertId();
     }
@@ -246,7 +246,7 @@ final class ProductController extends Controller
         $data = $this->productData($productId);
         $data['id'] = $productId;
         unset($data['featured']);
-        Database::connection()->prepare("UPDATE products SET brand_id=:brand_id,primary_category_id=:primary_category_id,name=:name,slug=:slug,sku=:sku,description=:description,short_description=:short_description,product_type=:product_type,status=:status,retail_enabled=:retail_enabled,wholesale_enabled=:wholesale_enabled,wholesale_min_quantity=:wholesale_min_quantity,maximum_order_quantity=:maximum_order_quantity,allow_variant_mix=:allow_variant_mix,allow_backorder=:allow_backorder,stock_control=:stock_control,weight=:weight,width=:width,height=:height,length=:length,package_count=:package_count,pieces_per_kit=:pieces_per_kit,piece_weight_grams=:piece_weight_grams,original_packaging=:original_packaging,combine_shipping=:combine_shipping,scheduled_at=:scheduled_at,moderation_status=IF(moderation_status IN ('changes_requested','rejected'),'pending',moderation_status) WHERE id=:id")->execute($data);
+        Database::connection()->prepare("UPDATE products SET brand_id=:brand_id,primary_category_id=:primary_category_id,name=:name,slug=:slug,sku=:sku,description=:description,short_description=:short_description,product_type=:product_type,status=:status,retail_enabled=:retail_enabled,wholesale_enabled=:wholesale_enabled,wholesale_min_quantity=:wholesale_min_quantity,maximum_order_quantity=:maximum_order_quantity,allow_variant_mix=:allow_variant_mix,allow_backorder=:allow_backorder,stock_control=:stock_control,weight=:weight,width=:width,height=:height,length=:length,package_count=:package_count,pieces_per_kit=:pieces_per_kit,piece_weight_grams=:piece_weight_grams,shipping_box_capacity=:shipping_box_capacity,shipping_box_tare_kg=:shipping_box_tare_kg,shipping_box_width=:shipping_box_width,shipping_box_height=:shipping_box_height,shipping_box_length=:shipping_box_length,original_packaging=:original_packaging,combine_shipping=:combine_shipping,scheduled_at=:scheduled_at,moderation_status=IF(moderation_status IN ('changes_requested','rejected'),'pending',moderation_status) WHERE id=:id")->execute($data);
     }
 
     /** @return array<string,mixed> */
@@ -286,6 +286,30 @@ final class ProductController extends Controller
         if ($kitWeight <= 0 || $kitWeight > 100) {
             throw new RuntimeException('Peso calculado do kit fora do limite permitido.');
         }
+        $boxCapacityInput = trim((string) ($_POST['shipping_box_capacity'] ?? ''));
+        $boxCapacity = $boxCapacityInput === '' ? null : (int) $boxCapacityInput;
+        if ($boxCapacity !== null && ($boxCapacity < 2 || $boxCapacity > 100)) {
+            throw new RuntimeException('A capacidade da caixa deve ficar entre 2 e 100 kits.');
+        }
+        $boxValues = [];
+        foreach (['shipping_box_tare_kg','shipping_box_width','shipping_box_height','shipping_box_length'] as $boxKey) {
+            $raw = trim((string) ($_POST[$boxKey] ?? ''));
+            $boxValues[$boxKey] = $raw === '' ? null : (float) str_replace(',', '.', $raw);
+        }
+        $hasBoxDetails = count(array_filter($boxValues, static fn($value): bool => $value !== null)) > 0;
+        if ($boxCapacity !== null || $hasBoxDetails) {
+            if ($boxCapacity === null
+                || $boxValues['shipping_box_tare_kg'] === null || $boxValues['shipping_box_tare_kg'] < 0
+                || $boxValues['shipping_box_width'] === null || $boxValues['shipping_box_width'] < 11
+                || $boxValues['shipping_box_height'] === null || $boxValues['shipping_box_height'] < 2
+                || $boxValues['shipping_box_length'] === null || $boxValues['shipping_box_length'] < 16) {
+                throw new RuntimeException('Para frete de vários kits, preencha capacidade, tara e dimensões reais da caixa completa.');
+            }
+            $totalWeight = $kitWeight * $boxCapacity + $boxValues['shipping_box_tare_kg'];
+            if ($totalWeight > 30 || max($boxValues['shipping_box_width'], $boxValues['shipping_box_height'], $boxValues['shipping_box_length']) > 100) {
+                throw new RuntimeException('A embalagem cadastrada excede o limite seguro de cotação automática.');
+            }
+        }
         return [
             'brand_id' => (int) ($_POST['brand_id'] ?? 0) ?: null,
             'primary_category_id' => $primaryCategoryId,
@@ -311,6 +335,11 @@ final class ProductController extends Controller
             'package_count' => 1,
             'pieces_per_kit' => $pieces,
             'piece_weight_grams' => $pieceWeight,
+            'shipping_box_capacity' => $boxCapacity,
+            'shipping_box_tare_kg' => $boxValues['shipping_box_tare_kg'],
+            'shipping_box_width' => $boxValues['shipping_box_width'],
+            'shipping_box_height' => $boxValues['shipping_box_height'],
+            'shipping_box_length' => $boxValues['shipping_box_length'],
             'original_packaging' => isset($_POST['original_packaging']) ? 1 : 0,
             'combine_shipping' => isset($_POST['combine_shipping']) ? 1 : 0,
             'scheduled_at' => $scheduledTimestamp !== false ? date('Y-m-d H:i:s', $scheduledTimestamp) : null,

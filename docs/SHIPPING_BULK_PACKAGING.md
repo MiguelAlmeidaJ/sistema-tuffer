@@ -1,20 +1,19 @@
-# Frete: cadastro simples de kit e peso por peça
+# Frete de kits — embalagem real obrigatória para vários kits
 
-O cadastro da etapa 5 agora solicita **número de peças por kit** e **peso de uma peça em gramas**, calculando e salvando o peso do kit (kg). O preço continua por kit: o sistema não transforma 10 peças em 10 itens vendidos.
+## Problema
+O peso dos kits é calculado corretamente a partir das peças, mas a estimativa anterior multiplicava a altura do kit por quantidade, sem conhecer a caixa real. A API Melhor Envio devolvia tarifas para um pacote hipotético, inadequadas para cobrar do cliente.
 
-## Exemplo
-- Kit com 10 calcinhas, 40 g por calcinha = 400 g por kit.
-- 24 kits = 240 calcinhas, 9,6 kg em produtos, SEM contar a caixa.
-- As medidas externas informadas na etapa 5 representam **um kit**.
-- Quando há vários kits da mesma variação, o cotador monta uma **estimativa conservadora** com altura de empilhamento (altura do kit × quantidade), largura e comprimento originais. A quantidade também multiplica o peso do kit.
-- Se passar de 30 kg, 100 cm de altura ou o carrinho misturar produtos diferentes, a cotação automática é bloqueada. É preciso definir embalagens reais e evitar valores fictícios.
-- A opção de “dimensões por faixa” foi removida do formulário simples. As faixas legadas permanecem no banco por compatibilidade, mas não são usadas nesta cotação.
-- O valor da transportadora pode variar por embalagem externa, peso da caixa, cubagem, agência, serviço e tarifa. **Peso automático não permite calcular dimensão física exata da caixa**.
+## Solução (migração 050)
+O editor continua simples para kits:
+- Peças por kit; peso de uma peça; peso calculado de um kit
+- Dimensões de UM kit
+- Caixa real para lotes: capacidade em kits, peso da caixa vazia, largura/altura/comprimento externos reais
 
-## Publicação
-```bash
-git pull origin main
-composer migrate
-```
+Em cotação de 2 até a capacidade cadastrada, é enviada **uma caixa única** com dimensões reais cadastradas e peso total = (peso do kit × quantidade de kits) + peso da caixa vazia. O Melhor Envio continua responsável pela tarifa. Se não houver caixa cadastrada, se o pedido exceder a capacidade ou se misturar itens distintos, a cotação automática é bloqueada, em vez de inventar medidas. Para uma unidade o fluxo original é mantido.
 
-A migração 049 adiciona `pieces_per_kit` e `piece_weight_grams` ao cadastro dos produtos. Os registros antigos não recebem uma quantidade de peças adivinhada: começam com 1, e a tela apresenta o peso antigo convertido em gramas para permitir revisão. **Revisar e salvar** o kit com a quantidade real de peças e o peso unitário. O fluxo continua com o checkout Asaas pausado até homologação.
+**Exemplo:** 10 peças de 40 g = 0,400 kg por kit; 24 kits = 9,600 kg de produtos. Se a caixa vazia pesa 0,500 kg, peso cotado é 10,100 kg. Dimensões da caixa devem ser aferidas fisicamente. Não reutilize 25 × 3 × 24 cm (um kit) para a caixa cheia.
+
+Limitações: o peso informado só representa produtos + tara da caixa, não embalagem interna extra; garanta que a tara inclua todos os materiais adicionais. Caso sejam usadas várias caixas, será necessária implementação de múltiplos volumes com etiqueta individual. Fretes de pedidos anteriores não são recalculados automaticamente.
+
+## Implantação
+Faça backup, atualize a main e rode `composer migrate`; a migração 050 é aditiva. Revise o produto e informe dimensões da caixa final. Validar a cotação para o mesmo serviço/CEP no Melhor Envio e comparar etiqueta vs preço; valores de balcão podem diferir por contrato ou modalidade. Mantenha checkout pausado até homologação.
