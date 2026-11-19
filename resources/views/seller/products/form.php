@@ -177,30 +177,30 @@ if ($seoKeywordsValue === '' && trim((string) $value('name')) !== '') {
                 </div>
                 <div class="product-subsection">
                     <div class="subsection-heading"><div>
-                        <h4>Caixa real para vários kits</h4>
-                        <p>Para calcular o frete de 2 ou mais kits, informe como você realmente embala o pedido. Não use as dimensões de um único kit como se fossem da caixa inteira.</p>
+                        <h4>Pacote de envio para vários kits</h4>
+                        <p>Para cotar 2 ou mais kits, informe o tamanho e o peso do pacote plástico utilizado no envio. Use as dimensões do pacote plástico fechado, com os kits dentro. Meça após acomodar e comprimir normalmente as roupas, sem deformar artificialmente.</p>
                     </div></div>
                     <div class="product-form-grid product-form-grid--three">
-                        <label class="product-field">Quantos kits cabem nesta caixa?
+                        <label class="product-field">Quantos kits cabem neste pacote?
                             <input type="number" name="shipping_box_capacity" min="2" max="100" step="1" placeholder="Ex.: 24" value="<?= e($value('shipping_box_capacity')) ?>">
                         </label>
-                        <label class="product-field">Peso da caixa vazia (kg)
+                        <label class="product-field">Peso da embalagem vazia (kg)
                             <input type="number" name="shipping_box_tare_kg" min="0" max="30" step="0.001" placeholder="Ex.: 0.500" value="<?= e($value('shipping_box_tare_kg')) ?>">
                         </label>
-                        <label class="product-field">Largura externa da caixa (cm)
+                        <label class="product-field">Largura do pacote fechado (cm)
                             <input type="number" name="shipping_box_width" min="11" max="100" step="0.01" placeholder="Medida real" value="<?= e($value('shipping_box_width')) ?>">
                         </label>
-                        <label class="product-field">Altura externa da caixa (cm)
+                        <label class="product-field">Espessura do pacote fechado (cm)
                             <input type="number" name="shipping_box_height" min="2" max="100" step="0.01" placeholder="Medida real" value="<?= e($value('shipping_box_height')) ?>">
                         </label>
-                        <label class="product-field">Comprimento externo da caixa (cm)
+                        <label class="product-field">Comprimento do pacote fechado (cm)
                             <input type="number" name="shipping_box_length" min="16" max="100" step="0.01" placeholder="Medida real" value="<?= e($value('shipping_box_length')) ?>">
                         </label>
                     </div>
-                    <small>Preencha os cinco campos com medidas conferidas. Para pedidos acima da capacidade de uma caixa, o frete automático ficará indisponível até configurar o envio com vários volumes.</small>
+                    <small>Preencha os cinco campos com medidas conferidas. Para pedidos acima da capacidade de um pacote, o frete automático ficará indisponível até configurar o envio com vários volumes.</small>
                 </div>
                 <div class="shipping-checks"><label class="product-check"><input type="checkbox" name="original_packaging" value="1" <?= $value('original_packaging') ? 'checked' : '' ?>><span><strong>Enviado na embalagem original</strong></span></label><label class="product-check"><input type="checkbox" name="combine_shipping" value="1" <?= $value('combine_shipping', 1) ? 'checked' : '' ?>><span><strong>Permite agrupar com outros produtos</strong></span></label></div>
-                <p class="integration-notice">O cálculo automático do peso é exato para as peças cadastradas. A transportadora pode cobrar mais se a caixa utilizada tiver medidas diferentes, peso adicional de embalagem ou serviço distinto.</p>
+                <p class="integration-notice">O cálculo automático do peso é exato para as peças cadastradas. A transportadora pode cobrar mais se o pacote utilizado tiver medidas diferentes, peso adicional de embalagem ou serviço distinto.</p>
                 <script>
                 document.addEventListener('input', function (e) {
                     if (!e.target.matches('[data-kit-pieces], [data-kit-piece-weight]')) return;

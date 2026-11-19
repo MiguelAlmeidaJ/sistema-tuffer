@@ -289,7 +289,7 @@ final class ProductController extends Controller
         $boxCapacityInput = trim((string) ($_POST['shipping_box_capacity'] ?? ''));
         $boxCapacity = $boxCapacityInput === '' ? null : (int) $boxCapacityInput;
         if ($boxCapacity !== null && ($boxCapacity < 2 || $boxCapacity > 100)) {
-            throw new RuntimeException('A capacidade da caixa deve ficar entre 2 e 100 kits.');
+            throw new RuntimeException('A capacidade do pacote deve ficar entre 2 e 100 kits.');
         }
         $boxValues = [];
         foreach (['shipping_box_tare_kg','shipping_box_width','shipping_box_height','shipping_box_length'] as $boxKey) {
@@ -303,7 +303,7 @@ final class ProductController extends Controller
                 || $boxValues['shipping_box_width'] === null || $boxValues['shipping_box_width'] < 11
                 || $boxValues['shipping_box_height'] === null || $boxValues['shipping_box_height'] < 2
                 || $boxValues['shipping_box_length'] === null || $boxValues['shipping_box_length'] < 16) {
-                throw new RuntimeException('Para frete de vários kits, preencha capacidade, tara e dimensões reais da caixa completa.');
+                throw new RuntimeException('Para frete de vários kits, preencha capacidade, tara e dimensões reais do pacote fechado.');
             }
             $totalWeight = $kitWeight * $boxCapacity + $boxValues['shipping_box_tare_kg'];
             if ($totalWeight > 30 || max($boxValues['shipping_box_width'], $boxValues['shipping_box_height'], $boxValues['shipping_box_length']) > 100) {

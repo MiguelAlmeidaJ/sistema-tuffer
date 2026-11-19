@@ -254,7 +254,7 @@ final class ShippingQuoteService
     /**
      * Faixas de embalagem são dimensões do pacote final para a quantidade inteira,
      * NÃO as dimensões unitárias. Sem faixa calibrada, não apresentar preço de lote
-     * como se a caixa de uma única unidade fosse suficiente.
+     * como se as medidas de um único kit fossem suficientes.
      *
      * @param array<int,array<string,mixed>> $items
      * @return array{height:float,width:float,length:float,weight:float}|null
@@ -272,10 +272,10 @@ final class ShippingQuoteService
         $qty = max(1, (int) ($item['quantity'] ?? 1));
         $capacity = (int) ($item['shipping_box_capacity'] ?? 0);
         if ($capacity < 2) {
-            throw new RuntimeException('A caixa de envio para vários kits ainda não está cadastrada. Informe capacidade, peso e dimensões reais no produto.');
+            throw new RuntimeException('O pacote plástico de envio para vários kits ainda não está cadastrado. Informe capacidade, peso e dimensões reais no produto.');
         }
         if ($qty > $capacity) {
-            throw new RuntimeException("O pedido tem {$qty} kits, mas a caixa cadastrada comporta {$capacity}. Configure envio de vários volumes antes de cotar.");
+            throw new RuntimeException("O pedido tem {$qty} kits, mas o pacote cadastrado comporta {$capacity}. Configure envio de vários volumes antes de cotar.");
         }
         $tare = $item['shipping_box_tare_kg'] ?? null;
         $width = (float) ($item['shipping_box_width'] ?? 0);
@@ -284,7 +284,7 @@ final class ShippingQuoteService
         $unitWeight = (float) ($item['shipping_weight'] ?? 0);
         if ($tare === null || (float) $tare < 0 || $unitWeight <= 0
             || $width < 11 || $height < 2 || $length < 16) {
-            throw new RuntimeException('Caixa de envio incompleta. Meça a caixa com os kits antes de liberar cotação.');
+            throw new RuntimeException('Pacote de envio incompleto. Meça o pacote fechado com os kits antes de liberar cotação.');
         }
         $weight = round($unitWeight * $qty + (float) $tare, 3);
         if ($weight <= 0 || $weight > 30 || max($width, $height, $length) > 100) {
