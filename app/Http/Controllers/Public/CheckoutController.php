@@ -15,6 +15,7 @@ use App\Services\Finance\MarketplaceFinancialLedgerService;
 use App\Services\Orders\OrderPlacementService;
 use App\Services\Payments\CardInstallmentPricingService;
 use App\Services\Payments\Asaas\AsaasClient;
+use App\Services\Payments\Asaas\AsaasCheckoutAccess;
 use App\Services\Payments\Pagarme\PagarmeCheckoutConfiguration;
 use App\Services\Payments\Pagarme\PagarmeCreditCardOrderService;
 use App\Services\Payments\Pagarme\PagarmeSplitService;
@@ -62,12 +63,13 @@ final class CheckoutController extends Controller
             'cart' => $cart,
             'addresses' => $addresses,
             'isCustomer' => ($user['type'] ?? null) === 'customer',
-            'paymentConfigured' => $paymentClient->checkoutEnabled(),
-            'cardConfigured' => $paymentClient->checkoutEnabled(),
+            'paymentConfigured' => AsaasCheckoutAccess::allowed($user),
+            'cardConfigured' => AsaasCheckoutAccess::allowed($user),
             'pagarmePublicKey' => '',
             'cardTokenUrl' => '',
             'shipping' => $shipping,
             'shippingConfigured' => $quoteService->configured(),
+            'sandboxTestMode' => AsaasCheckoutAccess::sandbox() && AsaasCheckoutAccess::allowed($user),
         ]);
     }
 
@@ -154,7 +156,7 @@ final class CheckoutController extends Controller
             $shippingSelections[$storeId] = $selectedOption;
         }
 
-        if (!(new AsaasClient())->checkoutEnabled()) {
+        if (!AsaasCheckoutAccess::allowed($user)) {
             Session::flash('guide', 'O pagamento está temporariamente indisponível. Seu carrinho continua salvo.');
             return Response::redirect('/checkout');
         }

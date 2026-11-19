@@ -28,7 +28,11 @@
     <?php require dirname(__DIR__) . '/components/public/header.php'; ?>
     <div role="status" aria-label="Ambiente de testes da Tuffer" style="display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;background:#fff3d5;color:#64420a;border-block:1px solid #f0d49b;padding:12px 18px;text-align:center;font-size:13px;line-height:1.5">
         <strong style="letter-spacing:.06em">⚠ AMBIENTE DE TESTES</strong>
-        <span>A Tuffer está em atualização. Pedidos e pagamentos estão temporariamente suspensos. Não efetue pagamentos neste momento.</span>
+        <span><?php if (\App\Services\Payments\Asaas\AsaasCheckoutAccess::sandbox() && \App\Services\Payments\Asaas\AsaasCheckoutAccess::allowed($authUser ?? null)): ?>
+          Acesso autorizado para homologação do Asaas Sandbox. Somente cobranças fictícias devem ser utilizadas.
+        <?php else: ?>
+          A Tuffer está em atualização. Pedidos e pagamentos estão temporariamente suspensos para o público.
+        <?php endif; ?></span>
     </div>
     <?php if ($flashSuccess): ?><div class="toast toast--success" role="status"><?= e($flashSuccess) ?></div><?php endif; ?>
     <?php if ($flashGuide): ?><div class="toast toast--guide" role="status"><?= e($flashGuide) ?></div><?php endif; ?>

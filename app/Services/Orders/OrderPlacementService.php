@@ -7,6 +7,7 @@ namespace App\Services\Orders;
 use App\Core\Database;
 use App\Services\Cart\CartService;
 use App\Services\Payments\Asaas\AsaasClient;
+use App\Services\Payments\Asaas\AsaasCheckoutAccess;
 use App\Services\Payments\PagarmeClient;
 use App\Services\Payments\PagarmePaymentLinkBuilder;
 use App\Services\Payments\PaymentGateway;
@@ -65,8 +66,11 @@ final class OrderPlacementService
         string $paymentMethod,
         array $consent = []
     ): array {
-        if (!(new AsaasClient())->checkoutEnabled()) {
-            throw new RuntimeException('A integração com o Asaas ainda não está ativada.');
+        $testAccess = $this->pdo->prepare('SELECT id,email,type FROM users WHERE id=? LIMIT 1');
+        $testAccess->execute([$userId]);
+        $testUser = $testAccess->fetch(PDO::FETCH_ASSOC);
+        if (!AsaasCheckoutAccess::allowed(is_array($testUser) ? $testUser : null)) {
+            throw new RuntimeException('Finalização indisponível. Sandbox reservado à conta de testes autorizada.');
         }
         if (!in_array($paymentMethod, ['pix', 'card', 'boleto'], true)) {
             throw new RuntimeException('Selecione uma forma de pagamento válida.');
