@@ -11,13 +11,13 @@ final class StoreController extends Controller
 {
     public function index(): string
     {
-        $stores = Database::connection()->query("SELECT st.name,st.slug,st.description,st.logo_url,st.banner_url FROM stores st JOIN sellers s ON s.id=st.seller_id WHERE st.status='active' AND s.status='active' AND s.payment_enabled=1 AND s.payment_onboarding_status='active' AND s.pagarme_recipient_id IS NOT NULL ORDER BY CASE WHEN LOWER(st.name) LIKE 'tuffer%' OR LOWER(st.slug) LIKE 'tuffer%' THEN 0 ELSE 1 END,st.name")->fetchAll();
+        $stores = Database::connection()->query("SELECT st.name,st.slug,st.description,st.logo_url,st.banner_url FROM stores st JOIN sellers s ON s.id=st.seller_id WHERE st.status='active' AND s.status='active' ORDER BY CASE WHEN LOWER(st.name) LIKE 'tuffer%' OR LOWER(st.slug) LIKE 'tuffer%' THEN 0 ELSE 1 END,st.name")->fetchAll();
         return $this->page('public/stores/index', 'layouts/public', ['pageTitle' => 'Lojas', 'stores' => $stores]);
     }
 
     public function show(string $slug): string
     {
-        $statement = Database::connection()->prepare("SELECT st.* FROM stores st JOIN sellers s ON s.id=st.seller_id WHERE st.slug=? AND st.status='active' AND s.status='active' AND s.payment_enabled=1 AND s.payment_onboarding_status='active' AND s.pagarme_recipient_id IS NOT NULL");
+        $statement = Database::connection()->prepare("SELECT st.* FROM stores st JOIN sellers s ON s.id=st.seller_id WHERE st.slug=? AND st.status='active' AND s.status='active'");
         $statement->execute([$slug]);
         $store = $statement->fetch();
         if (!$store) { http_response_code(404); return $this->page('errors/404', 'layouts/public', ['pageTitle' => 'Loja não encontrada', 'path' => $slug]); }

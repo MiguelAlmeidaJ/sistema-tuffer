@@ -58,16 +58,7 @@ final class CartService
     {
         $quantity = max(1, min(99, $quantity));
         $pdo = Database::connection();
-        $statement = $pdo->prepare("SELECT pv.id,pv.price,pv.promotional_price,pv.wholesale_price,p.id product_id,p.seller_id,p.store_id,p.wholesale_enabled,p.wholesale_min_quantity,COALESCE(SUM(sk.quantity-sk.reserved_quantity),0) available FROM product_variants pv JOIN products p ON p.id=pv.product_id JOIN stores st ON st.id=p.store_id JOIN sellers s ON s.id=p.seller_id LEFT JOIN stocks sk ON sk.product_variant_id=pv.id WHERE pv.id=? AND pv.status='active' AND p.status='active' AND p.platform_paused=0 AND st.status='active' AND s.status='active' AND ((st.is_official_store=1 AND EXISTS(
-    SELECT 1 FROM marketplace_payment_accounts mpa
-    WHERE mpa.provider='pagarme'
-      AND mpa.payment_enabled=1
-      AND mpa.recipient_status='active'
-      AND mpa.kyc_status IN ('approved','legacy_not_required')
-)) OR (st.is_official_store=0
-    AND s.payment_enabled=1
-    AND s.payment_onboarding_status='active'
-    AND s.pagarme_recipient_id IS NOT NULL)) GROUP BY pv.id,p.id,p.seller_id,p.store_id");
+        $statement = $pdo->prepare("SELECT pv.id,pv.price,pv.promotional_price,pv.wholesale_price,p.id product_id,p.seller_id,p.store_id,p.wholesale_enabled,p.wholesale_min_quantity,COALESCE(SUM(sk.quantity-sk.reserved_quantity),0) available FROM product_variants pv JOIN products p ON p.id=pv.product_id JOIN stores st ON st.id=p.store_id JOIN sellers s ON s.id=p.seller_id LEFT JOIN stocks sk ON sk.product_variant_id=pv.id WHERE pv.id=? AND pv.status='active' AND p.status='active' AND p.platform_paused=0 AND st.status='active' AND s.status='active' GROUP BY pv.id,p.id,p.seller_id,p.store_id");
         $statement->execute([$variantId]);
         $variant = $statement->fetch();
         if (!$variant || !(new SellerSalesEligibility($pdo))->storeCanSell((int) ($variant['store_id'] ?? 0))) {
@@ -157,16 +148,7 @@ final class CartService
     public function items(): array
     {
         $cartId=$this->id();if(!$cartId)return [];
-        $statement=Database::connection()->prepare("SELECT ci.id,ci.quantity,ci.unit_price,ci.seller_id,ci.store_id,p.id product_id,p.name,p.slug,p.short_description,p.wholesale_min_quantity,p.package_count,p.allow_variant_mix,pv.id variant_id,pv.sku,pv.name variant_name,COALESCE(pv.weight,p.weight,0.1) shipping_weight,COALESCE(pv.width,p.width,11) shipping_width,COALESCE(pv.height,p.height,2) shipping_height,COALESCE(pv.length,p.length,16) shipping_length,st.name store_name,st.slug store_slug,st.wholesale_min_quantity store_min_quantity,st.wholesale_min_total store_min_total,COALESCE(SUM(sk.quantity-sk.reserved_quantity),0) available,(SELECT pm.secure_url FROM product_media pm WHERE pm.product_id=p.id ORDER BY pm.is_cover DESC,pm.sort_order LIMIT 1) image_url,(SELECT GROUP_CONCAT(CONCAT(ps.name,': ',ps.value) ORDER BY ps.sort_order,ps.id SEPARATOR '||') FROM product_specifications ps WHERE ps.product_id=p.id) specifications,COALESCE((SELECT sa.postal_code FROM store_addresses sa WHERE sa.store_id=COALESCE(st.shipping_source_store_id,st.id) AND sa.is_shipping_origin=1 ORDER BY sa.id LIMIT 1),(SELECT w.postal_code FROM warehouses w WHERE w.seller_id=p.seller_id AND w.status='active' ORDER BY w.id LIMIT 1)) origin_postal_code FROM cart_items ci JOIN product_variants pv ON pv.id=ci.product_variant_id JOIN products p ON p.id=pv.product_id JOIN stores st ON st.id=ci.store_id JOIN sellers s ON s.id=ci.seller_id LEFT JOIN stocks sk ON sk.product_variant_id=pv.id WHERE ci.cart_id=? AND p.status='active' AND p.platform_paused=0 AND pv.status='active' AND st.status='active' AND s.status='active' AND ((st.is_official_store=1 AND EXISTS(
-    SELECT 1 FROM marketplace_payment_accounts mpa
-    WHERE mpa.provider='pagarme'
-      AND mpa.payment_enabled=1
-      AND mpa.recipient_status='active'
-      AND mpa.kyc_status IN ('approved','legacy_not_required')
-)) OR (st.is_official_store=0
-    AND s.payment_enabled=1
-    AND s.payment_onboarding_status='active'
-    AND s.pagarme_recipient_id IS NOT NULL)) GROUP BY ci.id,p.id,pv.id,st.id ORDER BY st.name,ci.created_at");
+        $statement=Database::connection()->prepare("SELECT ci.id,ci.quantity,ci.unit_price,ci.seller_id,ci.store_id,p.id product_id,p.name,p.slug,p.short_description,p.wholesale_min_quantity,p.package_count,p.allow_variant_mix,pv.id variant_id,pv.sku,pv.name variant_name,COALESCE(pv.weight,p.weight,0.1) shipping_weight,COALESCE(pv.width,p.width,11) shipping_width,COALESCE(pv.height,p.height,2) shipping_height,COALESCE(pv.length,p.length,16) shipping_length,st.name store_name,st.slug store_slug,st.wholesale_min_quantity store_min_quantity,st.wholesale_min_total store_min_total,COALESCE(SUM(sk.quantity-sk.reserved_quantity),0) available,(SELECT pm.secure_url FROM product_media pm WHERE pm.product_id=p.id ORDER BY pm.is_cover DESC,pm.sort_order LIMIT 1) image_url,(SELECT GROUP_CONCAT(CONCAT(ps.name,': ',ps.value) ORDER BY ps.sort_order,ps.id SEPARATOR '||') FROM product_specifications ps WHERE ps.product_id=p.id) specifications,COALESCE((SELECT sa.postal_code FROM store_addresses sa WHERE sa.store_id=COALESCE(st.shipping_source_store_id,st.id) AND sa.is_shipping_origin=1 ORDER BY sa.id LIMIT 1),(SELECT w.postal_code FROM warehouses w WHERE w.seller_id=p.seller_id AND w.status='active' ORDER BY w.id LIMIT 1)) origin_postal_code FROM cart_items ci JOIN product_variants pv ON pv.id=ci.product_variant_id JOIN products p ON p.id=pv.product_id JOIN stores st ON st.id=ci.store_id JOIN sellers s ON s.id=ci.seller_id LEFT JOIN stocks sk ON sk.product_variant_id=pv.id WHERE ci.cart_id=? AND p.status='active' AND p.platform_paused=0 AND pv.status='active' AND st.status='active' AND s.status='active' GROUP BY ci.id,p.id,pv.id,st.id ORDER BY st.name,ci.created_at");
         $statement->execute([$cartId]);
         $rows = $statement->fetchAll();
         $eligibility = new SellerSalesEligibility(Database::connection());

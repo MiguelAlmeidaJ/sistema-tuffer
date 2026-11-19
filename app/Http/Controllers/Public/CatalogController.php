@@ -32,7 +32,7 @@ final class CatalogController extends Controller
             'offers' => $offers,
         ];
 
-        $where = ["p.status='active'", "p.platform_paused=0", "v.status='active'", "st.status='active'", "s.status='active'", "s.payment_enabled=1", "s.payment_onboarding_status='active'", "s.pagarme_recipient_id IS NOT NULL"];
+        $where = ["p.status='active'", "p.platform_paused=0", "v.status='active'", "st.status='active'", "s.status='active'"];
         $params = [];
         if ($filters['q'] !== '') {
             $where[] = '(p.name LIKE ? OR p.short_description LIKE ? OR p.sku LIKE ? OR st.name LIKE ?)';
@@ -104,7 +104,7 @@ final class CatalogController extends Controller
             'openGraphImage' => $categoryImage ? absolute_url('/uploads/' . ltrim($categoryImage, '/')) : null,
             'products' => $statement->fetchAll(),
             'categories' => $pdo->query("SELECT name,slug FROM categories WHERE status='active' AND customer_visible=1 ORDER BY sort_order,name")->fetchAll(),
-            'stores' => $pdo->query("SELECT st.name,st.slug FROM stores st JOIN sellers s ON s.id=st.seller_id WHERE st.status='active' AND s.status='active' AND s.payment_enabled=1 AND s.payment_onboarding_status='active' AND s.pagarme_recipient_id IS NOT NULL ORDER BY st.name")->fetchAll(),
+            'stores' => $pdo->query("SELECT st.name,st.slug FROM stores st JOIN sellers s ON s.id=st.seller_id WHERE st.status='active' AND s.status='active' ORDER BY st.name")->fetchAll(),
             'brands' => $pdo->query("SELECT name,slug FROM brands WHERE status='active' ORDER BY name")->fetchAll(),
             'filters' => $filters,
             'pagination' => compact('total', 'page', 'lastPage', 'perPage'),

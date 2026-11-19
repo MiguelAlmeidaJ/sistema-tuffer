@@ -1,35 +1,17 @@
 <?php
-
 declare(strict_types=1);
-
 namespace Tests\Unit;
-
 use App\Services\Sellers\SellerSalesEligibility;
 use PHPUnit\Framework\TestCase;
-
-final class SellerSalesEligibilityTest extends TestCase
-{
-    public function testRequiresAllPaymentAndApprovalConditions(): void
-    {
-        $eligible = [
-            'status' => 'active',
-            'payment_enabled' => 1,
-            'pagarme_recipient_id' => 'rp_ABC123',
-            'payment_onboarding_status' => 'active',
-        ];
-        $service = new SellerSalesEligibility();
-
-        self::assertTrue($service->canSell($eligible));
-
-        foreach (['status', 'payment_enabled', 'pagarme_recipient_id', 'payment_onboarding_status'] as $field) {
-            $seller = $eligible;
-            $seller[$field] = match ($field) {
-                'status' => 'pending',
-                'payment_enabled' => 0,
-                'pagarme_recipient_id' => null,
-                default => 'analyzing',
-            };
-            self::assertFalse($service->canSell($seller), "The {$field} condition must be required.");
-        }
+final class SellerSalesEligibilityTest extends TestCase {
+    public function testActiveStoreNoLongerDependsOnPagarme(): void {
+        $service=new SellerSalesEligibility();
+        self::assertTrue($service->canSell(['status'=>'active','payment_enabled'=>0,'pagarme_recipient_id'=>null]));
+        self::assertFalse($service->canSell(['status'=>'pending']));
+        self::assertFalse($service->canSell(['status'=>'active','store_status'=>'draft']));
+    }
+    public function testCartHasNoPagarmeRecipientFilter(): void {
+        $source=file_get_contents(dirname(__DIR__,2).'/app/Services/Cart/CartService.php');
+        self::assertStringNotContainsString('pagarme_recipient_id',$source);
     }
 }
