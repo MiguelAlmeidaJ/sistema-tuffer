@@ -31,7 +31,7 @@ final class AsaasWebhookService
         $eventId = trim((string) ($event['id'] ?? ''));
         $eventType = trim((string) ($event['event'] ?? ''));
         $paymentId = trim((string) ($event['payment']['id'] ?? ''));
-        if (!preg_match('/^[A-Za-z0-9_-]{4,120}$/', $eventId)
+        if (strlen($eventId) < 4 || strlen($eventId) > 120 || preg_match('/[\\x00-\\x1F\\x7F]/', $eventId) === 1
             || !preg_match('/^PAYMENT_[A-Z_]{3,90}$/', $eventType)
             || !preg_match('/^pay_[A-Za-z0-9_-]+$/', $paymentId)) {
             throw new RuntimeException('Evento Asaas inválido.', 422);
