@@ -9,6 +9,7 @@ use App\Core\Session;
 use App\Services\Cart\CartService;
 use App\Services\Settings\PlatformSettings;
 use DateTimeImmutable;
+use RuntimeException;
 
 final class ShippingQuoteService
 {
@@ -33,7 +34,7 @@ final class ShippingQuoteService
         $cartId = (new CartService())->id();
         $cacheKey = 'shipping_quotes_' . ($cartId ?: 'guest');
         $fingerprint = hash('sha256', json_encode([
-            'central-label-v2-posting-city',
+            'central-label-v3-quantity-packaging',
             $postalCode,
             array_map(static fn(array $group): array => [
                 $group['store_id'],
@@ -44,8 +45,14 @@ final class ShippingQuoteService
                 ], $group['items']),
             ], $cart['groups']),
         ], JSON_THROW_ON_ERROR));
+        $containsBulk = false;
+        foreach ($cart['groups'] as $group) {
+            foreach (($group['items'] ?? []) as $item) {
+                if ((int) ($item['quantity'] ?? 1) > 1) $containsBulk = true;
+            }
+        }
         $cached = Session::get($cacheKey);
-        if (!$refresh && is_array($cached) && ($cached['fingerprint'] ?? '') === $fingerprint) return $cached['state'];
+        if (!$refresh && !$containsBulk && is_array($cached) && ($cached['fingerprint'] ?? '') === $fingerprint) return $cached['state'];
 
         foreach ($cart['groups'] as $group) {
             $storeId = (int) $group['store_id'];
@@ -66,8 +73,14 @@ final class ShippingQuoteService
                 continue;
             }
 
-            $result = $this->request($origin, $postalCode, $group['items']);
-            $options = $this->normalizeOptions($result, $group['items'], 4, $originLocation);
+            try {
+                $volume = $this->volumeForQuantity($group['items']);
+                $result = $this->request($origin, $postalCode, $group['items'], $volume);
+                $options = $this->normalizeOptions($result, $group['items'], 4, $originLocation, $volume);
+            } catch (RuntimeException $exception) {
+                $options = [];
+                $this->lastError = $exception->getMessage();
+            }
             $selected = $options[0]['id'] ?? null;
             $state['stores'][$storeId] = [
                 'store_id' => $storeId,
@@ -144,14 +157,20 @@ final class ShippingQuoteService
             return $state;
         }
 
-        $result = $this->request($origin, $destination, $items);
-        $state['options'] = $this->normalizeOptions($result, $items, 12, $originLocation);
+        try {
+            $volume = $this->volumeForQuantity($items);
+            $result = $this->request($origin, $destination, $items, $volume);
+            $state['options'] = $this->normalizeOptions($result, $items, 12, $originLocation, $volume);
+        } catch (RuntimeException $exception) {
+            $state['options'] = [];
+            $this->lastError = $exception->getMessage();
+        }
         $state['message'] = $state['options'] ? null : ($this->lastError ?? 'Nenhuma modalidade alternativa disponível para esta rota.');
         return $state;
     }
 
     /** @param array<int,mixed> $result @param array<int,array<string,mixed>> $items @param array{postal_code:string,city:string,state:string} $originLocation @return array<int,array<string,mixed>> */
-    private function normalizeOptions(array $result, array $items, int $limit, array $originLocation): array
+    private function normalizeOptions(array $result, array $items, int $limit, array $originLocation, ?array $explicitVolume = null): array
     {
         $candidates = [];
         foreach ($result as $quote) {
@@ -170,7 +189,7 @@ final class ShippingQuoteService
                 'carrier' => $carrier,
                 'company_id' => isset($quote['company']['id']) ? trim((string) $quote['company']['id']) : '',
                 'price' => round($price, 2),
-                'packages' => $this->packages($quote['packages'] ?? [], $items),
+                'packages' => $explicitVolume === null ? $this->packages($quote['packages'] ?? [], $items) : [$explicitVolume],
                 'min_days' => $minDays,
                 'max_days' => $maxDays,
                 'arrival_min' => $this->businessDate($minDays),
@@ -229,8 +248,73 @@ final class ShippingQuoteService
         return array_slice($options, 0, max(1, $limit));
     }
 
+    /**
+     * Faixas de embalagem são dimensões do pacote final para a quantidade inteira,
+     * NÃO as dimensões unitárias. Sem faixa calibrada, não apresentar preço de lote
+     * como se a caixa de uma única unidade fosse suficiente.
+     *
+     * @param array<int,array<string,mixed>> $items
+     * @return array{height:float,width:float,length:float,weight:float}|null
+     */
+    private function volumeForQuantity(array $items): ?array
+    {
+        $total = array_sum(array_map(
+            static fn(array $item): int => max(1, (int) ($item['quantity'] ?? 1)),
+            $items
+        ));
+        if ($total <= 1) return null;
+        if (count($items) !== 1) {
+            throw new RuntimeException(
+                'Frete de vários produtos requer conferência da embalagem final. ' .
+                'Entre em contato com a loja para confirmar as dimensões e o valor.'
+            );
+        }
+        $item = $items[0];
+        $qty = (int) ($item['quantity'] ?? 0);
+        $variantId = (int) ($item['variant_id'] ?? 0);
+        if ($qty < 2 || $variantId < 1) {
+            throw new RuntimeException('Não foi possível identificar a embalagem do lote.');
+        }
+        $stmt = Database::connection()->prepare(
+            'SELECT r.weight,r.width,r.height,r.length
+             FROM product_shipping_rules r
+             JOIN product_variants v ON v.product_id=r.product_id
+             WHERE v.id=? AND r.minimum_quantity<=?
+               AND (r.maximum_quantity IS NULL OR r.maximum_quantity>=?)
+             ORDER BY r.minimum_quantity DESC,r.id DESC LIMIT 1'
+        );
+        $stmt->execute([$variantId,$qty,$qty]);
+        $row = $stmt->fetch();
+        if (!is_array($row)) {
+            throw new RuntimeException(
+                "Frete para {$qty} unidades ainda não configurado. " .
+                'Cadastre o peso e as medidas da caixa pronta para este lote em ' .
+                'Produtos → Frete e dimensões → Dimensões por quantidade.'
+            );
+        }
+        $dims = [
+            'height' => (float) $row['height'],
+            'width' => (float) $row['width'],
+            'length' => (float) $row['length'],
+            'weight' => (float) $row['weight'],
+        ];
+        if ($dims['height'] < 2 || $dims['width'] < 11 || $dims['length'] < 16
+            || $dims['weight'] <= 0 || $dims['weight'] > 100) {
+            throw new RuntimeException('A embalagem do lote tem medidas inválidas ou incompletas.');
+        }
+        // Peso final nunca pode ser inferior ao peso dos produtos cadastrados.
+        $minimumWeight = max(0.1, (float) ($item['shipping_weight'] ?? 0)) * $qty;
+        if ($dims['weight'] + 0.001 < $minimumWeight) {
+            throw new RuntimeException(
+                'O peso da embalagem do lote está abaixo do peso total dos produtos. ' .
+                'Revise a faixa antes de cotar.'
+            );
+        }
+        return $dims;
+    }
+
     /** @param array<int,array<string,mixed>> $items @return array<int,mixed> */
-    private function request(string $from, string $to, array $items): array
+    private function request(string $from, string $to, array $items, ?array $explicitVolume = null): array
     {
         $endpoint = $this->apiUrl('/api/v2/me/shipment/calculate');
         $this->lastError = null;
@@ -243,12 +327,26 @@ final class ShippingQuoteService
             'insurance_value' => round((float) $item['unit_price'], 2),
             'quantity' => min(100, max(1, (int) $item['quantity'])),
         ], $items);
-        $payload = json_encode([
+        $payloadData = [
             'from' => ['postal_code' => $from],
             'to' => ['postal_code' => $to],
-            'products' => $products,
             'options' => ['receipt' => false, 'own_hand' => false],
-        ], JSON_UNESCAPED_UNICODE);
+        ];
+        if ($explicitVolume !== null) {
+            $payloadData['volumes'] = [[
+                'height' => $explicitVolume['height'],
+                'width' => $explicitVolume['width'],
+                'length' => $explicitVolume['length'],
+                'weight' => $explicitVolume['weight'],
+                'insurance_value' => array_sum(array_map(
+                    static fn(array $item): float => (float) ($item['unit_price'] ?? 0) * (int) ($item['quantity'] ?? 1),
+                    $items
+                )),
+            ]];
+        } else {
+            $payloadData['products'] = $products;
+        }
+        $payload = json_encode($payloadData, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
         $curl = curl_init($endpoint);
         curl_setopt_array($curl, [
             CURLOPT_POST => true,
