@@ -20,6 +20,26 @@ final class AsaasChargeService
 
     public function create(int $paymentId): void
     {
+        if ($paymentId < 1) throw new RuntimeException('Pagamento inválido.');
+        $pdo = $this->pdo();
+        // A criação e o cancelamento compartilham o mesmo lock MySQL.
+        // Isso impede um job de criar uma cobrança depois do cancelamento.
+        $name = 'asaas-payment-' . $paymentId;
+        $lock = $pdo->prepare('SELECT GET_LOCK(?, 15)');
+        $lock->execute([$name]);
+        if ((int) $lock->fetchColumn() !== 1) {
+            throw new RuntimeException('Pagamento em processamento. Tente consultar novamente.');
+        }
+        try {
+            $this->createLocked($paymentId);
+        } finally {
+            $release = $pdo->prepare('SELECT RELEASE_LOCK(?)');
+            $release->execute([$name]);
+        }
+    }
+
+    private function createLocked(int $paymentId): void
+    {
         $pdo = $this->pdo();
         $stmt = $pdo->prepare(
             "SELECT p.*,o.code,o.user_id,o.grand_total,u.name,u.email,u.document,u.phone

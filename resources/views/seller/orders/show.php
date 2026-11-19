@@ -69,22 +69,33 @@ $recentEvents=array_slice($trackingEvents,0,3);
         <div>
             <nav class="seller-order-breadcrumb"><a href="<?=e(url('/vendedor/pedidos'))?>">Pedidos</a><span>›</span><strong>Detalhes do pedido</strong></nav>
             <h2>Detalhes do pedido</h2>
-            <p>Acompanhe a venda, emita documentos e cuide do envio em um só lugar.</p>
+            <p>Informações essenciais, pagamento e entrega.</p>
         </div>
         <a class="button button--secondary" href="<?=e(url('/vendedor/pedidos'))?>">← Voltar para pedidos</a>
     </header>
 
     <section class="panel seller-order-hero">
         <div class="seller-order-hero__identity">
-            <span class="seller-order-hero__icon" aria-hidden="true">□</span>
+            <span class="seller-order-hero__icon" aria-hidden="true">▣</span>
             <div><small>PEDIDO</small><h1><?=e($order['code'])?></h1><p>Loja: <strong><?=e($currentStore['name'])?></strong> · <?=date('d/m/Y \à\s H:i',strtotime($order['order_created_at']))?></p></div>
         </div>
         <div class="seller-order-hero__status"><?php $status=$order['status'];require dirname(__DIR__,2).'/components/dashboard/status-badge.php';?><span><?=e($shipmentPosted?'Pacote postado':'Aguardando próxima etapa')?></span></div>
-        <div class="seller-order-hero__actions">
-            <?php if($shipment):?><a class="button button--primary" href="<?=e(url('/vendedor/pedidos/'.$order['code'].'/rastreamento'))?>">Ver rastreamento</a><?php endif;?>
-            <?php if($labelReady):?><a class="button button--secondary" href="<?=e($shipment['label_url'])?>" target="_blank" rel="noopener noreferrer">Reimprimir etiqueta</a><?php endif;?>
-            <?php if($trackingConfigured&&!empty($shipment['external_id'])):?><form method="post" action="<?=e(url('/vendedor/pedidos/'.$order['code'].'/sincronizar-rastreio'))?>"><?=csrf_field()?><button class="button button--secondary">Atualizar rastreamento</button></form><?php endif;?>
-            <a class="button button--secondary" href="#fiscal">Dados da NF-e</a>
+        <div class="seller-order-hero__actions seller-order-hero__actions--compact">
+            <?php if($shipment && !$isPendingPayment):?><a class="button button--secondary" href="<?=e(url('/vendedor/pedidos/'.$order['code'].'/rastreamento'))?>">Rastreamento</a><?php endif;?>
+            <details class="seller-order-action-menu">
+                <summary class="button button--secondary">Ações do pedido <span aria-hidden="true">⌄</span></summary>
+                <div class="seller-order-action-menu__content">
+                    <?php if($isPendingPayment):?>
+                        <button type="button" data-copy="<?=e($paymentAccessUrl)?>">Copiar acesso ao pagamento</button>
+                    <?php endif;?>
+                    <?php if($labelReady):?><a href="<?=e($shipment['label_url'])?>" target="_blank" rel="noopener noreferrer">Reimprimir etiqueta</a><?php endif;?>
+                    <a href="#fiscal">Dados da nota fiscal</a>
+                    <?php if($shipment):?><a href="#logistica">Logística e rastreio</a><?php endif;?>
+                    <?php if($isPendingPayment && \App\Services\Payments\Asaas\AsaasCheckoutAccess::sandbox()):?>
+                        <a class="seller-order-action-menu__danger" href="#cancelar-pedido-teste">Cancelar pedido de teste</a>
+                    <?php endif;?>
+                </div>
+            </details>
         </div>
     </section>
 
@@ -123,9 +134,23 @@ $recentEvents=array_slice($trackingEvents,0,3);
         <article class="panel seller-order-summary-card"><span>CLIENTE</span><h3><?=e($order['customer_name'])?></h3><p><?=e((string)($order['customer_document']?:'Documento não informado'))?><br><?=e($order['customer_email'])?><br><?=e($order['customer_phone']?:'Telefone não informado')?></p><button type="button" class="seller-order-link-button" data-copy="<?=e($customerCopy)?>">Copiar dados</button></article>
         <article class="panel seller-order-summary-card"><span>ENDEREÇO DE ENTREGA</span><?php if($address):?><h3><?=e($address['city'].' / '.$address['state'])?></h3><p><?=e($address['street'].', '.$address['number'])?><br><?=e($address['neighborhood'])?><br>CEP <?=e($address['postal_code'])?></p><button type="button" class="seller-order-link-button" data-copy="<?=e($addressCopy)?>">Copiar endereço</button><?php else:?><h3>Não informado</h3><p>O pedido não possui endereço salvo.</p><?php endif;?></article>
         <article class="panel seller-order-summary-card"><span>RESUMO FINANCEIRO</span><dl><div><dt>Produtos</dt><dd><?=$money((float)$order['products_total'])?></dd></div><div><dt>Frete</dt><dd><?=$money((float)$order['shipping_total'])?></dd></div><div><dt>Desconto</dt><dd>- <?=$money((float)$order['discount_total'])?></dd></div><div class="is-total"><dt>Total</dt><dd><?=$money($fiscalTotal)?></dd></div></dl></article>
-        <article class="panel seller-order-summary-card"><span>NF-e</span><div class="seller-order-summary-card__badge <?= $fiscalAuthorized?'is-success':'' ?>"><?=e($fiscalStatusLabel)?></div><?php if($fiscalDocument):?><h3>Nº <?=e((string)$fiscalDocument['number'])?> · série <?=e((string)$fiscalDocument['series'])?></h3><p class="seller-order-break">Chave <?=e((string)$fiscalDocument['access_key'])?></p><button type="button" class="seller-order-link-button" data-copy="<?=e((string)$fiscalDocument['access_key'])?>">Copiar chave</button><?php else:?><h3>Documento pendente</h3><p>Use a área fiscal abaixo para concluir esta etapa.</p><a class="seller-order-link-button" href="#fiscal">Ir para dados fiscais</a><?php endif;?></article>
+
     </div>
 
+    <?php if($isPendingPayment && \App\Services\Payments\Asaas\AsaasCheckoutAccess::sandbox()):?>
+    <details class="seller-order-cancel" id="cancelar-pedido-teste">
+        <summary><span><strong>Cancelar pedido de teste</strong><small>Disponível apenas para cobrança pendente no Asaas Sandbox</small></span><span aria-hidden="true">⌄</span></summary>
+        <div class="seller-order-cancel__body">
+            <p>Esta ação cancela a cobrança pendente no Asaas Sandbox e libera a reserva de estoque. Não realiza estorno de pagamentos recebidos.</p>
+            <form method="post" action="<?=e(url('/vendedor/pedidos/'.$order['code'].'/cancelar-teste'))?>">
+                <?=csrf_field()?>
+                <label for="test-order-confirm-code">Digite o código <strong><?=e($order['code'])?></strong> para confirmar:</label>
+                <input id="test-order-confirm-code" name="confirm_order_code" type="text" autocomplete="off" required pattern="<?=e(preg_quote((string)$order['code'],'/'))?>" placeholder="Código exato do pedido">
+                <button type="submit" class="button seller-order-cancel__submit">Confirmar cancelamento</button>
+            </form>
+        </div>
+    </details>
+    <?php endif;?>
     <details class="seller-order-disclosure" id="fiscal"><summary><span><strong>Dados da nota fiscal</strong><small>Cliente, endereço e informações para emissão</small></span><span aria-hidden="true">⌄</span></summary>
     <section class="panel seller-order-fiscal seller-order-fiscal--refined">
         <div class="seller-order-fiscal__head">
@@ -179,8 +204,8 @@ $recentEvents=array_slice($trackingEvents,0,3);
     </section>
 
     </details>
-    <details class="seller-order-disclosure"><summary><span><strong>Financeiro e atalhos operacionais</strong><small>Comissão, líquido e outras ações da venda</small></span><span aria-hidden="true">⌄</span></summary>
-    <div class="seller-order-bottom-grid">
+    <details class="seller-order-disclosure"><summary><span><strong>Detalhes financeiros</strong><small>Valores detalhados desta venda</small></span><span aria-hidden="true">⌄</span></summary>
+    <div class="seller-order-bottom-grid seller-order-bottom-grid--compact">
         <section class="panel seller-order-finance"><div class="seller-order-section-title"><span>FINANCEIRO DA LOJA</span><h3>Quanto esta venda gera para você</h3></div><dl><div><dt>Produtos</dt><dd><?=$money((float)$order['products_total'])?></dd></div><div><dt>Frete</dt><dd><?=$money((float)$order['shipping_total'])?></dd></div><div><dt>Desconto</dt><dd><?=$money((float)$order['discount_total'])?></dd></div><div><dt>Comissão</dt><dd>- <?=$money((float)$order['commission_total'])?></dd></div><div class="is-total"><dt>Líquido da loja</dt><dd><?=$money((float)$order['seller_net_total'])?></dd></div></dl></section>
         <section class="panel seller-order-actions-card"><div class="seller-order-section-title"><span>AÇÕES DO PEDIDO</span><h3>Atalhos operacionais</h3></div><?php if($order['status']==='paid'):?><form method="post" action="<?=e(url('/vendedor/pedidos/'.$order['code'].'/preparar'))?>"><?=csrf_field()?><button class="seller-order-action-row"><strong>Iniciar preparação</strong><span>Confirme que a separação dos itens começou.</span></button></form><?php endif;?><?php if($shipment):?><a class="seller-order-action-row" href="<?=e(url('/vendedor/pedidos/'.$order['code'].'/rastreamento'))?>"><strong>Rastreamento completo</strong><span>Veja o histórico detalhado da transportadora.</span></a><?php endif;?><a class="seller-order-action-row" href="#fiscal"><strong>Dados da NF-e</strong><span>Confira ou registre o documento fiscal.</span></a></section>
     </div>

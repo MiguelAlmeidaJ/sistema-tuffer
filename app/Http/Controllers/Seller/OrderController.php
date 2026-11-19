@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Services\Fiscal\ExternalFiscalDocumentService;
 use App\Services\Fiscal\FiscalDocumentStorage;
 use App\Services\Mail\OrderMailService;
+use App\Services\Orders\SandboxOrderCancellationService;
 use App\Services\Shipping\MelhorEnvioLabelService;
 use App\Services\Shipping\MelhorEnvioTrackingService;
 use App\Services\Stores\SellerStoreContext;
@@ -60,6 +61,22 @@ final class OrderController extends Controller
             'currentStore' => $store,
             'sellerStores' => $context->stores(),
         ]);
+    }
+
+    public function cancelTestOrder(string $code): string
+    {
+        $back = '/vendedor/pedidos/' . rawurlencode($code);
+        try {
+            if ((string) ($_POST['confirm_order_code'] ?? '') !== $code) {
+                throw new RuntimeException('Para cancelar, digite exatamente o código do pedido.');
+            }
+            $store = (new SellerStoreContext())->current();
+            (new SandboxOrderCancellationService())->cancel($code,(int)$store['id']);
+            Session::flash('success','Pedido de teste cancelado, cobrança removida no Asaas Sandbox e reserva de estoque liberada.');
+        } catch (Throwable $exception) {
+            Session::flash('error',$exception->getMessage());
+        }
+        return Response::redirect($back);
     }
 
     public function resendPayment(string $code): string

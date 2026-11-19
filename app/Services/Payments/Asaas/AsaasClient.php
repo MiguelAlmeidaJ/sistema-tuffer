@@ -50,6 +50,15 @@ final class AsaasClient
         return $this->request('POST', $path, $body);
     }
 
+    /** @return array<string,mixed> */
+    public function deletePayment(string $paymentId): array
+    {
+        if (!preg_match('/^pay_[A-Za-z0-9_-]+$/', $paymentId)) {
+            throw new RuntimeException('Identificador de cobrança inválido.');
+        }
+        return $this->request('DELETE', '/payments/' . rawurlencode($paymentId), null);
+    }
+
     /** @param array<string,mixed>|null $body @return array<string,mixed> */
     private function request(string $method, string $path, ?array $body): array
     {
