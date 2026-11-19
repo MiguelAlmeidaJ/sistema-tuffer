@@ -6,6 +6,7 @@ namespace App\Services\Orders;
 
 use App\Core\Database;
 use App\Services\Cart\CartService;
+use App\Services\Payments\Asaas\AsaasClient;
 use App\Services\Payments\PagarmeClient;
 use App\Services\Payments\PagarmePaymentLinkBuilder;
 use App\Services\Payments\PaymentGateway;
@@ -64,8 +65,8 @@ final class OrderPlacementService
         string $paymentMethod,
         array $consent = []
     ): array {
-        if (!$this->gateway->configured()) {
-            throw new RuntimeException('A integração com a Pagar.me ainda não está configurada.');
+        if (!(new AsaasClient())->checkoutEnabled()) {
+            throw new RuntimeException('A integração com o Asaas ainda não está ativada.');
         }
         if (!in_array($paymentMethod, ['pix', 'card', 'boleto'], true)) {
             throw new RuntimeException('Selecione uma forma de pagamento válida.');
@@ -131,51 +132,17 @@ final class OrderPlacementService
 
             $this->pdo->prepare('INSERT INTO order_status_history(order_id,status,notes,created_by) VALUES(?,?,?,?)')
                 ->execute([$orderId, 'pending_payment', 'Pedido criado e estoque reservado; aguardando pagamento.', $userId]);
-            $sellerIds = array_values(array_unique(array_map(
-                static fn(array $item): int => (int) ($item['seller_id'] ?? 0),
-                $cart['items']
-            )));
-            $usesOrders = $this->checkoutConfiguration->usesOrders($paymentMethod, $sellerIds);
             $paymentId = $this->createPayment(
-                $orderId,
-                $paymentMethod,
-                $grandTotalCents,
-                $idempotencyKey,
-                $usesOrders ? 'orders' : 'payment_link'
+                $orderId, $paymentMethod, $grandTotalCents, $idempotencyKey, 'payment_link'
             );
-
-            if ($usesOrders) {
-                (new PagarmeSplitService($this->pdo, $this->financialPolicy))->createSnapshot($paymentId);
-                (new MarketplaceFinancialLedgerService($this->pdo))->createPending($paymentId);
-                (new JobQueue($this->pdo))->dispatch(
-                    'pagarme.create_order',
-                    ['payment_id' => $paymentId],
-                    'pagarme-order:' . $paymentId,
-                    'payment',
-                    8,
-                    10,
-                );
-            } else {
-                $successUrl = $this->successUrl($orderCode);
-                $payload = $this->paymentLinkBuilder->build(
-                    $orderCode,
-                    $grandTotalCents,
-                    $cart['groups'],
-                    $selections,
-                    $customer,
-                    $address,
-                    $paymentMethod,
-                    $successUrl
-                );
-                (new JobQueue($this->pdo))->dispatch(
-                    'pagarme.create_payment_link',
-                    ['payment_id' => $paymentId, 'request' => $payload, 'idempotency_key' => $idempotencyKey],
-                    'pagarme-payment-link:' . $paymentId,
-                    'payment',
-                    8,
-                    10,
-                );
-            }
+            (new JobQueue($this->pdo))->dispatch(
+                'asaas.create_payment',
+                ['payment_id' => $paymentId],
+                'asaas-payment:' . $paymentId,
+                'payment',
+                8,
+                10
+            );
             $this->pdo->prepare("UPDATE carts SET status='converted',updated_at=NOW() WHERE id=? AND status='active'")->execute([$cartId]);
 
             if ($ownsTransaction) {
@@ -372,7 +339,7 @@ final class OrderPlacementService
 
     private function createPayment(int $orderId, string $method, int $amount, string $idempotencyKey, string $integrationType): int
     {
-        $statement = $this->pdo->prepare("INSERT INTO payments(order_id,provider,integration_type,method,amount,amount_cents,status,idempotency_key,expires_at) VALUES(?,'pagarme',?,?,?,?, 'pending',?,DATE_ADD(NOW(),INTERVAL 1 DAY))");
+        $statement = $this->pdo->prepare("INSERT INTO payments(order_id,provider,integration_type,method,amount,amount_cents,status,idempotency_key,expires_at) VALUES(?,'asaas',?,?,?,?, 'pending',?,DATE_ADD(NOW(),INTERVAL 3 DAY))");
         $statement->execute([$orderId, $integrationType, $method, $this->money($amount), $amount, $idempotencyKey]);
         return (int) $this->pdo->lastInsertId();
     }

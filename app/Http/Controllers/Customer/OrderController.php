@@ -98,11 +98,13 @@ final class OrderController extends Controller
             }
             unset($sellerOrder);
             $paymentStatement = $pdo->prepare(
-                "SELECT p.method,p.status,p.integration_type,p.checkout_url,p.expires_at,
+                "SELECT p.provider,p.method,p.status,p.integration_type,p.checkout_url,p.expires_at,
+                        p.asaas_pix_image,
                         p.pix_qr_code,p.pix_qr_code_url,p.pix_expires_at,
                         aj.status async_status,aj.attempts async_attempts,aj.max_attempts async_max_attempts
                  FROM payments p
                  LEFT JOIN async_jobs aj ON aj.unique_key=CASE
+                    WHEN p.provider='asaas' THEN CONCAT('asaas-payment:',p.id)
                     WHEN p.integration_type='orders' THEN CONCAT('pagarme-order:',p.id)
                     ELSE CONCAT('pagarme-payment-link:',p.id)
                  END
@@ -195,6 +197,9 @@ final class OrderController extends Controller
     {
         $parts = parse_url($url);
         $host = strtolower((string) ($parts['host'] ?? ''));
-        return ($parts['scheme'] ?? '') === 'https' && ($host === 'pagar.me' || str_ends_with($host, '.pagar.me'));
+        return ($parts['scheme'] ?? '') === 'https'
+            && !isset($parts['user']) && !isset($parts['pass'])
+            && ($host === 'pagar.me' || str_ends_with($host, '.pagar.me')
+                || $host === 'asaas.com' || str_ends_with($host, '.asaas.com'));
     }
 }

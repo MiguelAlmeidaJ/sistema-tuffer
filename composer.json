@@ -1,6 +1,6 @@
 {
-    "name": "tuffer/marketplace",
-    "description": "Marketplace multivendedor Tuffer",
+    "name": "tuffer/store",
+    "description": "Tuffer lojas próprias e checkout Asaas",
     "type": "project",
     "license": "proprietary",
     "require": {

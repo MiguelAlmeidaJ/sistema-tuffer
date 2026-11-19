@@ -11,6 +11,7 @@ use App\Services\Fiscal\FiscalWebhookService;
 use App\Services\Mail\OrderMailService;
 use App\Services\Mail\PasswordResetMailService;
 use App\Services\Payments\PagarmeClient;
+use App\Services\Payments\Asaas\AsaasChargeService;
 use App\Services\Payments\PagarmeWebhookProcessor;
 use App\Services\Payments\Pagarme\PagarmeOrderService;
 use App\Services\Shipping\MelhorEnvioTrackingService;
@@ -25,6 +26,7 @@ final class JobProcessor
         match((string)($job['job_type']??'')){
             'mail.send'=>$this->sendMail((int)($payload['delivery_id']??0)),
             'pagarme.create_payment_link'=>$this->createPaymentLink($payload),
+            'asaas.create_payment'=>(new AsaasChargeService())->create((int)($payload['payment_id']??0)),
             'pagarme.create_order'=>$this->createPagarmeOrder((int)($payload['payment_id']??0)),
             'pagarme.process_webhook'=>$this->processWebhook((int)($payload['webhook_id']??0)),
             'fiscal.sync_paid_order'=>$this->syncPaidOrder((int)($payload['order_id']??0)),

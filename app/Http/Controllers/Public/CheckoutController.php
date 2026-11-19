@@ -14,7 +14,7 @@ use App\Services\Cart\CartService;
 use App\Services\Finance\MarketplaceFinancialLedgerService;
 use App\Services\Orders\OrderPlacementService;
 use App\Services\Payments\CardInstallmentPricingService;
-use App\Services\Payments\PagarmeClient;
+use App\Services\Payments\Asaas\AsaasClient;
 use App\Services\Payments\Pagarme\PagarmeCheckoutConfiguration;
 use App\Services\Payments\Pagarme\PagarmeCreditCardOrderService;
 use App\Services\Payments\Pagarme\PagarmeSplitService;
@@ -55,18 +55,17 @@ final class CheckoutController extends Controller
         $shipping = $postalCode !== ''
             ? $quoteService->quotes($cart, $postalCode)
             : ['configured' => $quoteService->configured(), 'postal_code' => null, 'stores' => [], 'shipping_total' => 0.0];
-        $paymentClient = new PagarmeClient();
-        $checkoutConfiguration = new PagarmeCheckoutConfiguration();
+        $paymentClient = new AsaasClient();
 
         return $this->page('public/checkout/index', 'layouts/public', [
             'pageTitle' => 'Checkout seguro',
             'cart' => $cart,
             'addresses' => $addresses,
             'isCustomer' => ($user['type'] ?? null) === 'customer',
-            'paymentConfigured' => $paymentClient->configured(),
-            'cardConfigured' => $paymentClient->configured() && $this->cardConfiguredForCart($checkoutConfiguration, $cart),
-            'pagarmePublicKey' => $checkoutConfiguration->publicKey(),
-            'cardTokenUrl' => $checkoutConfiguration->tokenizationUrl(),
+            'paymentConfigured' => $paymentClient->checkoutEnabled(),
+            'cardConfigured' => $paymentClient->checkoutEnabled(),
+            'pagarmePublicKey' => '',
+            'cardTokenUrl' => '',
             'shipping' => $shipping,
             'shippingConfigured' => $quoteService->configured(),
         ]);
@@ -132,20 +131,6 @@ final class CheckoutController extends Controller
             return Response::redirect('/checkout');
         }
 
-        $checkoutConfiguration = new PagarmeCheckoutConfiguration();
-        $cardToken = trim((string) ($_POST['card_token'] ?? ''));
-        $cardInstallments = max(1, min(CardInstallmentPricingService::MAX_INSTALLMENTS, (int) ($_POST['card_installments'] ?? 1)));
-        if ($paymentMethod === 'card') {
-            if (!$this->cardConfiguredForCart($checkoutConfiguration, $cart)) {
-                Session::flash('guide', 'O cartão ainda não está disponível neste checkout. Escolha Pix ou boleto por enquanto.');
-                return Response::redirect('/checkout');
-            }
-            if (preg_match('/^token_[A-Za-z0-9_-]+$/', $cardToken) !== 1) {
-                Session::flash('guide', 'Valide os dados do cartão novamente antes de finalizar.');
-                return Response::redirect('/checkout');
-            }
-        }
-
         $shipping = (new ShippingQuoteService())->quotes($cart, (string) $selectedAddress['postal_code']);
         if (!$shipping['configured']) {
             Session::flash('guide', 'A entrega está temporariamente indisponível. Seu carrinho continua salvo; tente novamente em alguns instantes.');
@@ -169,21 +154,7 @@ final class CheckoutController extends Controller
             $shippingSelections[$storeId] = $selectedOption;
         }
 
-        if ($paymentMethod === 'card') {
-            $shippingTotal = array_sum(array_map(
-                static fn(array $option): float => (float) ($option['price'] ?? 0),
-                $shippingSelections
-            ));
-            $baseAmountCents = (int) round(((float) $cart['total'] + $shippingTotal) * 100);
-            try {
-                (new CardInstallmentPricingService())->quote($baseAmountCents, $cardInstallments);
-            } catch (Throwable $exception) {
-                Session::flash('guide', $exception->getMessage());
-                return Response::redirect('/checkout');
-            }
-        }
-
-        if (!(new PagarmeClient())->configured()) {
+        if (!(new AsaasClient())->checkoutEnabled()) {
             Session::flash('guide', 'O pagamento está temporariamente indisponível. Seu carrinho continua salvo.');
             return Response::redirect('/checkout');
         }
@@ -202,19 +173,8 @@ final class CheckoutController extends Controller
             );
             $paymentId = (int) $result['payment_id'];
 
-            if ($paymentMethod === 'card') {
-                $cardState = $this->processCardImmediately($paymentId, $cardToken, $cardInstallments);
-                if ($cardState === 'direct') {
-                    Session::flash('success', 'Pedido ' . $result['order_code'] . ' criado. Seu cartão foi enviado com segurança e estamos confirmando o pagamento.');
-                } elseif ($cardState === 'fallback') {
-                    Session::flash('success', 'Pedido ' . $result['order_code'] . ' criado sem duplicação. Continue o pagamento pela alternativa segura preparada para este pedido.');
-                } else {
-                    Session::flash('guide', 'Recebemos a tentativa com cartão e estamos verificando a resposta da operadora. Não tente pagar novamente enquanto o pedido estiver em processamento.');
-                }
-            } else {
-                $this->processPaymentImmediately($paymentId);
-                Session::flash('success', 'Pedido ' . $result['order_code'] . ' criado. Estamos preparando o pagamento com segurança.');
-            }
+            $this->processPaymentImmediately($paymentId);
+            Session::flash('success', 'Pedido criado. A cobrança do Asaas está sendo preparada com segurança.');
             return Response::redirect('/minha-conta/pedidos/' . rawurlencode((string) $result['order_code']));
         } catch (Throwable $exception) {
             Logger::exception($exception, [], 'checkout');
@@ -223,71 +183,13 @@ final class CheckoutController extends Controller
         }
     }
 
-    /** @return 'direct'|'fallback'|'processing' */
-    private function processCardImmediately(int $paymentId, string $cardToken, int $installments): string
-    {
-        $pdo = Database::connection();
-        (new CardInstallmentPricingService($pdo))->applyToPayment($paymentId, $installments);
-
-        try {
-            (new PagarmeSplitService($pdo))->createSnapshot($paymentId);
-            (new MarketplaceFinancialLedgerService($pdo))->createPending($paymentId);
-            (new PagarmeCreditCardOrderService(null, $pdo))->create($paymentId, $cardToken, $installments);
-            return 'direct';
-        } catch (Throwable $exception) {
-            Logger::exception($exception, ['payment_id' => $paymentId], 'pagarme_card');
-            $statement = $pdo->prepare('SELECT integration_type,status FROM payments WHERE id=? LIMIT 1');
-            $statement->execute([$paymentId]);
-            $payment = $statement->fetch() ?: [];
-            $integrationType = (string) ($payment['integration_type'] ?? '');
-            $status = (string) ($payment['status'] ?? '');
-
-            if (!($integrationType === 'payment_link' && $status === 'pending')) {
-                return 'processing';
-            }
-
-            $this->processPaymentImmediately($paymentId);
-            return 'fallback';
-        }
-    }
-
-    /** @param array<string,mixed> $cart */
-    private function cardConfiguredForCart(PagarmeCheckoutConfiguration $configuration, array $cart): bool
-    {
-        if (!$configuration->cardCheckoutConfigured()) {
-            return false;
-        }
-
-        $sellerIds = array_values(array_unique(array_filter(array_map(
-            static fn(array $item): int => (int) ($item['seller_id'] ?? 0),
-            is_array($cart['items'] ?? null) ? $cart['items'] : []
-        ), static fn(int $sellerId): bool => $sellerId > 0)));
-
-        if ($sellerIds === []) {
-            return false;
-        }
-
-        try {
-            (new SellerSalesEligibility())->assertAllCanSell($sellerIds);
-            return true;
-        } catch (Throwable) {
-            return false;
-        }
-    }
-
     private function processPaymentImmediately(int $paymentId): void
     {
         $pdo = Database::connection();
-        $statement = $pdo->prepare('SELECT integration_type FROM payments WHERE id=?');
+        $statement = $pdo->prepare('SELECT provider FROM payments WHERE id=?');
         $statement->execute([$paymentId]);
-        $integrationType = (string) $statement->fetchColumn();
-        if ($integrationType === '') {
-            return;
-        }
-
-        $uniqueKey = $integrationType === 'orders'
-            ? 'pagarme-order:' . $paymentId
-            : 'pagarme-payment-link:' . $paymentId;
+        if ((string) $statement->fetchColumn() !== 'asaas') return;
+        $uniqueKey = 'asaas-payment:' . $paymentId;
         $queue = new JobQueue($pdo);
         $job = $queue->reserveByUniqueKey($uniqueKey, 'checkout:' . session_id());
         if ($job === null) {

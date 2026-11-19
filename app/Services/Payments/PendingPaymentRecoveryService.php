@@ -7,6 +7,7 @@ namespace App\Services\Payments;
 use App\Core\Database;
 use App\Core\Logger;
 use App\Services\Payments\Pagarme\PagarmeOrderService;
+use App\Services\Payments\Asaas\AsaasChargeService;
 use App\Services\Queue\JobProcessor;
 use App\Services\Queue\JobQueue;
 use PDO;
@@ -56,7 +57,18 @@ final class PendingPaymentRecoveryService
 
         // Se a criação remota já terminou, mas a resposta local ficou incompleta, consulta o
         // pedido Pix da própria Pagar.me em vez de criar outro.
-        if ((string) $payment['integration_type'] === 'orders'
+        if ((string) ($payment['provider'] ?? '') === 'asaas'
+            && ((string) ($payment['job_status'] ?? '') === 'completed'
+                || trim((string) ($payment['external_order_id'] ?? '')) !== '')) {
+            try {
+                (new AsaasChargeService($this->pdo))->create((int) $payment['payment_id']);
+            } catch (Throwable $exception) {
+                Logger::exception($exception, ['payment_id' => (int) $payment['payment_id'], 'source' => 'asaas_payment_recovery'], 'payment');
+            }
+            $payment = $this->payment($orderId, $userId) ?? $payment;
+            if ($this->isReady($payment)) return $this->result('ready', $payment);
+        }
+        if ((string) ($payment['provider'] ?? '') === 'pagarme' && (string) $payment['integration_type'] === 'orders'
             && ((string) ($payment['job_status'] ?? '') === 'completed'
                 || trim((string) ($payment['external_order_id'] ?? '')) !== '')) {
             $this->recoverRemotePix($payment);
@@ -116,7 +128,7 @@ final class PendingPaymentRecoveryService
     private function payment(int $orderId, int $userId): ?array
     {
         $statement = $this->pdo->prepare(
-            "SELECT p.id payment_id,p.method,p.status payment_status,p.integration_type,
+            "SELECT p.id payment_id,p.provider,p.method,p.status payment_status,p.integration_type,
                     p.checkout_url,p.expires_at,p.pix_qr_code,p.pix_qr_code_url,p.pix_expires_at,
                     p.external_order_id,p.amount_cents,
                     o.code order_code,o.status order_status,
@@ -126,6 +138,7 @@ final class PendingPaymentRecoveryService
              FROM orders o
              JOIN payments p ON p.order_id=o.id
              LEFT JOIN async_jobs aj ON aj.unique_key=CASE
+                WHEN p.provider='asaas' THEN CONCAT('asaas-payment:',p.id)
                 WHEN p.integration_type='orders' THEN CONCAT('pagarme-order:',p.id)
                 ELSE CONCAT('pagarme-payment-link:',p.id)
              END
@@ -157,6 +170,7 @@ final class PendingPaymentRecoveryService
     /** @param array<string,mixed> $payment */
     private function uniqueKey(array $payment): string
     {
+        if (($payment['provider'] ?? '') === 'asaas') return 'asaas-payment:' . (int) $payment['payment_id'];
         return (string) $payment['integration_type'] === 'orders'
             ? 'pagarme-order:' . (int) $payment['payment_id']
             : 'pagarme-payment-link:' . (int) $payment['payment_id'];

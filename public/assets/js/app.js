@@ -904,7 +904,7 @@ document.querySelectorAll('[data-checkout]').forEach(form=>{
     const base=Number(q('[data-summary-total]')?.dataset.baseTotal||0);const total=base+shipping;
     if(q('[data-summary-shipping]'))q('[data-summary-shipping]').textContent=shipping?money(shipping):'Selecionar';
     if(q('[data-summary-total]'))q('[data-summary-total]').textContent=money(total);
-    if(q('[data-installment]'))q('[data-installment]').textContent=`ou 3x de ${money(total/3)} sem juros`;
+    if(q('[data-installment]'))q('[data-installment]').textContent='Pagamento seguro via Asaas';
     document.querySelectorAll('[data-mobile-total]').forEach(item=>item.textContent=money(total));
     refreshAction(total);
   };
