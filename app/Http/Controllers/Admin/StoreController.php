@@ -24,6 +24,8 @@ final class StoreController extends Controller
                     (SELECT COUNT(*) FROM products p WHERE p.store_id=st.id) products
                FROM stores st
                JOIN sellers s ON s.id=st.seller_id
+               LEFT JOIN store_consolidations sc ON sc.source_store_id=st.id
+              WHERE sc.source_store_id IS NULL
               ORDER BY st.created_at DESC'
         )->fetchAll();
 

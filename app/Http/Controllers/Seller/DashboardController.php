@@ -19,7 +19,7 @@ final class DashboardController extends Controller
         $statement = Database::connection()->prepare(
             "SELECT ? trade_name,
                     (SELECT COUNT(*) FROM products p WHERE p.store_id=?) products,
-                    (SELECT COUNT(*) FROM seller_orders so WHERE so.store_id=? AND so.status='paid') pending_orders,
+                    (SELECT COUNT(*) FROM seller_orders so WHERE COALESCE((SELECT sc.target_store_id FROM store_consolidations sc WHERE sc.source_store_id=so.store_id),so.store_id)=? AND so.status='paid') pending_orders,
                     (SELECT COALESCE(SUM(so.seller_net_total),0)
                        FROM seller_orders so
                       WHERE so.store_id=?
@@ -33,7 +33,7 @@ final class DashboardController extends Controller
                     SUM(CASE WHEN status IN ('paid','processing','shipped','delivered') THEN 1 ELSE 0 END) orders,
                     COALESCE(SUM(CASE WHEN status IN ('paid','processing','shipped','delivered') THEN seller_net_total ELSE 0 END),0) revenue
                FROM seller_orders
-              WHERE store_id=?
+              WHERE COALESCE((SELECT sc.target_store_id FROM store_consolidations sc WHERE sc.source_store_id=seller_orders.store_id),seller_orders.store_id)=?
                 AND created_at>=CURDATE()-INTERVAL 13 DAY
               GROUP BY DATE(created_at)"
         );

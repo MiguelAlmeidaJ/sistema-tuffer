@@ -26,6 +26,10 @@
 <body class="public-shell <?=e(platform_theme_classes($platformSettings))?>">
     <?php $requestPath=(string)parse_url($_SERVER['REQUEST_URI']??'/',PHP_URL_PATH);$checkoutRequest=str_starts_with($requestPath,'/checkout'); ?>
     <?php require dirname(__DIR__) . '/components/public/header.php'; ?>
+    <div role="status" aria-label="Ambiente de testes da Tuffer" style="display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;background:#fff3d5;color:#64420a;border-block:1px solid #f0d49b;padding:12px 18px;text-align:center;font-size:13px;line-height:1.5">
+        <strong style="letter-spacing:.06em">⚠ AMBIENTE DE TESTES</strong>
+        <span>A Tuffer está em atualização. Pedidos e pagamentos estão temporariamente suspensos. Não efetue pagamentos neste momento.</span>
+    </div>
     <?php if ($flashSuccess): ?><div class="toast toast--success" role="status"><?= e($flashSuccess) ?></div><?php endif; ?>
     <?php if ($flashGuide): ?><div class="toast toast--guide" role="status"><?= e($flashGuide) ?></div><?php endif; ?>
     <?php if ($flashError && $checkoutRequest): ?><div class="toast toast--guide" role="status">Não foi possível concluir essa etapa agora. Seu carrinho continua salvo; confira a orientação abaixo e tente novamente.</div><?php elseif ($flashError): ?><div class="toast toast--error" role="alert"><?= e($flashError) ?></div><?php endif; ?>
