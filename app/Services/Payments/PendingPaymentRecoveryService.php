@@ -58,7 +58,7 @@ final class PendingPaymentRecoveryService
         // Se a criação remota já terminou, mas a resposta local ficou incompleta, consulta o
         // pedido Pix da própria Pagar.me em vez de criar outro.
         if ((string) ($payment['provider'] ?? '') === 'asaas'
-            && ((string) ($payment['job_status'] ?? '') === 'completed'
+            && (in_array((string) ($payment['job_status'] ?? ''), ['completed','failed'], true)
                 || trim((string) ($payment['external_order_id'] ?? '')) !== '')) {
             try {
                 (new AsaasChargeService($this->pdo))->create((int) $payment['payment_id']);
@@ -161,6 +161,10 @@ final class PendingPaymentRecoveryService
         if (trim((string) ($payment['pix_qr_code'] ?? '')) !== ''
             && ($pixExpires === '' || strtotime($pixExpires) > $now)) {
             return true;
+        }
+        if (($payment['provider'] ?? '') === 'asaas' && ($payment['method'] ?? '') === 'pix') {
+            // Fatura remota sem QR Code não significa Pix pronto.
+            return false;
         }
         $checkoutExpires = trim((string) ($payment['expires_at'] ?? ''));
         return trim((string) ($payment['checkout_url'] ?? '')) !== ''

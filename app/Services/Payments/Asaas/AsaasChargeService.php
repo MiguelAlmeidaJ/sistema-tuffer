@@ -31,7 +31,7 @@ final class AsaasChargeService
         if (!is_array($row) || $row['provider'] !== 'asaas') {
             throw new RuntimeException('Cobrança Asaas não localizada.');
         }
-        if ($row['status'] !== 'pending' || !in_array($row['method'], ['pix','boleto','card'], true)) {
+        if (!in_array($row['status'], ['pending','waiting_payment'], true) || !in_array($row['method'], ['pix','boleto','card'], true)) {
             return;
         }
         if ((int) $row['amount_cents'] < 1 ||
@@ -135,6 +135,26 @@ final class AsaasChargeService
             throw new RuntimeException('O Asaas não retornou uma fatura HTTPS confiável.');
         }
 
+        // Registre a cobrança remota ANTES de consultar seu QR Code.
+        // Se a consulta Pix falhar, o próximo retry encontrará o mesmo ID,
+        // impedindo um segundo POST /payments.
+        $pdo = $this->pdo();
+        $saved = $pdo->prepare(
+            "UPDATE payments SET external_order_id=?,checkout_url=?,
+                provider_payload=JSON_OBJECT('asaas_payment_id',?),
+                status=IF(status='pending','waiting_payment',status)
+             WHERE id=? AND provider='asaas' AND status IN ('pending','waiting_payment')
+               AND (external_order_id IS NULL OR external_order_id=?)"
+        );
+        $saved->execute([$id, $url, $id, (int) $row['id'], $id]);
+        if ($saved->rowCount() < 1) {
+            $confirm = $pdo->prepare('SELECT external_order_id FROM payments WHERE id=?');
+            $confirm->execute([(int) $row['id']]);
+            if ((string) $confirm->fetchColumn() !== $id) {
+                throw new RuntimeException('Vínculo Asaas alterado durante a recuperação.');
+            }
+        }
+
         $pixPayload = null;
         $qrImage = null;
         $expires = null;
@@ -149,19 +169,17 @@ final class AsaasChargeService
             if (strlen($qrImage) > 250000) throw new RuntimeException('QR Code Asaas excede tamanho permitido.');
         }
 
-        $pdo = $this->pdo();
-        $pdo->prepare(
-            "UPDATE payments SET external_order_id=?,checkout_url=?,pix_qr_code=?,
-                asaas_pix_image=?,pix_expires_at=?,
-                provider_payload=JSON_OBJECT('asaas_payment_id',?),
-                status=IF(status='pending','waiting_payment',status)
-             WHERE id=? AND provider='asaas' AND status IN ('pending','waiting_payment')
-               AND (external_order_id IS NULL OR external_order_id=?)"
-        )->execute([
-            $id,$url,$pixPayload,$qrImage,
-            $expires !== '' ? date('Y-m-d H:i:s', strtotime($expires) ?: time()) : null,
-            $id,(int) $row['id'],$id
-        ]);
+        if ($row['method'] === 'pix') {
+            $pdo->prepare(
+                "UPDATE payments SET pix_qr_code=?,asaas_pix_image=?,pix_expires_at=?
+                 WHERE id=? AND provider='asaas' AND external_order_id=?
+                   AND status IN ('pending','waiting_payment')"
+            )->execute([
+                $pixPayload,$qrImage,
+                $expires !== '' && strtotime($expires) !== false ? date('Y-m-d H:i:s', strtotime($expires)) : null,
+                (int) $row['id'],$id
+            ]);
+        }
     }
 
     public static function trustedInvoiceUrl(string $url): bool

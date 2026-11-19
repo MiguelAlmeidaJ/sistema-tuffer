@@ -32,3 +32,14 @@ Os testes unitários/CI não substituem os testes reais no Sandbox. O assistente
 
 ## Trava de produção
 Em produção, além da configuração do cliente Asaas e de `ASAAS_CHECKOUT_ENABLED=true`, a função exige `ASAAS_PRODUCTION_APPROVED=true`. Mantenha `false` até finalizar os testes e decidir conscientemente reabrir vendas reais. Não use chave de produção para testar.
+
+## Página pública de confirmação e QR Code (correção)
+Após finalizar, o cliente permanece na loja em `/checkout/pedido/{code}`, com os mesmos elementos visuais do checkout, resumo da compra e Pix. A página é protegida por autenticação de cliente e consulta apenas o pedido pertencente à sessão. `POST /checkout/pedido/{code}/pagamento/atualizar` recupera a cobrança existente sem gerar outro pedido.
+
+A referência externa da cobrança é salva antes de consultar `GET /payments/{id}/pixQrCode`. Se o QR Code falhar momentaneamente, o cliente pode solicitar atualização e a Tuffer consultará o mesmo pagamento no Asaas, sem outro POST de criação. Enquanto o QR não está pronto, a interface não afirma que o Pix está disponível.
+
+### Diagnóstico de pedido existente
+```bash
+php scripts/diagnose-asaas-order.php TF-47-58614563D2F6
+```
+O script **não imprime** Pix copia e cola, QR Code, documento ou credenciais. Ele informa se existe ID externo, QR, URL e o estado do job. Se o job falhar sem ID externo, confira os logs protegidos do servidor e o painel Asaas antes de cogitar nova cobrança. Não edite manualmente `payments` nem reinicie a fila cegamente.

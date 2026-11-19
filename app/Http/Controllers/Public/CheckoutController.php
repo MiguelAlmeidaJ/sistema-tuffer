@@ -178,7 +178,7 @@ final class CheckoutController extends Controller
 
             $this->processPaymentImmediately($paymentId);
             Session::flash('success', 'Pedido criado. A cobrança do Asaas está sendo preparada com segurança.');
-            return Response::redirect('/minha-conta/pedidos/' . rawurlencode((string) $result['order_code']));
+            return Response::redirect('/checkout/pedido/' . rawurlencode((string) $result['order_code']));
         } catch (Throwable $exception) {
             Logger::exception($exception, [], 'checkout');
             Session::flash('guide', 'Não foi possível concluir essa etapa agora. Revise os dados e tente novamente; seu carrinho permanece protegido sempre que a compra ainda não tiver sido criada.');
