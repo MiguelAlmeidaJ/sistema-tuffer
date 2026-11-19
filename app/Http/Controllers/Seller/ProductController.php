@@ -277,37 +277,17 @@ final class ProductController extends Controller
                 throw new RuntimeException('Conclua sua configuração de recebimento antes de publicar produtos.');
             }
         }
-        $pieces = max(1, min(1000, (int) ($_POST['pieces_per_kit'] ?? 1)));
-        $pieceWeight = (float) str_replace(',', '.', (string) ($_POST['piece_weight_grams'] ?? '0'));
-        if (!is_finite($pieceWeight) || $pieceWeight <= 0 || $pieceWeight > 50000) {
-            throw new RuntimeException('Informe o peso real de uma peça em gramas.');
+        $unitWeight = (float) str_replace(',', '.', (string) ($_POST['weight'] ?? '0'));
+        if (!is_finite($unitWeight) || $unitWeight < 0.001 || $unitWeight > 30) {
+            throw new RuntimeException('Informe o peso real de uma unidade em kg (ex.: 0.040).');
         }
-        $kitWeight = round($pieceWeight * $pieces / 1000, 3);
-        if ($kitWeight <= 0 || $kitWeight > 100) {
-            throw new RuntimeException('Peso calculado do kit fora do limite permitido.');
-        }
-        $boxCapacityInput = trim((string) ($_POST['shipping_box_capacity'] ?? ''));
-        $boxCapacity = $boxCapacityInput === '' ? null : (int) $boxCapacityInput;
-        if ($boxCapacity !== null && ($boxCapacity < 2 || $boxCapacity > 100)) {
-            throw new RuntimeException('A capacidade do pacote deve ficar entre 2 e 100 kits.');
-        }
-        $boxValues = [];
-        foreach (['shipping_box_width','shipping_box_height','shipping_box_length'] as $boxKey) {
-            $raw = trim((string) ($_POST[$boxKey] ?? ''));
-            $boxValues[$boxKey] = $raw === '' ? null : (float) str_replace(',', '.', $raw);
-        }
-        $hasBoxDetails = count(array_filter($boxValues, static fn($value): bool => $value !== null)) > 0;
-        if ($boxCapacity !== null || $hasBoxDetails) {
-            if ($boxCapacity === null
-                || $boxValues['shipping_box_width'] === null || $boxValues['shipping_box_width'] < 11
-                || $boxValues['shipping_box_height'] === null || $boxValues['shipping_box_height'] < 2
-                || $boxValues['shipping_box_length'] === null || $boxValues['shipping_box_length'] < 16) {
-                throw new RuntimeException('Para frete de vários kits, preencha capacidade e dimensões reais do pacote fechado.');
+        $dimensions = [];
+        foreach (['width','height','length'] as $dimension) {
+            $value = (float) str_replace(',', '.', (string) ($_POST[$dimension] ?? '0'));
+            if (!is_finite($value) || $value <= 0 || $value > 100) {
+                throw new RuntimeException('Informe largura, altura e comprimento válidos da unidade.');
             }
-            $totalWeight = $kitWeight * $boxCapacity;
-            if ($totalWeight > 30 || max($boxValues['shipping_box_width'], $boxValues['shipping_box_height'], $boxValues['shipping_box_length']) > 100) {
-                throw new RuntimeException('A embalagem cadastrada excede o limite seguro de cotação automática.');
-            }
+            $dimensions[$dimension] = $value;
         }
         return [
             'brand_id' => (int) ($_POST['brand_id'] ?? 0) ?: null,
@@ -327,18 +307,18 @@ final class ProductController extends Controller
             'allow_variant_mix' => isset($_POST['wholesale_enabled'], $_POST['allow_variant_mix']) ? 1 : 0,
             'allow_backorder' => isset($_POST['allow_backorder']) ? 1 : 0,
             'stock_control' => ($_POST['stock_control'] ?? 'shared') === 'separate' ? 'separate' : 'shared',
-            'weight' => $kitWeight,
-            'width' => max(0, (float) ($_POST['width'] ?? 0)),
-            'height' => max(0, (float) ($_POST['height'] ?? 0)),
-            'length' => max(0, (float) ($_POST['length'] ?? 0)),
+            'weight' => $unitWeight,
+            'width' => $dimensions['width'],
+            'height' => $dimensions['height'],
+            'length' => $dimensions['length'],
             'package_count' => 1,
-            'pieces_per_kit' => $pieces,
-            'piece_weight_grams' => $pieceWeight,
-            'shipping_box_capacity' => $boxCapacity,
-            'shipping_box_tare_kg' => 0,
-            'shipping_box_width' => $boxValues['shipping_box_width'],
-            'shipping_box_height' => $boxValues['shipping_box_height'],
-            'shipping_box_length' => $boxValues['shipping_box_length'],
+            'pieces_per_kit' => 1,
+            'piece_weight_grams' => round($unitWeight * 1000, 3),
+            'shipping_box_capacity' => null,
+            'shipping_box_tare_kg' => null,
+            'shipping_box_width' => null,
+            'shipping_box_height' => null,
+            'shipping_box_length' => null,
             'original_packaging' => isset($_POST['original_packaging']) ? 1 : 0,
             'combine_shipping' => isset($_POST['combine_shipping']) ? 1 : 0,
             'scheduled_at' => $scheduledTimestamp !== false ? date('Y-m-d H:i:s', $scheduledTimestamp) : null,

@@ -133,7 +133,7 @@ if (!empty($product['width']) && !empty($product['height']) && !empty($product['
             <form data-shipping-calculator><?= csrf_field() ?><input name="postal_code" inputmode="numeric" maxlength="9" placeholder="00000-000" aria-label="CEP para cálculo do frete" required><button type="submit">Calcular</button></form>
             <small class="shipping-calculator__result" data-shipping-result><?= $shippingConfigured?'Informe seu CEP para consultar as transportadoras.':'Cálculo temporariamente indisponível.' ?></small>
             <div class="shipping-quote-list" data-shipping-options></div>
-            <small style="display:block;margin-top:10px;color:#7a6240;">Para vários kits, as dimensões da embalagem são estimadas pelo empilhamento. O frete definitivo pode variar conforme a caixa e as condições da transportadora.</small>
+            <small style="display:block;margin-top:10px;color:#7a6240;">Para múltiplas unidades, o Melhor Envio estima o volume usando as dimensões individuais. O frete pode variar conforme o pacote real e o serviço escolhido.</small>
         </div>
     </aside>
 </section>

@@ -153,65 +153,28 @@ if ($seoKeywordsValue === '' && trim((string) $value('name')) !== '') {
             </section>
 
             <section class="product-form-section" data-product-step="5" hidden>
-                <header class="product-form-section__header"><span>5</span><div><h3>Frete e embalagem</h3><p>Informe as dimensões do pacote pronto para envio.</p></div></header>
-                <?php
-                  $pieces = max(1, (int) $value('pieces_per_kit', 1));
-                  $grams = (float) ($value('piece_weight_grams') ?: ((float) $value('weight', 0.4) * 1000 / $pieces));
-                ?>
-                <div class="product-subsection">
-                  <div class="subsection-heading"><div><h4>O que o cliente compra?</h4><p>Informe quantas peças vêm em cada kit e o peso de uma única peça. A Tuffer calcula automaticamente o peso de cada kit e da quantidade comprada.</p></div></div>
-                  <div class="product-form-grid product-form-grid--three">
-                    <label class="product-field">Peças em cada kit<input type="number" name="pieces_per_kit" min="1" max="1000" step="1" value="<?= $pieces ?>" required data-kit-pieces></label>
-                    <label class="product-field">Peso de uma peça (g)<input type="number" name="piece_weight_grams" min="1" max="50000" step="0.1" value="<?= e(number_format($grams,1,'.','')) ?>" required data-kit-piece-weight></label>
-                    <label class="product-field">Peso calculado do kit (kg)<input type="text" value="<?= e(number_format($pieces*$grams/1000,3,',','.')) ?>" readonly data-kit-total-weight></label>
-                    <input type="hidden" name="weight" value="<?= e($value('weight', '0.400')) ?>" data-quality-shipping>
-                  </div>
-                </div>
-                <div class="product-subsection">
-                  <div class="subsection-heading"><div><h4>Medidas de um kit embalado</h4><p>Informe as dimensões externas de um kit pronto para envio. O peso do pedido será multiplicado pela quantidade de kits; as medidas finais do pacote podem variar conforme o agrupamento.</p></div></div>
-                  <div class="shipping-layout"><div class="product-form-grid product-form-grid--three">
-                    <label class="product-field">Largura (cm)<input type="number" step="0.01" min="11" name="width" value="<?= e($value('width', 25)) ?>"></label>
-                    <label class="product-field">Altura (cm)<input type="number" step="0.01" min="2" name="height" value="<?= e($value('height', 3)) ?>"></label>
-                    <label class="product-field">Comprimento (cm)<input type="number" step="0.01" min="16" name="length" value="<?= e($value('length', 24)) ?>"></label>
-                  </div><div class="package-guide" aria-label="Ilustração de embalagem"><span class="package-guide__box">TUFFER</span><i class="is-width">largura</i><i class="is-height">altura</i><i class="is-length">comprimento</i></div></div>
-                </div>
+                <header class="product-form-section__header"><span>5</span><div><h3>Peso e dimensões</h3><p>Informe apenas os dados de uma unidade do produto.</p></div></header>
                 <div class="product-subsection">
                     <div class="subsection-heading"><div>
-                        <h4>Pacote de envio para vários kits</h4>
-                        <p>Para cotar 2 ou mais kits, informe apenas as medidas do pacote plástico fechado. O peso total será calculado automaticamente: peso do kit × quantidade de kits. Use as dimensões do pacote plástico fechado, com os kits dentro. Meça após acomodar e comprimir normalmente as roupas, sem deformar artificialmente.</p>
+                        <h4>Peso e dimensões da unidade</h4>
+                        <p>Cadastre o peso e as medidas de <strong>uma unidade vendida</strong>. A quantidade comprada multiplica automaticamente o peso e o valor dos produtos.</p>
                     </div></div>
-                    <div class="product-form-grid product-form-grid--three">
-                        <label class="product-field">Quantos kits cabem neste pacote?
-                            <input type="number" name="shipping_box_capacity" min="2" max="100" step="1" placeholder="Ex.: 24" value="<?= e($value('shipping_box_capacity')) ?>">
+                    <div class="shipping-layout"><div class="product-form-grid product-form-grid--three">
+                        <label class="product-field">Peso de uma unidade (kg)
+                            <input type="number" name="weight" min="0.001" max="30" step="0.001" required data-quality-shipping value="<?= e($value('weight', '0.040')) ?>">
                         </label>
-                        
-                        <label class="product-field">Largura do pacote fechado (cm)
-                            <input type="number" name="shipping_box_width" min="11" max="100" step="0.01" placeholder="Medida real" value="<?= e($value('shipping_box_width')) ?>">
+                        <label class="product-field">Largura (cm)
+                            <input type="number" name="width" min="1" step="0.01" required value="<?= e($value('width', 25)) ?>">
                         </label>
-                        <label class="product-field">Espessura do pacote fechado (cm)
-                            <input type="number" name="shipping_box_height" min="2" max="100" step="0.01" placeholder="Medida real" value="<?= e($value('shipping_box_height')) ?>">
+                        <label class="product-field">Altura / espessura (cm)
+                            <input type="number" name="height" min="1" step="0.01" required value="<?= e($value('height', 3)) ?>">
                         </label>
-                        <label class="product-field">Comprimento do pacote fechado (cm)
-                            <input type="number" name="shipping_box_length" min="16" max="100" step="0.01" placeholder="Medida real" value="<?= e($value('shipping_box_length')) ?>">
+                        <label class="product-field">Comprimento (cm)
+                            <input type="number" name="length" min="1" step="0.01" required value="<?= e($value('length', 24)) ?>">
                         </label>
-                    </div>
-                    <small>Preencha a capacidade e as três dimensões do pacote fechado. Para pedidos acima da capacidade de um pacote, o frete automático ficará indisponível até configurar o envio com vários volumes.</small>
+                    </div><div class="package-guide" aria-label="Ilustração de embalagem"><span class="package-guide__box">TUFFER</span><i class="is-width">largura</i><i class="is-height">altura</i><i class="is-length">comprimento</i></div></div>
                 </div>
-                <div class="shipping-checks"><label class="product-check"><input type="checkbox" name="original_packaging" value="1" <?= $value('original_packaging') ? 'checked' : '' ?>><span><strong>Enviado na embalagem original</strong></span></label><label class="product-check"><input type="checkbox" name="combine_shipping" value="1" <?= $value('combine_shipping', 1) ? 'checked' : '' ?>><span><strong>Permite agrupar com outros produtos</strong></span></label></div>
-                <p class="integration-notice">O peso do pedido é calculado automaticamente pelos kits comprados. O valor do frete ainda depende das medidas reais do pacote, das regras da transportadora e de eventuais adicionais de embalagem.</p>
-                <script>
-                document.addEventListener('input', function (e) {
-                    if (!e.target.matches('[data-kit-pieces], [data-kit-piece-weight]')) return;
-                    const form=e.target.closest('form'); if(!form)return;
-                    const pieces=Math.max(1, Number(form.querySelector('[data-kit-pieces]')?.value||1));
-                    const grams=Number(form.querySelector('[data-kit-piece-weight]')?.value||0);
-                    const kg=pieces*grams/1000;
-                    const output=form.querySelector('[data-kit-total-weight]');
-                    if(output)output.value=kg.toLocaleString('pt-BR',{minimumFractionDigits:3,maximumFractionDigits:3});
-                    const hidden=form.querySelector('input[name="weight"]');
-                    if(hidden)hidden.value=kg.toFixed(3);
-                });
-                </script>
+                <p class="integration-notice">Exemplo: 0,040 kg por peça × 10 unidades = 0,400 kg de produtos. A transportadora também considera as medidas reais do pacote final. Para compras em grande quantidade, a estimativa precisa ser conferida antes de cobrar o frete.</p>
                 <footer class="product-step-actions"><button type="button" class="text-button" data-previous-product-step>← Voltar</button><button type="button" class="button button--primary" data-next-product-step>Continuar para SEO →</button></footer>
             </section>
 

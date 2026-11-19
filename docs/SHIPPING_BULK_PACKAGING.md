@@ -1,25 +1,11 @@
-# Frete de kits — embalagem real obrigatória para vários kits
+# Cadastro simples de produto unitário e frete
 
-## Problema
-O peso dos kits é calculado corretamente a partir das peças, mas a estimativa anterior multiplicava a altura do kit por quantidade, sem conhecer a embalagem real. A API Melhor Envio devolvia tarifas para um pacote hipotético, inadequadas para cobrar do cliente.
+A etapa 5 tem somente **peso (kg), largura, altura/espessura e comprimento** de **uma unidade vendida**. O valor do item e o estoque também são por unidade; kits antigos podem ser editados e convertidos em unidades, mas **pedidos históricos não são alterados**.
 
-## Solução (migração 050)
-O editor continua simples para kits:
-- Peças por kit; peso de uma peça; peso calculado de um kit
-- Dimensões de UM kit
-- Pacote real para lotes: capacidade em kits, peso da embalagem vazia, largura/altura/comprimento externos reais
+Na gravação, `pieces_per_kit=1`, `piece_weight_grams=weight*1000`; os antigos campos de pacote especial são zerados. Os dados permanecem no banco por compatibilidade, porém não são apresentados no formulário.
 
-Em cotação de 2 até a capacidade cadastrada, é enviada **uma pacote único** com dimensões reais cadastradas e peso total = (peso do kit × quantidade de kits) + peso da embalagem vazia. O Melhor Envio continua responsável pela tarifa. Se não houver pacote cadastrada, se o pedido exceder a capacidade ou se misturar itens distintos, a cotação automática é bloqueada, em vez de inventar medidas. Para uma unidade o fluxo original é mantido.
+A cotação agora usa o array `products` da API Melhor Envio, incluindo `quantity`, peso e dimensões individuais. A própria API monta volumes estimados e retorna os `packages`, que são preservados para a emissão posterior da etiqueta. Veja a documentação da Melhor Envio sobre cálculo com múltiplos produtos.
 
-**Exemplo:** 10 peças de 40 g = 0,400 kg por kit; 24 kits = 9,600 kg de produtos. Se a embalagem vazia pesa 0,500 kg, peso cotado é 10,100 kg. Dimensões da pacote devem ser aferidas fisicamente. Não reutilize 25 × 3 × 24 cm (um kit) para a pacote cheio.
+**Atenção:** 0,040 kg × 10 unidades = 0,400 kg de produtos, sem tara de plástico, fita ou proteção. Dimensões UNITÁRIAS **não garantem** o tamanho do pacote fechado e, portanto, o preço retornado pode ser diferente do cobrado ao postar. Compare um pedido de teste com pacote real e cotação do mesmo serviço antes de reabrir vendas. A operação Asaas permanece pausada.
 
-Limitações: o peso informado só representa produtos + tara da pacote, não embalagem interna extra; garanta que a tara inclua todos os materiais adicionais. Caso sejam usadas várias pacotes, será necessária implementação de múltiplos volumes com etiqueta individual. Fretes de pedidos anteriores não são recalculados automaticamente.
-
-## Implantação
-Faça backup, atualize a main e rode `composer migrate`; a migração 050 é aditiva. Revise o produto e informe dimensões da pacote final. Validar a cotação para o mesmo serviço/CEP no Melhor Envio e comparar etiqueta vs preço; valores de balcão podem diferir por contrato ou modalidade. Mantenha checkout pausado até homologação.
-
-## Operação com roupas em pacote plástico
-A Tuffer não exige caixa de papelão. Para sacos ou envelopes de roupas, meça **largura, comprimento e espessura (altura)** do pacote **fechado** contendo os kits e informe também o peso do plástico/lacre/proteções (tara). Não use 0 cm de espessura: algumas modalidades exigem dimensão mínima, que pode ser aplicada pelo cotador. O preço calculado é válido apenas para o volume e o serviço informados, sujeito às regras da transportadora. Se houver mais de um pacote, não informe todos como um pacote único.
-
-## Peso automático sem preenchimento de tara
-O campo de peso adicional do pacote foi removido do formulário. O peso da cotação para um pacote de vários kits é **peso de um kit × quantidade de kits**. Exemplo: 0,400 kg × 10 kits = 4,000 kg; 24 kits = 9,600 kg. Um registro legado de tara não é aplicado às novas cotações; ao salvar o produto a tara será zerada. A exigência de informar capacidade e medidas externas reais permanece para não inventar cubagem. Atenção: se a transportadora aferir peso de embalagem adicional, poderá haver cobrança de diferença; esse risco não é eliminado pelo cálculo automático dos produtos.
+A atualização não exige migração adicional, pois preserva as colunas 049 e 050. Execute `git pull origin main`.

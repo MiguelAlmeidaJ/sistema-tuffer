@@ -34,7 +34,7 @@ final class ShippingQuoteService
         $cartId = (new CartService())->id();
         $cacheKey = 'shipping_quotes_' . ($cartId ?: 'guest');
         $fingerprint = hash('sha256', json_encode([
-            'central-label-v5-verified-box',
+            'product-unit-dimensions-v6',
             $postalCode,
             array_map(static fn(array $group): array => [
                 $group['store_id'],
@@ -261,40 +261,10 @@ final class ShippingQuoteService
      */
     private function volumeForQuantity(array $items): ?array
     {
-        $total = array_sum(array_map(
-            static fn(array $item): int => max(1, (int) ($item['quantity'] ?? 1)), $items
-        ));
-        if ($total <= 1) return null;
-        if (count($items) !== 1) {
-            throw new RuntimeException('Frete automático indisponível para mistura de produtos: confirme a embalagem real antes de cotar.');
-        }
-        $item = $items[0];
-        $qty = max(1, (int) ($item['quantity'] ?? 1));
-        $capacity = (int) ($item['shipping_box_capacity'] ?? 0);
-        if ($capacity < 2) {
-            throw new RuntimeException('O pacote plástico de envio para vários kits ainda não está cadastrado. Informe a capacidade e as dimensões reais do pacote.');
-        }
-        if ($qty > $capacity) {
-            throw new RuntimeException("O pedido tem {$qty} kits, mas o pacote cadastrado comporta {$capacity}. Configure envio de vários volumes antes de cotar.");
-        }
-        $width = (float) ($item['shipping_box_width'] ?? 0);
-        $height = (float) ($item['shipping_box_height'] ?? 0);
-        $length = (float) ($item['shipping_box_length'] ?? 0);
-        $unitWeight = (float) ($item['shipping_weight'] ?? 0);
-        if ($unitWeight <= 0
-            || $width < 11 || $height < 2 || $length < 16) {
-            throw new RuntimeException('Pacote de envio incompleto. Meça o pacote fechado com os kits antes de liberar cotação.');
-        }
-        $weight = round($unitWeight * $qty, 3);
-        if ($weight <= 0 || $weight > 30 || max($width, $height, $length) > 100) {
-            throw new RuntimeException('Peso ou medidas do pacote acima do limite seguro para cotação automática.');
-        }
-        return [
-            'height' => round($height, 2),
-            'width' => round($width, 2),
-            'length' => round($length, 2),
-            'weight' => $weight,
-        ];
+        // Cotação por PRODUTOS: Melhor Envio calcula a embalagem a partir
+        // do peso/dimensões UNITÁRIOS e da quantidade de cada item.
+        // Não inventar medidas de uma caixa ou pacote final.
+        return null;
     }
 
     /** @param array<int,array<string,mixed>> $items @return array<int,mixed> */

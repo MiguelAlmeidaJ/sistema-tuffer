@@ -4,15 +4,15 @@ namespace Tests\Unit;
 use PHPUnit\Framework\TestCase;
 final class KitUnitWeightTest extends TestCase
 {
-    public function testEditorCollectsPiecesAndPerPieceWeight(): void
+    public function testEditorCollectsUnitWeightAndDimensions(): void
     {
         $root=dirname(__DIR__,2);
         $view=file_get_contents($root.'/resources/views/seller/products/form.php');
         $controller=file_get_contents($root.'/app/Http/Controllers/Seller/ProductController.php');
-        self::assertStringContainsString('name="pieces_per_kit"',$view);
-        self::assertStringContainsString('name="piece_weight_grams"',$view);
-        self::assertStringContainsString('$pieceWeight * $pieces / 1000',$controller);
-        self::assertStringContainsString("'weight' => $kitWeight",$controller);
+        self::assertStringNotContainsString('name="pieces_per_kit"',$view);
+        self::assertStringContainsString('name="weight"',$view);
+        self::assertStringContainsString("'pieces_per_kit' => 1",$controller);
+        self::assertStringContainsString("'weight' => $unitWeight",$controller);
     }
     public function testCartAndProductPagePreferCalculatedKitWeight(): void
     {
