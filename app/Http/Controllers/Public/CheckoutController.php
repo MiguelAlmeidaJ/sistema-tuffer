@@ -56,20 +56,21 @@ final class CheckoutController extends Controller
         $shipping = $postalCode !== ''
             ? $quoteService->quotes($cart, $postalCode)
             : ['configured' => $quoteService->configured(), 'postal_code' => null, 'stores' => [], 'shipping_total' => 0.0];
-        $paymentClient = new AsaasClient();
+        $checkoutAccessStatus = AsaasCheckoutAccess::status($user);
 
         return $this->page('public/checkout/index', 'layouts/public', [
             'pageTitle' => 'Checkout seguro',
             'cart' => $cart,
             'addresses' => $addresses,
             'isCustomer' => ($user['type'] ?? null) === 'customer',
-            'paymentConfigured' => AsaasCheckoutAccess::allowed($user),
-            'cardConfigured' => AsaasCheckoutAccess::allowed($user),
+            'paymentConfigured' => $checkoutAccessStatus === 'allowed',
+            'checkoutAccessMessage' => AsaasCheckoutAccess::explanation($checkoutAccessStatus),
+            'cardConfigured' => $checkoutAccessStatus === 'allowed',
             'pagarmePublicKey' => '',
             'cardTokenUrl' => '',
             'shipping' => $shipping,
             'shippingConfigured' => $quoteService->configured(),
-            'sandboxTestMode' => AsaasCheckoutAccess::sandbox() && AsaasCheckoutAccess::allowed($user),
+            'sandboxTestMode' => AsaasCheckoutAccess::sandbox() && $checkoutAccessStatus === 'allowed',
         ]);
     }
 
@@ -157,7 +158,7 @@ final class CheckoutController extends Controller
         }
 
         if (!AsaasCheckoutAccess::allowed($user)) {
-            Session::flash('guide', 'O pagamento está temporariamente indisponível. Seu carrinho continua salvo.');
+            Session::flash('guide', AsaasCheckoutAccess::explanation(AsaasCheckoutAccess::status($user)) . ' Seu carrinho continua salvo.');
             return Response::redirect('/checkout');
         }
 

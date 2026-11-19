@@ -6,6 +6,7 @@ declare(strict_types=1);
  * Uso: php scripts/check-asaas-sandbox.php
  */
 use App\Services\Payments\Asaas\AsaasClient;
+use App\Core\Database;
 use App\Services\Payments\Asaas\AsaasCheckoutAccess;
 use Dotenv\Dotenv;
 
@@ -36,7 +37,12 @@ try {
     echo "ASAAS_SANDBOX=CONNECTED read_only=true checkout_enabled="
         . ($client->checkoutEnabled() ? 'yes' : 'no')
         . " payment_records=" . count($response['data']) . "\n";
-    echo "NEXT=Use authorized customer account and a test Pix order; confirm QR and webhook in the Sandbox dashboard.\n";
+    $stmt = Database::connection()->prepare(
+        "SELECT COUNT(*) FROM users WHERE LOWER(TRIM(email))=? AND type='customer' AND status='active'"
+    );
+    $stmt->execute([strtolower($testEmail)]);
+    echo "authorized_customer_account=" . ((int)$stmt->fetchColumn() > 0 ? 'found' : 'not_found') . "\n";
+    echo "NEXT=Log in as this exact customer. If checkout remains blocked, read its new explicit access message.\n";
 } catch (Throwable $e) {
     fwrite(STDERR, "ASAAS_SANDBOX=FAILED api_connection_or_authorization\n");
     exit(1);

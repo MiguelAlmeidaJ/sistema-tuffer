@@ -19,15 +19,16 @@ final class AsaasSandboxAccessTest extends TestCase
             $_ENV['ASAAS_WEBHOOK_TOKEN']=str_repeat('b',24);
             $_ENV['ASAAS_CHECKOUT_ENABLED']='true';
             $_ENV['ASAAS_SANDBOX_TEST_EMAIL']='homologacao@example.com';
-            self::assertTrue(AsaasCheckoutAccess::allowed(['type'=>'customer','email'=>'homologacao@example.com']));
-            self::assertFalse(AsaasCheckoutAccess::allowed(['type'=>'customer','email'=>'outro@example.com']));
-            self::assertFalse(AsaasCheckoutAccess::allowed(['type'=>'admin','email'=>'homologacao@example.com']));
+            self::assertTrue(AsaasCheckoutAccess::allowed(['id'=>42,'type'=>'customer','email'=>'homologacao@example.com']));
+            self::assertFalse(AsaasCheckoutAccess::allowed(['id'=>43,'type'=>'customer','email'=>'outro@example.com']));
+            self::assertFalse(AsaasCheckoutAccess::allowed(['id'=>44,'type'=>'admin','email'=>'homologacao@example.com']));
             self::assertFalse(AsaasCheckoutAccess::allowed(null));
+            self::assertSame('account_not_authorized', AsaasCheckoutAccess::status(['id'=>43,'type'=>'customer','email'=>'outro@example.com']));
             $_ENV['ASAAS_SANDBOX_TEST_EMAIL']='';
-            self::assertFalse(AsaasCheckoutAccess::allowed(['type'=>'customer','email'=>'homologacao@example.com']));
+            self::assertFalse(AsaasCheckoutAccess::allowed(['id'=>42,'type'=>'customer','email'=>'homologacao@example.com']));
             $_ENV['ASAAS_ENV']='production';
             $_ENV['ASAAS_PRODUCTION_APPROVED']='false';
-            self::assertFalse(AsaasCheckoutAccess::allowed(['type'=>'customer','email'=>'homologacao@example.com']));
+            self::assertFalse(AsaasCheckoutAccess::allowed(['id'=>42,'type'=>'customer','email'=>'homologacao@example.com']));
         } finally {
             foreach ($prior as $name=>$value) {
                 if ($value===null) unset($_ENV[$name]);
@@ -51,6 +52,7 @@ final class AsaasSandboxAccessTest extends TestCase
     {
         $source=file_get_contents(dirname(__DIR__,2).'/scripts/check-asaas-sandbox.php');
         self::assertStringContainsString("get('/payments?limit=1')",$source);
+        self::assertStringContainsString('authorized_customer_account=', $source);
         self::assertStringNotContainsString("->post(",$source);
     }
 
