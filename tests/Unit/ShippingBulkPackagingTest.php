@@ -22,10 +22,10 @@ final class ShippingBulkPackagingTest extends TestCase
         self::assertNull($this->volume([['quantity'=>1,'shipping_weight'=>0.4]]));
     }
 
-    public function testTwentyFourKitsUseRealBoxAndIncludeTare(): void
+    public function testTwentyFourKitsCalculateWeightAutomatically(): void
     {
         self::assertSame([
-            'height'=>32.0,'width'=>40.0,'length'=>50.0,'weight'=>10.1,
+            'height'=>32.0,'width'=>40.0,'length'=>50.0,'weight'=>9.6,
         ],$this->volume([[
             'quantity'=>24,'shipping_weight'=>0.4,
             'shipping_width'=>25,'shipping_height'=>3,'shipping_length'=>24,
@@ -60,7 +60,7 @@ final class ShippingBulkPackagingTest extends TestCase
     {
         $source=file_get_contents(dirname(__DIR__,2).'/app/Services/Shipping/ShippingQuoteService.php');
         self::assertStringContainsString("'volumes'",$source);
-        self::assertStringContainsString("'shipping_box_tare_kg'",$source);
+        self::assertStringContainsString('$unitWeight * $qty',$source);
         self::assertStringNotContainsString('$height=(float)($item[\'shipping_height\']??0)*$quantity',$source);
     }
 }

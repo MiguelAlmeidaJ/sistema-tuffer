@@ -272,21 +272,20 @@ final class ShippingQuoteService
         $qty = max(1, (int) ($item['quantity'] ?? 1));
         $capacity = (int) ($item['shipping_box_capacity'] ?? 0);
         if ($capacity < 2) {
-            throw new RuntimeException('O pacote plástico de envio para vários kits ainda não está cadastrado. Informe capacidade, peso e dimensões reais no produto.');
+            throw new RuntimeException('O pacote plástico de envio para vários kits ainda não está cadastrado. Informe a capacidade e as dimensões reais do pacote.');
         }
         if ($qty > $capacity) {
             throw new RuntimeException("O pedido tem {$qty} kits, mas o pacote cadastrado comporta {$capacity}. Configure envio de vários volumes antes de cotar.");
         }
-        $tare = $item['shipping_box_tare_kg'] ?? null;
         $width = (float) ($item['shipping_box_width'] ?? 0);
         $height = (float) ($item['shipping_box_height'] ?? 0);
         $length = (float) ($item['shipping_box_length'] ?? 0);
         $unitWeight = (float) ($item['shipping_weight'] ?? 0);
-        if ($tare === null || (float) $tare < 0 || $unitWeight <= 0
+        if ($unitWeight <= 0
             || $width < 11 || $height < 2 || $length < 16) {
             throw new RuntimeException('Pacote de envio incompleto. Meça o pacote fechado com os kits antes de liberar cotação.');
         }
-        $weight = round($unitWeight * $qty + (float) $tare, 3);
+        $weight = round($unitWeight * $qty, 3);
         if ($weight <= 0 || $weight > 30 || max($width, $height, $length) > 100) {
             throw new RuntimeException('Peso ou medidas do pacote acima do limite seguro para cotação automática.');
         }

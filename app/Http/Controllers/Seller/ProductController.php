@@ -292,20 +292,19 @@ final class ProductController extends Controller
             throw new RuntimeException('A capacidade do pacote deve ficar entre 2 e 100 kits.');
         }
         $boxValues = [];
-        foreach (['shipping_box_tare_kg','shipping_box_width','shipping_box_height','shipping_box_length'] as $boxKey) {
+        foreach (['shipping_box_width','shipping_box_height','shipping_box_length'] as $boxKey) {
             $raw = trim((string) ($_POST[$boxKey] ?? ''));
             $boxValues[$boxKey] = $raw === '' ? null : (float) str_replace(',', '.', $raw);
         }
         $hasBoxDetails = count(array_filter($boxValues, static fn($value): bool => $value !== null)) > 0;
         if ($boxCapacity !== null || $hasBoxDetails) {
             if ($boxCapacity === null
-                || $boxValues['shipping_box_tare_kg'] === null || $boxValues['shipping_box_tare_kg'] < 0
                 || $boxValues['shipping_box_width'] === null || $boxValues['shipping_box_width'] < 11
                 || $boxValues['shipping_box_height'] === null || $boxValues['shipping_box_height'] < 2
                 || $boxValues['shipping_box_length'] === null || $boxValues['shipping_box_length'] < 16) {
-                throw new RuntimeException('Para frete de vários kits, preencha capacidade, tara e dimensões reais do pacote fechado.');
+                throw new RuntimeException('Para frete de vários kits, preencha capacidade e dimensões reais do pacote fechado.');
             }
-            $totalWeight = $kitWeight * $boxCapacity + $boxValues['shipping_box_tare_kg'];
+            $totalWeight = $kitWeight * $boxCapacity;
             if ($totalWeight > 30 || max($boxValues['shipping_box_width'], $boxValues['shipping_box_height'], $boxValues['shipping_box_length']) > 100) {
                 throw new RuntimeException('A embalagem cadastrada excede o limite seguro de cotação automática.');
             }
@@ -336,7 +335,7 @@ final class ProductController extends Controller
             'pieces_per_kit' => $pieces,
             'piece_weight_grams' => $pieceWeight,
             'shipping_box_capacity' => $boxCapacity,
-            'shipping_box_tare_kg' => $boxValues['shipping_box_tare_kg'],
+            'shipping_box_tare_kg' => 0,
             'shipping_box_width' => $boxValues['shipping_box_width'],
             'shipping_box_height' => $boxValues['shipping_box_height'],
             'shipping_box_length' => $boxValues['shipping_box_length'],

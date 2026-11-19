@@ -178,7 +178,7 @@ if ($seoKeywordsValue === '' && trim((string) $value('name')) !== '') {
                 <div class="product-subsection">
                     <div class="subsection-heading"><div>
                         <h4>Pacote de envio para vários kits</h4>
-                        <p>Para cotar 2 ou mais kits, informe o tamanho e o peso do pacote plástico utilizado no envio. Use as dimensões do pacote plástico fechado, com os kits dentro. Meça após acomodar e comprimir normalmente as roupas, sem deformar artificialmente.</p>
+                        <p>Para cotar 2 ou mais kits, informe apenas as medidas do pacote plástico fechado. O peso total será calculado automaticamente: peso do kit × quantidade de kits. Use as dimensões do pacote plástico fechado, com os kits dentro. Meça após acomodar e comprimir normalmente as roupas, sem deformar artificialmente.</p>
                     </div></div>
                     <div class="product-form-grid product-form-grid--three">
                         <label class="product-field">Quantos kits cabem neste pacote?
@@ -197,10 +197,10 @@ if ($seoKeywordsValue === '' && trim((string) $value('name')) !== '') {
                             <input type="number" name="shipping_box_length" min="16" max="100" step="0.01" placeholder="Medida real" value="<?= e($value('shipping_box_length')) ?>">
                         </label>
                     </div>
-                    <small>Preencha os cinco campos com medidas conferidas. Para pedidos acima da capacidade de um pacote, o frete automático ficará indisponível até configurar o envio com vários volumes.</small>
+                    <small>Preencha a capacidade e as três dimensões do pacote fechado. Para pedidos acima da capacidade de um pacote, o frete automático ficará indisponível até configurar o envio com vários volumes.</small>
                 </div>
                 <div class="shipping-checks"><label class="product-check"><input type="checkbox" name="original_packaging" value="1" <?= $value('original_packaging') ? 'checked' : '' ?>><span><strong>Enviado na embalagem original</strong></span></label><label class="product-check"><input type="checkbox" name="combine_shipping" value="1" <?= $value('combine_shipping', 1) ? 'checked' : '' ?>><span><strong>Permite agrupar com outros produtos</strong></span></label></div>
-                <p class="integration-notice">O cálculo automático do peso é exato para as peças cadastradas. A transportadora pode cobrar mais se o pacote utilizado tiver medidas diferentes, peso adicional de embalagem ou serviço distinto.</p>
+                <p class="integration-notice">O peso do pedido é calculado automaticamente pelos kits comprados. O valor do frete ainda depende das medidas reais do pacote, das regras da transportadora e de eventuais adicionais de embalagem.</p>
                 <script>
                 document.addEventListener('input', function (e) {
                     if (!e.target.matches('[data-kit-pieces], [data-kit-piece-weight]')) return;

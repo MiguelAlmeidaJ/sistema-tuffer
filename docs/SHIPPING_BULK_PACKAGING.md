@@ -20,3 +20,6 @@ Faça backup, atualize a main e rode `composer migrate`; a migração 050 é adi
 
 ## Operação com roupas em pacote plástico
 A Tuffer não exige caixa de papelão. Para sacos ou envelopes de roupas, meça **largura, comprimento e espessura (altura)** do pacote **fechado** contendo os kits e informe também o peso do plástico/lacre/proteções (tara). Não use 0 cm de espessura: algumas modalidades exigem dimensão mínima, que pode ser aplicada pelo cotador. O preço calculado é válido apenas para o volume e o serviço informados, sujeito às regras da transportadora. Se houver mais de um pacote, não informe todos como um pacote único.
+
+## Peso automático sem preenchimento de tara
+O campo de peso adicional do pacote foi removido do formulário. O peso da cotação para um pacote de vários kits é **peso de um kit × quantidade de kits**. Exemplo: 0,400 kg × 10 kits = 4,000 kg; 24 kits = 9,600 kg. Um registro legado de tara não é aplicado às novas cotações; ao salvar o produto a tara será zerada. A exigência de informar capacidade e medidas externas reais permanece para não inventar cubagem. Atenção: se a transportadora aferir peso de embalagem adicional, poderá haver cobrança de diferença; esse risco não é eliminado pelo cálculo automático dos produtos.
