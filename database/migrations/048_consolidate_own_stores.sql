@@ -31,8 +31,7 @@ CREATE TABLE product_store_consolidation_backup (
  old_store_id BIGINT UNSIGNED NOT NULL,
  old_seller_id BIGINT UNSIGNED NOT NULL,
  old_brand_id BIGINT UNSIGNED NULL,
- captured_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
- CONSTRAINT fk_product_store_consolidation_product FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE RESTRICT
+ captured_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO product_store_consolidation_backup(product_id,old_store_id,old_seller_id,old_brand_id)
