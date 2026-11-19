@@ -259,7 +259,8 @@ final class OrderPlacementService
         if ($sellerId < 1 || $storeId < 1) {
             throw new RuntimeException('Uma das lojas do carrinho não está disponível.');
         }
-        $commission = $this->commissionRate($sellerId, $storeId);
+        // Lojas próprias: sem comissão interna nem split de marketplace no Asaas.
+        $commission = 0.0;
         $products = $this->cents($group['subtotal']);
         $discount = $this->cents($group['discount'] ?? 0);
         $shippingCents = $this->cents($shipping['price']);
@@ -339,7 +340,7 @@ final class OrderPlacementService
 
     private function createPayment(int $orderId, string $method, int $amount, string $idempotencyKey, string $integrationType): int
     {
-        $statement = $this->pdo->prepare("INSERT INTO payments(order_id,provider,integration_type,method,amount,amount_cents,status,idempotency_key,expires_at) VALUES(?,'asaas',?,?,?,?, 'pending',?,DATE_ADD(NOW(),INTERVAL 3 DAY))");
+        $statement = $this->pdo->prepare("INSERT INTO payments(order_id,provider,integration_type,method,amount,amount_cents,status,idempotency_key,expires_at) VALUES(?,'asaas',?,?,?,?, 'pending',?,NULL)");
         $statement->execute([$orderId, $integrationType, $method, $this->money($amount), $amount, $idempotencyKey]);
         return (int) $this->pdo->lastInsertId();
     }
