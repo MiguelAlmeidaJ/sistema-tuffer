@@ -20,7 +20,7 @@ final class ExpiredOrderService
     {
         $pdo = $this->database ?? Database::connection();
         $limit = max(1, min(500, $limit));
-        $ids = $pdo->query("SELECT p.id FROM payments p JOIN orders o ON o.id=p.order_id WHERE p.status IN ('pending','waiting_payment','processing') AND p.expires_at<=NOW() AND o.status='pending_payment' ORDER BY p.id LIMIT {$limit}")->fetchAll(PDO::FETCH_COLUMN);
+        $ids = $pdo->query("SELECT p.id FROM payments p JOIN orders o ON o.id=p.order_id WHERE p.provider='pagarme' AND p.status IN ('pending','waiting_payment','processing') AND p.expires_at<=NOW() AND o.status='pending_payment' ORDER BY p.id LIMIT {$limit}")->fetchAll(PDO::FETCH_COLUMN);
         $result = ['expired' => 0, 'failed' => 0];
         foreach ($ids as $paymentId) {
             try {
