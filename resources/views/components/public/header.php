@@ -21,25 +21,64 @@ $deliverySecondary = $hasDeliveryAddress
         <a class="brand" href="<?= e(url('/')) ?>" aria-label="Tuffer, página inicial"><img src="<?= e(upload_asset($platformSettings['logo_path'] ?? 'platform/logos/tuffer-logo.svg')) ?>" alt="<?= e($platformSettings['platform_name'] ?? 'Tuffer') ?>"></a>
         <?php require __DIR__ . '/search-bar.php'; ?>
         <nav class="header-actions" aria-label="Acesso rápido">
-            <a class="icon-action" href="<?= e($authUser ? url(match ($authUser['type']) {'admin'=>'/admin','seller','operator'=>'/vendedor',default=>'/minha-conta'}) : $guestLoginUrl) ?>" aria-label="<?= $authUser ? 'Minha conta' : 'Entrar' ?>">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
-            </a>
-            <?php if ($authUser): ?>
-            <form class="header-logout" method="post" action="<?= e(url('/sair')) ?>">
-                <?= csrf_field() ?>
-                <button class="icon-action icon-action--logout" type="submit" aria-label="Sair da conta" title="Sair">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5v16h5"/><path d="M14 8l4 4-4 4M8 12h10"/></svg>
-                </button>
-            </form>
-            <?php endif; ?>
             <?php if (($authUser['type'] ?? null) === 'customer'): ?>
-            <a class="icon-action icon-action--notice" href="<?= e(url('/minha-conta/notificacoes')) ?>" aria-label="Notificações<?= $unreadNotifications > 0 ? ' não lidas: ' . (int) $unreadNotifications : '' ?>">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg><?php if ($unreadNotifications > 0): ?><b><?= (int) min(99, $unreadNotifications) ?></b><?php endif; ?>
-            </a>
+              <div class="header-menu" data-header-menu>
+                <button class="icon-action header-menu__trigger" type="button" data-header-trigger aria-expanded="false" aria-haspopup="true" aria-controls="header-account-panel" aria-label="Abrir menu Minha conta">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+                </button>
+                <div class="header-menu__panel header-menu__panel--account" id="header-account-panel" data-header-panel hidden>
+                  <div class="header-menu__intro"><span class="header-menu__avatar"><?=e(mb_strtoupper(mb_substr((string) ($authUser['name'] ?? 'C'),0,1)))?></span><span><strong><?=e((string) ($authUser['name'] ?? 'Minha conta'))?></strong><small><?=e((string) ($authUser['email'] ?? ''))?></small></span></div>
+                  <div class="header-menu__links">
+                    <a href="<?=e(url('/minha-conta/pedidos'))?>"><span>Ver meus pedidos</span><span aria-hidden="true">→</span></a>
+                    <a href="<?=e(url('/minha-conta/enderecos'))?>"><span>Meus endereços</span><span aria-hidden="true">→</span></a>
+                    <a href="<?=e(url('/minha-conta/perfil'))?>"><span>Meus dados</span><span aria-hidden="true">→</span></a>
+                  </div>
+                  <form method="post" action="<?=e(url('/sair'))?>" class="header-menu__logout"><?=csrf_field()?><button type="submit">Sair da conta <span aria-hidden="true">↗</span></button></form>
+                </div>
+              </div>
+              <?php
+              $headerLatestNotifications = [];
+              try {
+                  $headerNotificationStmt = \App\Core\Database::connection()->prepare('SELECT title,message,action_url,created_at,read_at FROM user_notifications WHERE user_id=? ORDER BY created_at DESC LIMIT 4');
+                  $headerNotificationStmt->execute([(int)$authUser['id']]);
+                  $headerLatestNotifications = $headerNotificationStmt->fetchAll(\PDO::FETCH_ASSOC);
+              } catch (\Throwable $exception) {
+                  \App\Core\Logger::exception($exception,['area'=>'header_notifications'],'database');
+              }
+              ?>
+              <div class="header-menu" data-header-menu>
+                <button class="icon-action icon-action--notice header-menu__trigger" type="button" data-header-trigger aria-expanded="false" aria-haspopup="true" aria-controls="header-notifications-panel" aria-label="Abrir notificações<?=($unreadNotifications ?? 0)>0?' não lidas: '.(int)$unreadNotifications:''?>">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
+                  <?php if (($unreadNotifications ?? 0)>0): ?><b><?= (int)min(99,$unreadNotifications)?></b><?php endif;?>
+                </button>
+                <div class="header-menu__panel header-menu__panel--notifications" id="header-notifications-panel" data-header-panel hidden>
+                  <div class="header-menu__panel-heading"><strong>Notificações</strong><span><?= (int)($unreadNotifications ?? 0) ?> não lidas</span></div>
+                  <?php if (!$headerLatestNotifications): ?>
+                    <div class="header-menu__empty"><span aria-hidden="true">✓</span><strong>Tudo em dia!</strong><small>Você não tem notificações recentes.</small></div>
+                  <?php else: ?>
+                    <div class="header-menu__notifications">
+                      <?php foreach ($headerLatestNotifications as $notice):
+                          $noticePath = (string)($notice['action_url'] ?: '/minha-conta/notificacoes');
+                          if ($noticePath === '' || !str_starts_with($noticePath,'/') || str_starts_with($noticePath,'//') || str_contains($noticePath,'\\')) $noticePath='/minha-conta/notificacoes';
+                      ?>
+                        <a class="header-menu__notification <?=empty($notice['read_at'])?'is-unread':''?>" href="<?=e(url($noticePath))?>">
+                          <span class="header-menu__dot" aria-hidden="true"></span>
+                          <span><strong><?=e((string)$notice['title'])?></strong><small><?=e((string)$notice['message'])?></small><time><?=date('d/m H:i',strtotime((string)$notice['created_at']))?></time></span>
+                        </a>
+                      <?php endforeach;?>
+                    </div>
+                  <?php endif;?>
+                  <a class="header-menu__all" href="<?=e(url('/minha-conta/notificacoes'))?>">Ver todas as notificações <span aria-hidden="true">→</span></a>
+                </div>
+              </div>
+            <?php else: ?>
+              <a class="icon-action" href="<?= e($authUser ? url(match ($authUser['type']) {'admin'=>'/admin','seller','operator'=>'/vendedor',default=>'/minha-conta'}) : $guestLoginUrl) ?>" aria-label="<?= $authUser ? 'Minha conta' : 'Entrar' ?>">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+              </a>
             <?php endif; ?>
-            <a class="icon-action icon-action--cart" href="<?= e(url('/carrinho')) ?>" aria-label="Carrinho">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14l-1 13H6L5 7Z"/><path d="M9 10V6a3 3 0 0 1 6 0v4"/></svg>
-                <?php if (($cartCount ?? 0) > 0): ?><b class="cart-count"><?= (int) min(99, $cartCount) ?></b><?php endif; ?>
+            <a class="icon-action icon-action--cart" href="<?=e(url('/carrinho'))?>" aria-label="Carrinho">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14l-1 13H6L5 7Z"/><path d="M9 10V6a3 3 0 0 1 6 0v4"/></svg>
+              <?php if (($cartCount ?? 0)>0):?><b class="cart-count"><?= (int)min(99,$cartCount)?></b><?php endif;?>
             </a>
         </nav>
     </div>

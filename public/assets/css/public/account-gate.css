@@ -25,3 +25,47 @@
 .account-gate__privacy a{color:inherit;text-decoration:underline}
 @media(max-height:620px){.account-gate__content{padding:16px 24px;gap:7px}.account-gate__brand{margin:0}.account-gate__content>p{margin:0}.account-gate__register{margin:0}}
 @media(prefers-reduced-motion:reduce){.account-gate::backdrop{backdrop-filter:none}}
+
+/* Compacto: sem rolagem interna em telas comuns. Campos e ações sempre visíveis. */
+.account-gate{box-sizing:border-box;width:min(94vw,430px);max-width:calc(100vw - 20px);max-height:calc(100dvh - 24px);overflow:visible;border-radius:22px}
+.account-gate__content{padding:clamp(14px,2.2dvh,23px) clamp(19px,3vw,27px);gap:clamp(5px,1dvh,9px)}
+.account-gate__brand{margin:0 0 2px}
+.account-gate__brand img{max-width:98px;max-height:37px}
+.account-gate__eyebrow{font-size:.58rem}
+.account-gate h2{font-size:clamp(1.35rem,3.8vw,1.85rem)}
+.account-gate__content>p{font-size:.74rem;line-height:1.38;margin:0 0 3px}
+.account-gate__google{min-height:42px;font-size:.78rem}
+.account-gate__divider{margin:3px 0;font-size:.67rem}
+.account-gate__form{gap:5px}
+.account-gate__form label{font-size:.7rem}
+.account-gate__form input{height:40px;font-size:.79rem}
+.account-gate__help{margin:0 0 2px}
+.account-gate__primary{min-height:44px;font-size:.8rem}
+.account-gate__register{margin:4px 0 0;padding-top:8px;gap:4px}
+.account-gate__register>a{padding:10px;font-size:.76rem}
+.account-gate__privacy{margin-top:3px;font-size:.61rem;line-height:1.35}
+@media(max-width:500px){
+ .account-gate{width:calc(100vw - 24px);border-radius:17px}
+ .account-gate__content{padding:14px 18px;gap:6px}
+ .account-gate__brand img{max-height:30px}
+ .account-gate h2{font-size:1.4rem}
+ .account-gate__content>p{font-size:.7rem}
+ .account-gate__google{min-height:40px}
+ .account-gate__form input{height:39px}
+}
+@media(max-height:660px){
+ .account-gate__content{padding:10px 17px;gap:4px}
+ .account-gate__brand{margin:0}
+ .account-gate__brand img{max-height:25px}
+ .account-gate h2{font-size:1.26rem}
+ .account-gate__content>p{font-size:.68rem;line-height:1.25}
+ .account-gate__google{min-height:35px}
+ .account-gate__form input{height:35px}
+ .account-gate__primary{min-height:38px}
+ .account-gate__register>a{padding:7px}
+ .account-gate__register{padding-top:5px;gap:2px}
+}
+@media(max-height:480px){
+ /* Acessibilidade: fallback para dispositivos excepcionalmente baixos / teclado virtual. */
+ .account-gate{max-height:calc(100dvh - 12px);overflow-y:auto}
+}

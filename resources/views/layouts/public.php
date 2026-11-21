@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="<?= e(asset('css/guidance.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/customer-flow.css')) ?>">
     <?php if (empty($authUser)): ?><link rel="stylesheet" href="<?=e(asset('css/public/account-gate.css'))?>"><?php endif;?>
+    <link rel="stylesheet" href="<?=e(asset('css/public/header-dropdowns.css'))?>">
     <style>:root{<?= platform_theme_style($platformSettings) ?>}</style>
     <script defer src="<?= e(asset('js/checkout-card.js')) ?>"></script>
     <script defer src="<?= e(asset('js/app.js')) ?>"></script>
@@ -23,10 +24,11 @@
     <script defer src="<?= e(asset('js/commerce-ux.js')) ?>"></script>
     <script defer src="<?= e(asset('js/purchase-assistant.js')) ?>"></script>
     <?php if (empty($authUser)): ?><script defer src="<?=e(asset('js/account-gate.js'))?>"></script><?php endif;?>
+    <script defer src="<?=e(asset('js/header-dropdowns.js'))?>"></script>
     <?php foreach($schemas as $schema):?><script type="application/ld+json"><?=json_encode($schema,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT)?></script><?php endforeach;?>
 </head>
 <body class="public-shell <?=e(platform_theme_classes($platformSettings))?>">
-    <?php $requestPath=(string)parse_url($_SERVER['REQUEST_URI']??'/',PHP_URL_PATH);$checkoutRequest=str_starts_with($requestPath,'/checkout'); ?>
+    <?php $requestPath=(string)parse_url($_SERVER['REQUEST_URI']??'/',PHP_URL_PATH);$checkoutRequest=str_starts_with($requestPath,'/checkout');$isPrivacyPage=$requestPath==='/politica-de-privacidade'||$requestPath==='/politicas'||str_starts_with($requestPath,'/politicas/'); ?>
     <?php require dirname(__DIR__) . '/components/public/header.php'; ?>
     <div role="status" aria-label="Ambiente de testes da Tuffer" style="display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;background:#fff3d5;color:#64420a;border-block:1px solid #f0d49b;padding:12px 18px;text-align:center;font-size:13px;line-height:1.5">
         <strong style="letter-spacing:.06em">⚠ AMBIENTE DE TESTES</strong>
@@ -41,6 +43,6 @@
     <?php if ($flashError && $checkoutRequest): ?><div class="toast toast--guide" role="status">Não foi possível concluir essa etapa agora. Seu carrinho continua salvo; confira a orientação abaixo e tente novamente.</div><?php elseif ($flashError): ?><div class="toast toast--error" role="alert"><?= e($flashError) ?></div><?php endif; ?>
     <main><?= $content ?></main>
     <?php require dirname(__DIR__) . '/components/public/footer.php'; ?>
-    <?php if (empty($authUser)): require dirname(__DIR__) . '/components/public/account-gate.php'; endif; ?>
+    <?php if (empty($authUser) && !$isPrivacyPage): require dirname(__DIR__) . '/components/public/account-gate.php'; endif; ?>
 </body>
 </html>
