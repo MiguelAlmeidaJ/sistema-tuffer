@@ -4,7 +4,7 @@ document.querySelectorAll('[data-product-rail]').forEach(rail=>{
   const track=rail.querySelector('[data-product-track]');
   const prev=rail.querySelector('[data-product-previous]');
   const next=rail.querySelector('[data-product-next]');
-  const counter=rail.querySelector('[data-product-counter]');
+  const progress=rail.querySelector('[data-product-progress]');
   if(!track) return;
   const cards=()=>[...track.querySelectorAll('.product-card')];
   const position=()=>{
@@ -21,13 +21,13 @@ document.querySelectorAll('[data-product-rail]').forEach(rail=>{
     const max=Math.max(0,count-visible);
     if(prev) prev.disabled=index<=0;
     if(next) next.disabled=index>=max;
-    if(counter) counter.textContent=count>visible?Math.min(index+1,count)+'–'+Math.min(index+visible,count)+' de '+count+' produtos':'';
+    if(progress){const maxScroll=Math.max(1,track.scrollWidth-track.clientWidth);const fraction=Math.max(0,Math.min(1,track.scrollLeft/maxScroll));const width=Math.min(100,100*visible/Math.max(visible,count));progress.style.width=width+'%';progress.style.transform='translateX('+(fraction*(100/Math.max(width/100,.01)-100))+'%)';}
     if(prev&&next) prev.parentElement.hidden=count<=visible;
   };
   const move=direction=>{
     const {index,step,visible}=position();
     const max=Math.max(0,cards().length-visible);
-    const destination=Math.max(0,Math.min(max,index+direction*visible));
+    const destination=Math.max(0,Math.min(max,index+direction));
     track.scrollTo({left:destination*step,behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'});
     requestAnimationFrame(refresh);
   };
@@ -52,12 +52,13 @@ document.querySelectorAll('[data-product-rail]').forEach(rail=>{
       const max=Math.max(0,cards().length-visible);
       if(index>=max)track.scrollTo({left:0,behavior:'smooth'});
       else move(1);
-    },5500);
+    },6800);
   };
   rail.addEventListener('pointerenter',stop);
   rail.addEventListener('pointerleave',start);
   rail.addEventListener('focusin',stop);
   rail.addEventListener('focusout',start);
+  track.addEventListener('pointerdown',stop,{passive:true});
   track.addEventListener('touchstart',stop,{passive:true});
   track.addEventListener('touchend',start,{passive:true});
   document.addEventListener('visibilitychange',()=>document.hidden?stop():start());

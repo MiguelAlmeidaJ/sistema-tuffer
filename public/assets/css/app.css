@@ -8,7 +8,7 @@
 @import url('./layouts/auth.css');
 @import url('./layouts/dashboard.css');
 @import url('./public/home.css');
-@import url('./public/home-refresh.css?v=20261121');
+@import url('./public/home-refresh.css?v=20261121b');
 @import url('./public/catalog.css');
 @import url('./public/product.css?v=20260806-rich-description');
 @import url('./public/product-experience.css?v=20260923-pdp-v2');
@@ -29,6 +29,7 @@
 @import url('./seller/order-fiscal.css?v=20260910-manual-nfe');
 @import url('./seller/order-detail.css?v=20260922-order-tracking');
 @import url('./admin/catalog.css');
+@import url('./admin/brands.css?v=20261121');
 @import url('./admin/settings.css');
 @import url('./admin/order-shipping-replacement.css?v=20260915-admin-label-replacement');
 @import url('./growth.css');

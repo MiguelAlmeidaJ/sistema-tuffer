@@ -55,7 +55,7 @@ $adminOverview = [
     ['report','Relatórios','/admin/relatorios'],
 ];
 $adminGroups = [
-    'Operação' => [['orders','Pedidos','/admin/pedidos'],['products','Produtos','/admin/produtos'],['categories','Categorias','/admin/categorias'],['tag','Tags','/admin/tags']],
+    'Operação' => [['orders','Pedidos','/admin/pedidos'],['products','Produtos','/admin/produtos'],['categories','Categorias','/admin/categorias'],['tag','Marcas','/admin/marcas'],['tag','Tags','/admin/tags']],
     'Marketplace' => [['store','Lojas','/admin/lojas'],['wholesale','Atacadistas','/admin/atacadistas'],['users','Usuários','/admin/usuarios']],
     'Financeiro' => [['finance','Visão financeira','/admin/financeiro'],['wallet','Carteira de fretes','/admin/financeiro/carteira-fretes'],['settlement','Fechamentos','/admin/financeiro/fechamentos'],['diagnostic','Diagnóstico Pagar.me','/admin/diagnostico/pagarme']],
     'Plataforma' => [['settings','Configurações','/admin/configuracoes']],

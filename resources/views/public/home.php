@@ -33,7 +33,7 @@ $bannerLink = static function(mixed $configured, string $fallback): array {
     <div class="home-launches__track" data-product-track tabindex="0" aria-label="Carrossel de lançamentos">
         <?php $homeProductCard=true;foreach($products as $product): require dirname(__DIR__).'/components/public/product-card.php';endforeach;unset($homeProductCard); ?>
     </div>
-    <p class="home-launches__counter" data-product-counter aria-live="polite"></p>
+    <div class="home-launches__progress" role="presentation"><span data-product-progress></span></div>
     <?php else: ?><div class="home-launches__empty">Novidades chegando. <a href="<?=e(url('/produtos'))?>">Explore o catálogo</a>.</div><?php endif; ?>
 </section>
 
@@ -48,7 +48,7 @@ $bannerLink = static function(mixed $configured, string $fallback): array {
         <a href="<?=e(url('/categoria/'.$category['slug']))?>" class="home-categories__item">
             <span class="home-categories__media">
                 <?php if(!empty($category['image_path'])): ?><img src="<?=e(upload_asset($category['image_path']))?>" alt="" loading="lazy">
-                <?php else: ?><span class="home-categories__placeholder" aria-hidden="true"><?=e(mb_strtoupper(mb_substr((string)$category['name'],0,1)))?></span><?php endif;?>
+                <?php else: ?><span class="home-categories__empty-media" aria-hidden="true"></span><?php endif;?>
             </span>
             <span class="home-categories__info"><strong><?=e($category['name'])?></strong><small><?= (int)$category['products_count'] ?> <?= (int)$category['products_count']===1?'produto':'produtos' ?></small></span>
             <span class="home-categories__arrow" aria-hidden="true">↗</span>
@@ -62,17 +62,19 @@ $bannerLink = static function(mixed $configured, string $fallback): array {
     <header class="home-brands__heading"><div><span>NOSSAS MARCAS</span><h2 id="home-brands-title">Duas marcas. Seu estilo.</h2><p>Tuffer e Linda Flor, juntas para acompanhar cada momento.</p></div></header>
     <div class="home-brands__grid">
         <?php
-            $brandSlugs=[];
-            foreach(($brands??[]) as $brand){$brandSlugs[mb_strtolower(trim((string)$brand['name']))]=(string)$brand['slug'];}
-            $tufferBrandHref=isset($brandSlugs['tuffer'])?'/produtos?brand='.rawurlencode($brandSlugs['tuffer']):'/produtos?q=Tuffer';
-            $lindaBrandHref=isset($brandSlugs['linda flor'])?'/produtos?brand='.rawurlencode($brandSlugs['linda flor']):'/produtos?q=Linda%20Flor';
+            $brandRows=[];
+            foreach(($brands??[]) as $brand){$brandRows[mb_strtolower(trim((string)$brand['name']))]=$brand;}
+            $tufferBrand=$brandRows['tuffer']??null;
+            $lindaBrand=$brandRows['linda flor']??null;
+            $tufferBrandHref=$tufferBrand?'/produtos?brand='.rawurlencode($tufferBrand['slug']):'/produtos?q=Tuffer';
+            $lindaBrandHref=$lindaBrand?'/produtos?brand='.rawurlencode($lindaBrand['slug']):'/produtos?q=Linda%20Flor';
         ?>
         <a class="home-brand home-brand--tuffer" href="<?=e(url($tufferBrandHref))?>">
-            <span class="home-brand__visual home-brand__visual--tuffer"><img src="<?=e(upload_asset('platform/logos/tuffer-logo.svg'))?>" alt="Tuffer" loading="lazy"></span>
+            <span class="home-brand__visual home-brand__visual--tuffer"><?php if(!empty($tufferBrand['cover_image_path'])):?><img class="home-brand__cover" src="<?=e(upload_asset($tufferBrand['cover_image_path']))?>" alt="" loading="lazy"><?php else:?><img class="home-brand__logo" src="<?=e(upload_asset('platform/logos/tuffer-logo.svg'))?>" alt="" loading="lazy"><?php endif;?></span>
             <span class="home-brand__content"><span class="home-brand__eyebrow">ESSENCIAIS</span><strong>Tuffer</strong><span>Conforto e atitude em peças para todos os dias.</span><b>Conhecer a marca <span aria-hidden="true">→</span></b></span>
         </a>
         <a class="home-brand home-brand--linda" href="<?=e(url($lindaBrandHref))?>">
-            <span class="home-brand__visual home-brand__visual--linda"><span class="home-brand__flower" aria-hidden="true">✿</span><span class="home-brand__wordmark">Linda Flor</span></span>
+            <span class="home-brand__visual home-brand__visual--linda"><?php if(!empty($lindaBrand['cover_image_path'])):?><img class="home-brand__cover" src="<?=e(upload_asset($lindaBrand['cover_image_path']))?>" alt="" loading="lazy"><?php else:?><span class="home-brand__flower" aria-hidden="true">✿</span><span class="home-brand__wordmark">Linda Flor</span><?php endif;?></span>
             <span class="home-brand__content"><span class="home-brand__eyebrow">DELICADEZA</span><strong>Linda Flor</strong><span>Peças femininas que valorizam seu conforto e seu estilo.</span><b>Conhecer a marca <span aria-hidden="true">→</span></b></span>
         </a>
     </div>

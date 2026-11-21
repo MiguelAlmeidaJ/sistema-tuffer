@@ -1,0 +1,31 @@
+/* Marcas — administração */
+.brand-admin-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:24px;flex-wrap:wrap}
+.brand-admin-heading h2{font-size:clamp(1.7rem,3vw,2.25rem);letter-spacing:-.04em}
+.brand-admin-heading p{color:#75706b;margin:7px 0 0}
+.brand-admin-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.brand-admin-card{overflow:hidden;border:1px solid #e9e3dc;background:#fff;border-radius:20px;box-shadow:0 5px 20px rgba(25,21,15,.035)}
+.brand-admin-card__cover{height:173px;display:grid;place-items:center;background:linear-gradient(120deg,#f7f3ee,#ebe3dc);color:#8c837b;font-size:.78rem}
+.brand-admin-card__cover img{width:100%;height:100%;object-fit:cover}
+.brand-admin-card__body{display:grid;gap:15px;padding:22px}
+.brand-admin-card__body h3{font-size:1.05rem;margin:0}
+.brand-admin-card__body small{font-size:.69rem;color:#90847e}
+.brand-admin-card__body p{font-size:.78rem;color:#77716b;margin:0}
+.brand-admin-card__body .button{justify-self:start}
+.brand-admin-status{justify-self:start;font-size:.67rem;font-weight:800;background:#f2eee9;color:#756b5d;padding:6px 10px;border-radius:30px}
+.brand-admin-status.is-active{background:#e9f7ed;color:#297345}
+.brand-admin-empty{padding:26px;background:#fff;border-radius:16px}
+.brand-editor__breadcrumb{display:flex;gap:9px;align-items:center;font-size:.7rem;margin-bottom:18px;color:#777}
+.brand-editor__grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(270px,.85fr);gap:20px;align-items:start}
+.brand-editor__card{display:grid;gap:18px;padding:27px;border:1px solid #e9e3dc;border-radius:20px;background:#fff}
+.brand-editor__card h3{margin:0;font-size:1.08rem;letter-spacing:-.025em}
+.brand-editor__card>p{margin:-9px 0 0;font-size:.79rem;line-height:1.6;color:#777}
+.brand-editor__card label{display:grid;gap:7px;font-size:.78rem;font-weight:750}
+.brand-editor__card label small{font-weight:400;color:#827b75;line-height:1.5}
+.brand-editor__card input:not([type=checkbox]),.brand-editor__card select{width:100%;min-height:45px;border:1px solid #ded7d1;border-radius:11px;background:#fff;padding:11px;font:inherit}
+.brand-editor__preview{height:215px;background:#f6f1ec;border:1px dashed #d9ccc2;border-radius:15px;display:grid;place-items:center;overflow:hidden;color:#94877c;font-size:.76rem}
+.brand-editor__preview img{width:100%;height:100%;object-fit:cover}
+.brand-editor__remove{display:flex!important;flex-direction:row;align-items:center;font-weight:500!important}
+.brand-editor__remove input{accent-color:#cc0925}
+.brand-editor__card>.button{justify-self:start}
+@media(max-width:1080px){.brand-admin-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:750px){.brand-editor__grid{grid-template-columns:1fr}.brand-admin-grid{grid-template-columns:1fr}.brand-editor__card{padding:19px}.brand-admin-card__cover{height:195px}}

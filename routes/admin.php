@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\FinanceController;
 use App\Http\Controllers\Admin\FiscalController;
@@ -69,6 +70,11 @@ $router->group(['prefix' => '/admin', 'middleware' => ['auth', 'role:admin']], s
     $router->post('/lojas/{id}/inativar', [StoreController::class, 'deactivate'], ['csrf']);
     $router->delete('/lojas/{id}', [StoreController::class, 'destroy'], ['csrf']);
 
+    $router->get('/marcas', [BrandController::class, 'index']);
+    $router->get('/marcas/nova', [BrandController::class, 'create']);
+    $router->post('/marcas', [BrandController::class, 'store'], ['csrf']);
+    $router->get('/marcas/{id}/editar', [BrandController::class, 'edit']);
+    $router->put('/marcas/{id}', [BrandController::class, 'update'], ['csrf']);
     $router->get('/categorias', [CategoryController::class, 'index']);
     $router->get('/categorias/nova', [CategoryController::class, 'create']);
     $router->post('/categorias', [CategoryController::class, 'store'], ['csrf']);

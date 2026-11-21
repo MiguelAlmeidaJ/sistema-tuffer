@@ -52,3 +52,29 @@
 @media(max-width:780px){.home-launches__track{grid-auto-columns:calc((100% - 16px)/2)}.home-categories__grid{grid-template-columns:repeat(2,minmax(0,1fr))}.home-brands__grid{grid-template-columns:1fr}.home-launches__heading{align-items:flex-start}.home-launches__heading-actions{gap:10px}.home-launches__navigation button{width:38px;height:38px}}
 @media(max-width:560px){.home-launches{padding-top:38px}.home-launches__heading{gap:12px}.home-launches__heading-actions{width:100%;justify-content:space-between}.home-launches__heading-actions .outline-link{font-size:.67rem;padding-inline:13px}.home-launches__track{grid-auto-columns:76%;gap:13px}.home-categories{padding-top:45px}.home-categories__heading{align-items:flex-start;flex-direction:column;gap:12px}.home-categories__grid{gap:10px}.home-categories__item{min-height:94px;padding:9px;gap:9px;border-radius:14px}.home-categories__media{width:53px;height:63px;flex-basis:53px;border-radius:10px}.home-categories__info strong{font-size:.72rem}.home-categories__info small{font-size:.58rem}.home-categories__arrow{top:8px;right:8px;font-size:.78rem}.home-brands{padding:48px 0}.home-brand{min-height:185px}.home-brand__content{padding:15px;gap:6px}.home-brand__content>strong{font-size:1.3rem}.home-brand__content>span:not(.home-brand__eyebrow){font-size:.7rem}.home-brand__content b{font-size:.7rem;margin-top:5px}.home-brand__wordmark{font-size:1.65rem}}
 @media(prefers-reduced-motion:reduce){.home-launches__track{scroll-behavior:auto}.home-categories__item,.home-brand,.home-launches__navigation button{transition:none}}
+
+/* Refinamento editorial do carrossel e categorias, novembro 2026 */
+.home-launches__heading{align-items:end;margin-bottom:24px}
+.home-launches__heading-actions .outline-link{border:0;padding:7px 3px;background:transparent;color:#8b1c2e;font-weight:800}
+.home-launches__navigation{padding-left:10px;border-left:1px solid #e7ded7}
+.home-launches__navigation button{width:38px;height:38px;border:1px solid #e9e1dc;box-shadow:none;background:#fff;font-size:1rem}
+.home-launches__track{gap:20px;grid-auto-columns:calc((100% - 60px)/4);padding-bottom:6px}
+.home-launches__track .product-card{border:1px solid #ece6df;background:#fff;border-radius:19px;overflow:hidden;transition:transform .2s,border-color .2s,box-shadow .2s}
+.home-launches__track .product-card:hover{transform:translateY(-3px);border-color:#d7c9be;box-shadow:0 14px 33px rgba(35,21,10,.075)}
+.home-launches__track .product-card__image{aspect-ratio:4/4.65;border-radius:0;background:#faf8f5}
+.home-launches__track .product-card__body{padding:13px 14px 20px}
+.home-launches__track .product-card__body h3{min-height:2.6em;font-size:.78rem;line-height:1.5}
+.home-launches__progress{height:3px;width:142px;background:#e5ddd4;border-radius:10px;margin:15px auto 0;overflow:hidden}
+.home-launches__progress>span{display:block;width:25%;height:100%;border-radius:10px;background:#cf0d28;transition:transform .3s,width .3s}
+.home-categories__item{min-height:92px;padding:12px 16px;gap:12px;border-radius:16px}
+.home-categories__media{width:62px;height:62px;flex-basis:62px;background:#f7f4f0;border-radius:12px}
+.home-categories__empty-media{width:100%;height:100%;display:block;background:linear-gradient(135deg,#f9f4f0 0%,#ede5de 100%);position:relative}
+.home-categories__empty-media:after{content:"";position:absolute;inset:18%;border:1px solid rgba(148,129,112,.15);border-radius:12px;transform:rotate(-8deg)}
+.home-categories__placeholder{display:none}
+.home-categories__info strong{font-size:.84rem}
+.home-brand__visual .home-brand__cover{position:absolute;inset:0;z-index:2;width:100%;height:100%;max-width:none;max-height:none;object-fit:cover;filter:none}
+.home-brand__visual--tuffer .home-brand__cover{filter:none}
+.home-brand__visual--tuffer .home-brand__logo{max-width:65%;filter:brightness(0) invert(1)}
+@media(max-width:1100px){.home-launches__track{grid-auto-columns:calc((100% - 40px)/3)}}
+@media(max-width:780px){.home-launches__track{grid-auto-columns:calc((100% - 20px)/2)}}
+@media(max-width:560px){.home-launches__track{grid-auto-columns:82%;gap:14px}.home-launches__track .product-card__image{aspect-ratio:4/4.4}.home-categories__media{width:44px;height:55px;flex-basis:44px}.home-categories__empty-media:after{inset:19%}.home-categories__item{padding:10px;min-height:78px}}
