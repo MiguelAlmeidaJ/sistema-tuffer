@@ -67,21 +67,21 @@ final class ResponsiveExperienceTest extends TestCase
         self::assertStringContainsString("document.body.classList.toggle('has-public-menu',open)", $javascript);
     }
 
-    public function testHomeProvidesMobileCarouselsAndExpectedContentLimits(): void
+    public function testHomeProvidesResponsiveProductCarouselAndCategories(): void
     {
         $view = file_get_contents($this->root . '/resources/views/public/home.php');
         $controller = file_get_contents($this->root . '/app/Http/Controllers/Public/HomeController.php');
-        $javascript = file_get_contents($this->root . '/public/assets/js/app.js');
-
-        self::assertIsString($view);
-        self::assertIsString($controller);
-        self::assertIsString($javascript);
-        self::assertSame(3, substr_count($view, 'data-home-carousel'));
-        self::assertSame(3, substr_count($view, 'data-carousel-track'));
-        self::assertStringContainsString('data-carousel-autoplay="5500"', $view);
-        self::assertStringContainsString('LIMIT 8', $controller);
-        self::assertStringContainsString('LIMIT 6', $controller);
-        self::assertStringContainsString("document.querySelectorAll('[data-home-carousel]')", $javascript);
+        $javascript = file_get_contents($this->root . '/public/assets/js/home-product-rail.js');
+        $css = file_get_contents($this->root . '/public/assets/css/public/home-refresh.css');
+        self::assertStringContainsString('data-product-rail', $view);
+        self::assertStringContainsString('data-product-track', $view);
+        self::assertStringContainsString('data-product-next', $view);
+        self::assertStringContainsString('data-product-progress', $view);
+        self::assertStringContainsString('home-categories__grid', $view);
+        self::assertStringContainsString('LIMIT 12', $controller);
+        self::assertStringContainsString('scrollTo(', $javascript);
         self::assertStringContainsString("matchMedia('(prefers-reduced-motion:reduce)')", $javascript);
+        self::assertStringContainsString('scroll-snap-type:x mandatory', $css);
+        self::assertStringContainsString('@media(max-width:560px)', $css);
     }
 }
