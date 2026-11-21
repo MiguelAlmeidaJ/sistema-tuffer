@@ -32,3 +32,6 @@
 .checkout-delivery-review__selected small{color:#777;font-size:.72rem}
 .checkout-delivery-review__selected b{font-size:.88rem;white-space:nowrap}
 @media(max-width:700px){.cart-shipping-choice__button{padding:11px}.cart-shipping-choice__button.is-selected{padding:10px}.cart-shipping-choice__price{font-size:.77rem}.checkout-delivery-review__selected{flex-wrap:wrap}.checkout-delivery-review__heading{flex-wrap:wrap}.checkout-delivery-review__edit{margin:7px 0 0 46px}}
+
+.cart-delivery-use-address{border:1px solid #b7d4bb;background:#fff;color:#267141;border-radius:9px;padding:8px 11px;margin-top:7px;cursor:pointer;font-size:.74rem;font-weight:800}
+.cart-delivery-use-address:hover{background:#e7f4e9}

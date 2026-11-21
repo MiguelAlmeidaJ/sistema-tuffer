@@ -51,17 +51,20 @@ final class ShippingChoiceService
     /** @param array<string,mixed> $cart @param array<string,mixed> $quoteState */
     public function save(array $cart, string $postalCode, int $storeId, string $serviceId, array $quoteState): bool
     {
-        $valid = false;
+        $price = null;
         foreach (($quoteState['stores'][$storeId]['options'] ?? []) as $option) {
-            if ((string)($option['id'] ?? '') === $serviceId) $valid = true;
+            if ((string)($option['id'] ?? '') === $serviceId) $price = round((float)$option['price'], 2);
         }
-        if (!$valid) return false;
+        if ($price === null || $price <= 0) return false;
         $signature = $this->fingerprint($cart, $postalCode);
         $existing = Session::get($this->key());
         $services = is_array($existing) && ($existing['fingerprint'] ?? '') === $signature
             ? (array)($existing['services'] ?? []) : [];
+        $prices = is_array($existing) && ($existing['fingerprint'] ?? '') === $signature
+            ? (array)($existing['prices'] ?? []) : [];
         $services[$storeId] = $serviceId;
-        Session::put($this->key(), ['fingerprint'=>$signature,'services'=>$services,'created_at'=>time()]);
+        $prices[$storeId] = $price;
+        Session::put($this->key(), ['fingerprint'=>$signature,'services'=>$services,'prices'=>$prices,'created_at'=>time()]);
         return true;
     }
 
@@ -70,13 +73,18 @@ final class ShippingChoiceService
     {
         $total = 0.0;
         $complete = true;
+        $saved = Session::get($this->key());
         $postal = (string)($state['postal_code'] ?? '');
         foreach (($cart['groups'] ?? []) as $group) {
             $storeId = (int)$group['store_id'];
             $id = $this->selected($cart, $postal, $storeId);
             $matched = null;
             foreach (($state['stores'][$storeId]['options'] ?? []) as $option) {
-                if ($id !== null && (string)$option['id'] === $id) { $matched = $option; break; }
+                if ($id !== null && (string)$option['id'] === $id
+                    && is_array($saved) && isset($saved['prices'][$storeId])
+                    && abs((float)$saved['prices'][$storeId] - (float)$option['price']) < 0.01) {
+                    $matched = $option; break;
+                }
             }
             $state['stores'][$storeId]['selected'] = $matched['id'] ?? null;
             $state['stores'][$storeId]['selected_option'] = $matched;

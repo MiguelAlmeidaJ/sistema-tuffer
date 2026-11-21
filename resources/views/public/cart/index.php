@@ -24,7 +24,10 @@ $grandTotal=max(0,(float)$cart['total']+$shippingTotal);
 <section class="cart-delivery-card cart-delivery-card--choice" id="cart-delivery">
   <div><span class="eyebrow">ENTREGA</span><h2>Escolha sua entrega</h2><p>Selecione uma vez. Sua escolha acompanha o pedido até o pagamento.</p></div>
   <?php if (!empty($preferredAddress)): ?>
-  <div class="cart-delivery-address"><span>Endereço da sua conta</span><strong><?=e($preferredAddress['street'].', '.$preferredAddress['number'].' · '.$preferredAddress['city'].'/'.$preferredAddress['state'])?></strong><small>CEP <?=e($preferredAddress['postal_code'])?></small></div>
+  <div class="cart-delivery-address"><span>Seu endereço principal</span><strong><?=e($preferredAddress['street'].', '.$preferredAddress['number'].' · '.$preferredAddress['city'].'/'.$preferredAddress['state'])?></strong><small>CEP <?=e($preferredAddress['postal_code'])?></small>
+    <?php if(preg_replace('/\\D+/', '', (string)$preferredAddress['postal_code'])!==(string)($cart['postal_code']??'')): ?>
+    <form method="post" action="<?=e(url('/carrinho/frete'))?>"><?=csrf_field()?><input type="hidden" name="postal_code" value="<?=e((string)$preferredAddress['postal_code'])?>"><button type="submit" class="cart-delivery-use-address">Calcular para este endereço</button></form>
+    <?php endif; ?></div>
   <?php endif; ?>
   <form method="post" action="<?=e(url('/carrinho/frete'))?>" class="cart-delivery-postal">
     <?=csrf_field()?>

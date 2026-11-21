@@ -6,7 +6,7 @@
 - No carrinho, se existe conta cliente e o carrinho ainda não possui CEP, o sistema aplica o CEP do endereço padrão, sem exigir digitação. O cliente pode corrigir o CEP se necessário.
 - O carrinho mostra as modalidades e permite **escolher** uma delas. A escolha fica registrada na sessão atrelada ao carrinho e a uma assinatura do CEP, lojas, SKUs, quantidades, pesos, dimensões e preços. Alterações invalidam a escolha.
 - O checkout exibe somente um resumo do frete escolhido, com link para alterar no carrinho. Ele não apresenta outra lista de modalidades e não pede para escolher novamente.
-- A finalização refaz uma cotação válida no servidor e consulta a escolha salva, sem aceitar preço do navegador. Se o serviço deixou de existir, o endereço não coincide com o CEP cotado ou a escolha expirou, volta ao carrinho para revisão. O preço cobrado vem da cotação atual, e pode variar de acordo com a tarifa vigente.
+- A finalização refaz uma cotação válida no servidor e consulta a escolha salva, sem aceitar preço do navegador. Se o serviço deixou de existir, o endereço não coincide com o CEP cotado ou a escolha expirou, volta ao carrinho para revisão. A seleção guarda também a tarifa apresentada, exclusivamente para comparação. Se o preço atual divergir da cotação escolhida, a seleção é invalidada e o cliente precisa reconfirmar o novo valor no carrinho. O total nunca é aceito do navegador.
 
 ## Segurança e limitações
 - CEP é suficiente apenas para a pré-cotação. O checkout exige um endereço cadastrado cujo CEP coincida; caso não haja esse endereço, o cliente deve criar/corrigir um endereço e escolher novamente no carrinho.
@@ -20,3 +20,5 @@
 git pull origin main
 ```
 Depois, testar: login com endereço padrão, produto com escolha de frete, carrinho com uma ou várias unidades, mudança de quantidade, mudança de CEP, checkout e pedido Sandbox Asaas. Confirmar no banco que a modalidade da venda corresponde à escolhida e ao valor atualizado da cotação.
+
+O carrinho oferece um atalho para calcular com o endereço principal caso o CEP do carrinho seja diferente. Isso evita alterar silenciosamente uma entrega já escolhida.
