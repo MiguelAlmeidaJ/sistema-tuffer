@@ -253,7 +253,24 @@ document.querySelector('[data-shipping-calculator]')?.addEventListener('submit',
       const service=document.createElement('strong');service.textContent=String(option.service||'Entrega');
       const deadline=document.createElement('small');deadline.textContent=`${option.carrier||'Transportadora'} · entre ${option.arrival_min} e ${option.arrival_max}`;
       const price=document.createElement('b');price.textContent=Number(option.price||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-      description.append(service,deadline);row.append(description,price);list.append(row);
+      const button=document.createElement('button');button.type='button';button.className='shipping-quote-select';button.textContent='Escolher';
+      button.addEventListener('click',async()=>{
+        button.disabled=true;button.textContent='Salvando…';
+        const selectBody=new FormData(form);
+        selectBody.set('variant_id',document.querySelector('[data-variant-select]')?.value||'');
+        selectBody.set('quantity',document.querySelector('[data-product-quantity]')?.value||'1');
+        selectBody.set('selected_service_id',String(option.id));
+        try{
+          const selectedResponse=await fetch(calculator.dataset.shippingEndpoint,{method:'POST',body:selectBody,headers:{'X-Requested-With':'XMLHttpRequest'}});
+          const selectedData=await selectedResponse.json();
+          if(!selectedResponse.ok||!selectedData.ok)throw new Error(selectedData.message||'Frete indisponível.');
+          list.querySelectorAll('.shipping-quote-option').forEach(item=>item.classList.remove('is-selected'));
+          list.querySelectorAll('.shipping-quote-select').forEach(item=>{item.textContent='Escolher';item.disabled=false});
+          row.classList.add('is-selected');button.textContent='✓ Selecionado';
+          result.textContent='Frete salvo para este produto. Ao adicioná-lo ao carrinho, manteremos a escolha se a quantidade e o CEP forem os mesmos.';
+        }catch(err){button.disabled=false;button.textContent='Escolher';result.textContent=err instanceof Error?err.message:'Não foi possível salvar o frete.'}
+      });
+      description.append(service,deadline);row.append(description,price,button);list.append(row);
     });
   }catch(error){result.textContent=error instanceof Error?error.message:'Não foi possível calcular o frete agora.'}
 });
@@ -894,51 +911,64 @@ document.querySelectorAll('[data-checkout]').forEach(form=>{
   const q=(selector,root=form)=>root.querySelector(selector);
   const qa=(selector,root=form)=>[...root.querySelectorAll(selector)];
   const money=value=>Number(value||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-  const escape=value=>String(value??'').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
   const cards=Object.fromEntries(qa('[data-checkout-step]').map(card=>[card.dataset.checkoutStep,card]));
   const open=(card,scroll=true)=>{if(!card||card.classList.contains('is-locked'))return;qa('[data-checkout-step]').forEach(item=>item.classList.toggle('is-open',item===card));if(scroll)card.scrollIntoView({behavior:'smooth',block:'center'})};
   qa('[data-step-toggle]').forEach(button=>button.addEventListener('click',()=>open(button.closest('[data-checkout-step]'))));
-  const shippingComplete=()=>{const stores=qa('[data-shipping-store]');return stores.length>0&&stores.every(store=>!!q('input[type="radio"]:checked',store))};
+  const shippingComplete=()=>{const stores=qa('[data-shipping-store]');return stores.length>0&&stores.every(store=>!!q('[data-shipping-service]',store))};
+  const addressMatches=()=>{const address=q('[name="address_id"]:checked');return !!address&&address.dataset.postalCode===form.dataset.shippingPostal};
   const refreshTotals=()=>{
-    const shipping=qa('[data-shipping-price]:checked').reduce((sum,input)=>sum+Number(input.dataset.shippingPrice||0),0);
-    const base=Number(q('[data-summary-total]')?.dataset.baseTotal||0);const total=base+shipping;
-    if(q('[data-summary-shipping]'))q('[data-summary-shipping]').textContent=shipping?money(shipping):'Selecionar';
+    const shipping=qa('[data-shipping-price]').reduce((sum,input)=>sum+Number(input.dataset.shippingPrice||0),0);
+    const base=Number(q('[data-summary-total]')?.dataset.baseTotal||0);
+    const total=base+shipping;
+    if(q('[data-summary-shipping]'))q('[data-summary-shipping]').textContent=shippingComplete()?money(shipping):'Escolher no carrinho';
     if(q('[data-summary-total]'))q('[data-summary-total]').textContent=money(total);
     if(q('[data-installment]'))q('[data-installment]').textContent='Pagamento seguro via Asaas';
     document.querySelectorAll('[data-mobile-total]').forEach(item=>item.textContent=money(total));
-    refreshAction(total);
-  };
-  const refreshAction=total=>{
     const submit=q('[data-checkout-submit]');if(!submit)return;
-    const hasAddress=!!q('[name="address_id"]:checked');const hasShipping=shippingComplete();const terms=!!q('[name="terms"]:checked');const paymentConfigured=form.dataset.paymentConfigured==='1';const customer=form.dataset.customer==='1';
-    const ready=customer&&hasAddress&&hasShipping&&terms&&paymentConfigured;
-    submit.disabled=!ready;submit.classList.toggle('is-ready',ready);submit.classList.toggle('button--primary',ready);submit.classList.toggle('button--secondary',!ready);
-    if(ready)submit.textContent=`Finalizar compra — ${money(total)}`;else if(!customer)submit.textContent='Entre para continuar';else if(!hasAddress)submit.textContent='Selecione um endereço';else if(!hasShipping)submit.textContent='Selecione a entrega de cada loja';else if(!paymentConfigured)submit.textContent='Pagamento em configuração';else submit.textContent='Aceite os termos para continuar';
-    const mobile=document.querySelector('[data-mobile-submit]');if(mobile){mobile.disabled=!ready;mobile.textContent=ready?'Finalizar':'Continuar';mobile.classList.toggle('button--primary',ready);mobile.classList.toggle('button--secondary',!ready)}
+    const ready=form.dataset.customer==='1'&&addressMatches()&&shippingComplete()
+      &&!!q('[name="terms"]:checked')&&form.dataset.paymentConfigured==='1';
+    submit.disabled=!ready;
+    submit.classList.toggle('is-ready',ready);
+    submit.classList.toggle('button--primary',ready);
+    submit.classList.toggle('button--secondary',!ready);
+    if(ready)submit.textContent='Finalizar compra — '+money(total);
+    else if(!addressMatches())submit.textContent='Confirme a entrega no carrinho';
+    else if(!shippingComplete())submit.textContent='Escolha o frete no carrinho';
+    else if(form.dataset.paymentConfigured!=='1')submit.textContent='Pagamento em configuração';
+    else submit.textContent='Aceite os termos para continuar';
+    const mobile=document.querySelector('[data-mobile-submit]');
+    if(mobile){mobile.disabled=!ready;mobile.textContent=ready?'Finalizar':'Revisar entrega';mobile.classList.toggle('button--primary',ready);mobile.classList.toggle('button--secondary',!ready)}
   };
-  const bindShipping=()=>qa('[data-shipping-price]').forEach(input=>input.addEventListener('change',()=>{cards.shipping?.classList.toggle('is-complete',shippingComplete());if(shippingComplete()){const summary=q('[data-step-summary]',cards.shipping);if(summary)summary.textContent='Modalidades selecionadas para todas as lojas';open(cards.payment)}refreshTotals()}));
-  const renderShipping=state=>{
-    qa('[data-shipping-store]').forEach(store=>{const storeId=store.dataset.shippingStore;const data=state.stores?.[storeId];const root=q('.shipping-options',store);const message=q('header>small',store);if(message)message.textContent=data?.message||'';if(!root)return;root.innerHTML=(data?.options||[]).map((option,index)=>`<label><input type="radio" name="shipping[${escape(storeId)}]" value="${escape(option.id)}" data-shipping-price="${escape(option.price)}" ${index===0?'checked':''}><span><b>${escape(option.service)}</b><small>${escape(option.carrier)} · chega entre ${escape(option.arrival_min)} e ${escape(option.arrival_max)}</small></span><strong>${money(option.price)}</strong></label>`).join('');if(!root.children.length)root.innerHTML=`<p class="shipping-empty">${escape(data?.message||state.message||'Cotação indisponível.')}</p>`});
-    cards.shipping?.classList.toggle('is-complete',shippingComplete());bindShipping();refreshTotals();open(shippingComplete()?cards.payment:cards.shipping);
-  };
-  const quoteAddress=async input=>{
-    if(!input)return;const summary=q('[data-step-summary]',cards.address);if(summary)summary.textContent=input.dataset.addressSummary||'Endereço selecionado';cards.address?.classList.add('is-complete');cards.shipping?.classList.remove('is-locked','is-complete');open(cards.shipping);const shippingSummary=q('[data-step-summary]',cards.shipping);if(shippingSummary)shippingSummary.textContent='Calculando opções reais...';
-    const body=new FormData();body.append('_token',q('[name="_token"]')?.value||'');body.append('postal_code',input.dataset.postalCode||'');
-    try{const response=await fetch(form.dataset.quotesUrl,{method:'POST',body,headers:{'X-Requested-With':'XMLHttpRequest'}});if(!response.ok)throw new Error();renderShipping(await response.json())}catch{if(shippingSummary)shippingSummary.textContent='Não foi possível calcular a entrega agora.'}
-  };
-  qa('[name="address_id"]').forEach(input=>input.addEventListener('change',()=>quoteAddress(input)));
-  qa('[name="payment_method"]').forEach(input=>input.addEventListener('change',()=>{qa('[data-payment-panel]').forEach(panel=>panel.hidden=panel.dataset.paymentPanel!==input.value);const summary=q('[data-step-summary]',cards.payment);if(summary)summary.textContent=input.closest('label')?.querySelector('b')?.textContent||'Pagamento selecionado';cards.payment?.classList.add('is-complete');refreshTotals()}));
+  qa('[name="address_id"]').forEach(input=>input.addEventListener('change',()=>{
+    const summary=q('[data-step-summary]',cards.address);
+    if(summary)summary.textContent=input.dataset.addressSummary||'Endereço selecionado';
+    const message=q('[data-step-summary]',cards.shipping);
+    if(message)message.textContent=addressMatches()?'Frete selecionado e salvo':'Novo endereço: altere o frete no carrinho';
+    cards.shipping?.classList.toggle('is-complete',addressMatches()&&shippingComplete());
+    refreshTotals();
+    if(addressMatches())open(cards.payment);
+  }));
+  qa('[name="payment_method"]').forEach(input=>input.addEventListener('change',()=>{
+    qa('[data-payment-panel]').forEach(panel=>panel.hidden=panel.dataset.paymentPanel!==input.value);
+    const summary=q('[data-step-summary]',cards.payment);
+    if(summary)summary.textContent=input.closest('label')?.querySelector('b')?.textContent||'Pagamento selecionado';
+    cards.payment?.classList.add('is-complete');refreshTotals();
+  }));
   q('[name="terms"]')?.addEventListener('change',refreshTotals);
   document.querySelector('[data-mobile-submit]')?.addEventListener('click',()=>form.requestSubmit());
-  let checkoutSubmitting=false;
+  let submitting=false;
   form.addEventListener('submit',event=>{
-    if(checkoutSubmitting){event.preventDefault();return}
-    checkoutSubmitting=true;
-    const submit=q('[data-checkout-submit]');if(submit){submit.disabled=true;submit.textContent='Criando pedido…'}
+    if(!addressMatches()||!shippingComplete()){event.preventDefault();return}
+    if(submitting){event.preventDefault();return}
+    submitting=true;
+    const button=q('[data-checkout-submit]');
+    if(button){button.disabled=true;button.textContent='Criando pedido…'}
     const mobile=document.querySelector('[data-mobile-submit]');if(mobile)mobile.disabled=true;
   });
-  bindShipping();refreshTotals();
-  if(!q('[name="address_id"]:checked'))open(cards.address,false);else if(!shippingComplete())open(cards.shipping,false);else open(cards.payment,false);
+  refreshTotals();
+  if(!addressMatches())open(cards.address,false);
+  else if(!shippingComplete())open(cards.shipping,false);
+  else open(cards.payment,false);
 });
 
 document.querySelectorAll('[data-copy-target]').forEach(button=>button.addEventListener('click',async()=>{

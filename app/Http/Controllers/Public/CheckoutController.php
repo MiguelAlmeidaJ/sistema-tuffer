@@ -23,6 +23,7 @@ use App\Services\Queue\JobProcessor;
 use App\Services\Queue\JobQueue;
 use App\Services\Sellers\SellerSalesEligibility;
 use App\Services\Shipping\ShippingQuoteService;
+use App\Services\Shipping\ShippingChoiceService;
 use Throwable;
 
 final class CheckoutController extends Controller
@@ -51,17 +52,25 @@ final class CheckoutController extends Controller
             $statement->execute([Auth::id()]);
             $addresses = $statement->fetchAll();
         }
-        $postalCode = (string) ($addresses[0]['postal_code'] ?? $cart['postal_code'] ?? '');
+        $postalCode = (string)($cart['postal_code'] ?? '');
+        $matchedAddressId = null;
+        foreach ($addresses as $address) {
+            if (preg_replace('/\D+/', '', (string)$address['postal_code']) === preg_replace('/\D+/', '', $postalCode)) {
+                $matchedAddressId = (int)$address['id']; break;
+            }
+        }
         $quoteService = new ShippingQuoteService();
         $shipping = $postalCode !== ''
             ? $quoteService->quotes($cart, $postalCode)
             : ['configured' => $quoteService->configured(), 'postal_code' => null, 'stores' => [], 'shipping_total' => 0.0];
+        $shipping = (new ShippingChoiceService())->apply($cart, $shipping);
         $checkoutAccessStatus = AsaasCheckoutAccess::status($user);
 
         return $this->page('public/checkout/index', 'layouts/public', [
             'pageTitle' => 'Checkout seguro',
             'cart' => $cart,
             'addresses' => $addresses,
+            'matchedAddressId' => $matchedAddressId,
             'isCustomer' => ($user['type'] ?? null) === 'customer',
             'paymentConfigured' => $checkoutAccessStatus === 'allowed',
             'checkoutAccessMessage' => AsaasCheckoutAccess::explanation($checkoutAccessStatus),
@@ -134,27 +143,32 @@ final class CheckoutController extends Controller
             return Response::redirect('/checkout');
         }
 
-        $shipping = (new ShippingQuoteService())->quotes($cart, (string) $selectedAddress['postal_code']);
+        $chosenPostal = preg_replace('/\D+/', '', (string)$selectedAddress['postal_code']) ?? '';
+        if ($chosenPostal !== (string)($cart['postal_code'] ?? '')) {
+            Session::flash('guide','Seu endereço de entrega mudou. Selecione novamente o frete no carrinho.');
+            return Response::redirect('/carrinho');
+        }
+        // Fresh quote, same service ID. Never accept a browser-supplied price.
+        $shipping = (new ShippingQuoteService())->quotes($cart, $chosenPostal, true);
         if (!$shipping['configured']) {
-            Session::flash('guide', 'A entrega está temporariamente indisponível. Seu carrinho continua salvo; tente novamente em alguns instantes.');
-            return Response::redirect('/checkout');
+            Session::flash('guide','A entrega está temporariamente indisponível.');
+            return Response::redirect('/carrinho');
+        }
+        $choices = new ShippingChoiceService();
+        $shipping = $choices->apply($cart, $shipping);
+        if (empty($shipping['selection_complete'])) {
+            Session::flash('guide','A modalidade de entrega mudou ou expirou. Selecione o frete novamente.');
+            return Response::redirect('/carrinho');
         }
         $shippingSelections = [];
         foreach ($cart['groups'] as $group) {
-            $storeId = (int) $group['store_id'];
-            $selectedId = (string) ($_POST['shipping'][$storeId] ?? '');
-            $selectedOption = null;
-            foreach ($shipping['stores'][$storeId]['options'] ?? [] as $candidate) {
-                if ((string) $candidate['id'] === $selectedId) {
-                    $selectedOption = $candidate;
-                    break;
-                }
+            $storeId = (int)$group['store_id'];
+            $option = $shipping['stores'][$storeId]['selected_option'] ?? null;
+            if (!is_array($option)) {
+                Session::flash('guide','Selecione o frete no carrinho antes de finalizar.');
+                return Response::redirect('/carrinho');
             }
-            if (!is_array($selectedOption)) {
-                Session::flash('guide', 'Selecione uma modalidade de entrega para cada loja.');
-                return Response::redirect('/checkout');
-            }
-            $shippingSelections[$storeId] = $selectedOption;
+            $shippingSelections[$storeId] = $option;
         }
 
         if (!AsaasCheckoutAccess::allowed($user)) {

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Public;
 
 use App\Core\Auth;
+use App\Core\Database;
+use App\Services\Shipping\ShippingChoiceService;
 use App\Core\Response;
 use App\Core\Session;
 use App\Http\Controllers\Controller;
@@ -24,9 +26,35 @@ final class CartController extends Controller
         }
         $cart = $service->summary();
         $quoteService = new ShippingQuoteService();
+        $choices = new ShippingChoiceService();
+        $address = null;
+        if ((Auth::user()['type'] ?? null) === 'customer') {
+            $addressQuery = Database::connection()->prepare('SELECT id,label,street,number,city,state,postal_code FROM user_addresses WHERE user_id=? ORDER BY is_default DESC,id DESC LIMIT 1');
+            $addressQuery->execute([Auth::id()]);
+            $address = $addressQuery->fetch(\PDO::FETCH_ASSOC) ?: null;
+        }
+        $preferred = Session::get('shipping_product_preference');
+        $eligiblePreference = false;
+        if ($cart['items'] && is_array($preferred)
+            && time() - (int)($preferred['created_at'] ?? 0) <= 1800
+            && strlen((string)($preferred['postal_code'] ?? '')) === 8
+            && count($cart['groups']) === 1 && count($cart['groups'][0]['items']) === 1) {
+            $item = $cart['groups'][0]['items'][0];
+            $eligiblePreference = (int)$item['variant_id'] === (int)$preferred['variant_id']
+                && (int)$item['quantity'] === (int)$preferred['quantity'];
+        }
+        if ($eligiblePreference && (!$cart['postal_code'] || (string)$cart['postal_code'] !== (string)$preferred['postal_code'])) {
+            $service->setPostalCode((string)$preferred['postal_code']);
+            $cart = $service->summary();
+        } elseif ($cart['items'] && !$cart['postal_code'] && $address) {
+            $service->setPostalCode((string)$address['postal_code']);
+            $cart = $service->summary();
+        }
         $shipping = $cart['postal_code']
-            ? $quoteService->quotes($cart, (string) $cart['postal_code'])
-            : ['configured' => $quoteService->configured(), 'postal_code' => null, 'stores' => [], 'shipping_total' => 0.0];
+            ? $quoteService->quotes($cart, (string)$cart['postal_code'])
+            : ['configured'=>$quoteService->configured(),'postal_code'=>null,'stores'=>[],'shipping_total'=>0.0];
+        if ($cart['postal_code']) $choices->promoteProduct($cart,$shipping);
+        $shipping = $choices->apply($cart,$shipping);
 
         $assistantService = new PurchaseAssistantService();
         $customerState = $assistantService->customerState(Auth::user());
@@ -39,6 +67,7 @@ final class CartController extends Controller
             'pageTitle' => 'Carrinho',
             'cart' => $cart,
             'shipping' => $shipping,
+            'preferredAddress' => $address,
             'removedPaymentBlocked' => $removedPaymentBlocked,
             'purchaseAssistant' => $purchaseAssistant,
         ]);
@@ -47,7 +76,14 @@ final class CartController extends Controller
     public function store(): string
     {
         try {
-            (new CartService())->add((int) ($_POST['variant_id'] ?? 0), (int) ($_POST['quantity'] ?? 1));
+            $cartService = new CartService();
+            $cartService->add((int) ($_POST['variant_id'] ?? 0), (int) ($_POST['quantity'] ?? 1));
+            $preference = Session::get('shipping_product_preference');
+            if (is_array($preference) && time()-(int)($preference['created_at']??0)<=1800
+                && (int)$preference['variant_id']===(int)($_POST['variant_id']??0)
+                && strlen((string)($preference['postal_code']??''))===8) {
+                $cartService->setPostalCode((string)$preference['postal_code']);
+            }
             Session::flash('success', 'Produto adicionado ao carrinho.');
         } catch (RuntimeException $exception) {
             Session::flash('guide', $exception->getMessage());
@@ -114,6 +150,26 @@ final class CartController extends Controller
             }
         } catch (RuntimeException $exception) {
             Session::flash('guide', $exception->getMessage());
+        }
+        return Response::redirect('/carrinho');
+    }
+
+    public function chooseShipping(): string
+    {
+        $cartService = new CartService();
+        $cart = $cartService->summary();
+        $postalCode = (string)($cart['postal_code'] ?? '');
+        $storeId = (int)($_POST['store_id'] ?? 0);
+        $serviceId = trim((string)($_POST['service_id'] ?? ''));
+        if (!$cart['items'] || strlen($postalCode)!==8 || $storeId<1 || $serviceId==='') {
+            Session::flash('guide','Informe um endereço e escolha uma entrega válida.');
+            return Response::redirect('/carrinho');
+        }
+        $quote = (new ShippingQuoteService())->quotes($cart,$postalCode,true);
+        if (!(new ShippingChoiceService())->save($cart,$postalCode,$storeId,$serviceId,$quote)) {
+            Session::flash('guide','Esta opção de entrega não está mais disponível. Selecione outra modalidade.');
+        } else {
+            Session::flash('success','Frete selecionado e salvo para este carrinho.');
         }
         return Response::redirect('/carrinho');
     }

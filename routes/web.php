@@ -31,6 +31,7 @@ $router->get('/carrinho', [CartController::class, 'index']);
 $router->post('/carrinho/adicionar', [CartController::class, 'store'], ['csrf']);
 $router->post('/carrinho/modo', [CartController::class, 'mode'], ['auth', 'role:customer', 'csrf']);
 $router->post('/carrinho/frete', [CartController::class, 'shipping'], ['csrf']);
+$router->post('/carrinho/frete/escolher', [CartController::class, 'chooseShipping'], ['csrf']);
 $router->post('/carrinho/cupom', [CartController::class, 'coupon'], ['csrf']);
 $router->delete('/carrinho/cupom/{storeId}', [CartController::class, 'removeCoupon'], ['csrf']);
 $router->post('/carrinho/item/{id}/salvar', [CartController::class, 'saveForLater'], ['auth', 'role:customer', 'csrf']);

@@ -9,6 +9,7 @@ use App\Core\Database;
 use App\Http\Controllers\Controller;
 use App\Services\Cart\CartService;
 use App\Services\Shipping\ShippingQuoteService;
+use App\Services\Shipping\ShippingChoiceService;
 use JsonException;
 
 final class ProductController extends Controller
@@ -65,6 +66,13 @@ final class ProductController extends Controller
         $offers=array_map(static fn(array $variant):array=>['@type'=>'Offer','sku'=>(string)$variant['sku'],'priceCurrency'=>'BRL','price'=>number_format((float)($variant['promotional_price']?:$variant['price']),2,'.',''),'availability'=>(int)$variant['available']>0?'https://schema.org/InStock':'https://schema.org/OutOfStock','url'=>$productUrl],$variantRows);
         $productSchema=['@context'=>'https://schema.org','@type'=>'Product','name'=>$product['name'],'description'=>$product['short_description']?:trim(strip_tags((string)$product['description'])),'sku'=>$product['sku']?:$variantRows[0]['sku'],'image'=>$imageUrls,'offers'=>$offers];if($product['brand_name'])$productSchema['brand']=['@type'=>'Brand','name'=>$product['brand_name']];
         $structuredData=[$productSchema,['@context'=>'https://schema.org','@type'=>'BreadcrumbList','itemListElement'=>array_values(array_filter([['@type'=>'ListItem','position'=>1,'name'=>'Início','item'=>absolute_url('/')],['@type'=>'ListItem','position'=>2,'name'=>'Produtos','item'=>absolute_url('/produtos')],$categoryRows?['@type'=>'ListItem','position'=>3,'name'=>$categoryRows[0]['name'],'item'=>absolute_url('/categoria/'.$categoryRows[0]['slug'])]:null,['@type'=>'ListItem','position'=>$categoryRows?4:3,'name'=>$product['name'],'item'=>$productUrl]]))]];
+        $defaultPostalCode = '';
+        if ((Auth::user()['type'] ?? '') === 'customer') {
+            $address = $pdo->prepare('SELECT postal_code FROM user_addresses WHERE user_id=? ORDER BY is_default DESC,id DESC LIMIT 1');
+            $address->execute([Auth::id()]);
+            $defaultPostalCode = (string)($address->fetchColumn() ?: '');
+        }
+        $defaultPostalCode = (new CartService())->postalCode() ?: $defaultPostalCode;
         return $this->page('public/products/show', 'layouts/public', [
             'pageTitle' => ($product['seo_title'] ?? '') ?: $product['name'],
             'product' => $product,
@@ -76,6 +84,7 @@ final class ProductController extends Controller
             'wholesaleApproved' => $wholesaleApproved,
             'cartMode' => (new CartService())->mode(),
             'shippingConfigured' => (new ShippingQuoteService())->configured(),
+            'defaultShippingPostalCode' => $defaultPostalCode,
             'metaDescription' => ($product['seo_description'] ?? '') ?: ($product['short_description'] ?? '') ?: mb_substr(strip_tags((string) ($product['description'] ?? '')), 0, 155),
             'canonicalUrl' => $productUrl,
             'openGraphType' => 'product',
@@ -100,6 +109,15 @@ final class ProductController extends Controller
         $store = $quotes['stores'][(int) $item['store_id']] ?? null;
         $options = is_array($store) ? ($store['options'] ?? []) : [];
         if (!$options) http_response_code(422);
+        $selectedId = trim((string)($_POST['selected_service_id'] ?? ''));
+        if ($options && $selectedId !== '') {
+            $found = false;
+            foreach ($options as $option) {
+                if ((string)$option['id'] === $selectedId) { $found=true; break; }
+            }
+            if (!$found) return $this->json(['ok'=>false,'message'=>'Modalidade indisponível para esta quantidade.']);
+            (new ShippingChoiceService())->rememberProduct($postalCode,$variantId,$quantity,(int)$item['store_id'],$selectedId);
+        }
         return $this->json(['ok' => (bool) $options, 'postal_code' => preg_replace('/\D+/', '', $postalCode), 'options' => $options, 'message' => $store['message'] ?? $quotes['message'] ?? null]);
     }
 

@@ -129,8 +129,8 @@ if (!empty($product['width']) && !empty($product['height']) && !empty($product['
         </div>
 
         <div class="shipping-calculator shipping-calculator--v2" data-shipping-endpoint="<?= e(url('/produto/'.$product['slug'].'/frete')) ?>" data-shipping-configured="<?= $shippingConfigured?'1':'0' ?>">
-            <div class="shipping-calculator__heading"><span>⌖</span><div><strong>Frete e prazo de entrega</strong><small>Informe o CEP para consultar as opções disponíveis para a quantidade escolhida.</small></div></div>
-            <form data-shipping-calculator><?= csrf_field() ?><input name="postal_code" inputmode="numeric" maxlength="9" placeholder="00000-000" aria-label="CEP para cálculo do frete" required><button type="submit">Calcular</button></form>
+            <div class="shipping-calculator__heading"><span>⌖</span><div><strong>Frete e prazo de entrega</strong><small>Escolha uma modalidade aqui e ela será aproveitada no carrinho, caso os itens permaneçam iguais.</small></div></div>
+            <form data-shipping-calculator><?= csrf_field() ?><input name="postal_code" inputmode="numeric" maxlength="9" placeholder="00000-000" value="<?=e((string)($defaultShippingPostalCode??''))?>" aria-label="CEP para cálculo do frete" required><button type="submit">Calcular</button></form>
             <small class="shipping-calculator__result" data-shipping-result><?= $shippingConfigured?'Informe seu CEP para consultar as transportadoras.':'Cálculo temporariamente indisponível.' ?></small>
             <div class="shipping-quote-list" data-shipping-options></div>
             <small style="display:block;margin-top:10px;color:#7a6240;">Para múltiplas unidades, o Melhor Envio estima o volume usando as dimensões individuais. O frete pode variar conforme o pacote real e o serviço escolhido.</small>
