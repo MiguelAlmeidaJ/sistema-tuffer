@@ -25,6 +25,7 @@
     <script defer src="<?= e(asset('js/purchase-assistant.js')) ?>"></script>
     <?php if (empty($authUser)): ?><script defer src="<?=e(asset('js/account-gate.js'))?>"></script><?php endif;?>
     <script defer src="<?=e(asset('js/header-dropdowns.js'))?>"></script>
+    <script defer src="<?=e(asset('js/home-product-rail.js'))?>"></script>
     <?php foreach($schemas as $schema):?><script type="application/ld+json"><?=json_encode($schema,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT)?></script><?php endforeach;?>
 </head>
 <body class="public-shell <?=e(platform_theme_classes($platformSettings))?>">

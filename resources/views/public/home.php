@@ -5,8 +5,8 @@ $bannerLink = static function(mixed $configured, string $fallback): array {
 };
 [$mainBannerHref,$mainBannerExternal] = $bannerLink($platformSettings['home_main_banner_link'] ?? '', '/produtos');
 [$discountBannerHref,$discountBannerExternal] = $bannerLink($platformSettings['home_discount_banner_link'] ?? '', '/ofertas');
-[$officialBannerHref,$officialBannerExternal] = $bannerLink($platformSettings['home_official_banner_link'] ?? '', '/lojas');
-[$wideBannerHref,$wideBannerExternal] = $bannerLink($platformSettings['official_wide_banner_link'] ?? '', '/lojas');
+[$officialBannerHref,$officialBannerExternal] = $bannerLink($platformSettings['home_official_banner_link'] ?? '', '/produtos');
+[$wideBannerHref,$wideBannerExternal] = $bannerLink($platformSettings['official_wide_banner_link'] ?? '', '/produtos');
 ?>
 <section class="home-carousel home-carousel--campaigns container" data-home-carousel data-carousel-autoplay="5500" aria-label="Destaques Tuffer">
     <div class="campaigns home-carousel__track" data-carousel-track>
@@ -17,25 +17,66 @@ $bannerLink = static function(mixed $configured, string $fallback): array {
     <div class="home-carousel__controls" data-carousel-controls><div class="home-carousel__dots" data-carousel-dots aria-label="Selecionar destaque"></div><div class="home-carousel__arrows"><button type="button" data-carousel-previous aria-label="Destaque anterior">←</button><button type="button" data-carousel-next aria-label="Próximo destaque">→</button></div></div>
 </section>
 
-<?php if ($categories): ?><section class="home-category-showcase container" data-category-carousel>
-    <header><div><span>COMPRE POR CATEGORIA</span><h2>Encontre o que combina com você</h2><p>As categorias com maior variedade de produtos nas lojas Tuffer.</p></div><nav aria-label="Navegar pelas categorias"><button type="button" data-category-previous aria-label="Categorias anteriores">←</button><button type="button" data-category-next aria-label="Próximas categorias">→</button></nav></header>
-    <div class="home-category-track" data-category-track>
-        <?php foreach ($categories as $category): ?><a class="home-category-card" href="<?= e(url('/categoria/' . $category['slug'])) ?>"><span class="home-category-card__image"><img src="<?= e(upload_asset($category['image_path'])) ?>" alt="Categoria <?= e($category['name']) ?>" loading="lazy"></span><span class="home-category-card__copy"><strong><?= e($category['name']) ?></strong><small><?= (int) $category['products_count'] ?> produto<?= (int) $category['products_count'] === 1 ? '' : 's' ?></small></span><i aria-hidden="true">↗</i></a><?php endforeach; ?>
-    </div>
-</section><?php endif; ?>
 
-<section class="home-section home-carousel container" data-home-carousel>
-    <div class="home-heading"><div><span>Lançamentos</span><h2>Novidades das lojas</h2></div><a class="outline-link" href="<?= e(url('/produtos')) ?>">Comprar agora &nbsp; →</a></div>
-    <div class="product-grid home-products home-carousel__track" data-carousel-track>
-        <?php $homeProductCard = true; ?>
-        <?php if ($products): foreach ($products as $product) require dirname(__DIR__).'/components/public/product-card.php'; else: ?>
-            <?php foreach (['Qualidade nos detalhes','Conforto todos os dias','Modelagem que acompanha','Essenciais Tuffer','Toque macio','Cintura confortável','Ajuste perfeito','Clássicos Tuffer'] as $index=>$name): $product=['name'=>$name,'slug'=>'','price'=>[135.92,64.50,49.90,84.92,59.90,72.90,89.90,99.90][$index],'store_name'=>'Tuffer','store_logo'=>'platform/logos/tuffer-logo.svg','image_url'=>null]; require dirname(__DIR__).'/components/public/product-card.php'; endforeach; ?>
-        <?php endif; ?>
-        <?php unset($homeProductCard); ?>
+<section class="home-section home-launches container" data-product-rail aria-labelledby="home-launches-title">
+    <header class="home-heading home-launches__heading">
+        <div><span>LANÇAMENTOS</span><h2 id="home-launches-title">Novidades para você</h2><p>Descubra os últimos produtos do nosso catálogo.</p></div>
+        <div class="home-launches__heading-actions">
+            <a class="outline-link" href="<?=e(url('/produtos'))?>">Ver todos os produtos <span aria-hidden="true">→</span></a>
+            <?php if(count($products)>4): ?><div class="home-launches__navigation" aria-label="Navegação dos lançamentos">
+                <button type="button" data-product-previous aria-label="Ver produtos anteriores">←</button>
+                <button type="button" data-product-next aria-label="Ver próximos produtos">→</button>
+            </div><?php endif; ?>
+        </div>
+    </header>
+    <?php if($products): ?>
+    <div class="home-launches__track" data-product-track tabindex="0" aria-label="Carrossel de lançamentos">
+        <?php $homeProductCard=true;foreach($products as $product): require dirname(__DIR__).'/components/public/product-card.php';endforeach;unset($homeProductCard); ?>
     </div>
-    <div class="home-carousel__controls" data-carousel-controls><div class="home-carousel__dots" data-carousel-dots aria-label="Selecionar produtos"></div><div class="home-carousel__arrows"><button type="button" data-carousel-previous aria-label="Produtos anteriores">←</button><button type="button" data-carousel-next aria-label="Próximos produtos">→</button></div></div>
+    <p class="home-launches__counter" data-product-counter aria-live="polite"></p>
+    <?php else: ?><div class="home-launches__empty">Novidades chegando. <a href="<?=e(url('/produtos'))?>">Explore o catálogo</a>.</div><?php endif; ?>
 </section>
 
+<?php if($categories): ?>
+<section class="home-categories container" id="categorias" aria-labelledby="home-categories-title">
+    <header class="home-categories__heading">
+        <div><span>ENCONTRE SEU ESTILO</span><h2 id="home-categories-title">Explore por categoria</h2><p>Escolha o que procura e descubra sua próxima peça favorita.</p></div>
+        <a class="outline-link" href="<?=e(url('/produtos'))?>">Todas as peças <span aria-hidden="true">→</span></a>
+    </header>
+    <div class="home-categories__grid">
+        <?php foreach($categories as $index=>$category): ?>
+        <a href="<?=e(url('/categoria/'.$category['slug']))?>" class="home-categories__item">
+            <span class="home-categories__media">
+                <?php if(!empty($category['image_path'])): ?><img src="<?=e(upload_asset($category['image_path']))?>" alt="" loading="lazy">
+                <?php else: ?><span class="home-categories__placeholder" aria-hidden="true"><?=e(mb_strtoupper(mb_substr((string)$category['name'],0,1)))?></span><?php endif;?>
+            </span>
+            <span class="home-categories__info"><strong><?=e($category['name'])?></strong><small><?= (int)$category['products_count'] ?> <?= (int)$category['products_count']===1?'produto':'produtos' ?></small></span>
+            <span class="home-categories__arrow" aria-hidden="true">↗</span>
+        </a>
+        <?php endforeach;?>
+    </div>
+</section>
+<?php endif; ?>
+
+<section class="home-brands container" aria-labelledby="home-brands-title">
+    <header class="home-brands__heading"><div><span>NOSSAS MARCAS</span><h2 id="home-brands-title">Duas marcas. Seu estilo.</h2><p>Tuffer e Linda Flor, juntas para acompanhar cada momento.</p></div></header>
+    <div class="home-brands__grid">
+        <?php
+            $brandSlugs=[];
+            foreach(($brands??[]) as $brand){$brandSlugs[mb_strtolower(trim((string)$brand['name']))]=(string)$brand['slug'];}
+            $tufferBrandHref=isset($brandSlugs['tuffer'])?'/produtos?brand='.rawurlencode($brandSlugs['tuffer']):'/produtos?q=Tuffer';
+            $lindaBrandHref=isset($brandSlugs['linda flor'])?'/produtos?brand='.rawurlencode($brandSlugs['linda flor']):'/produtos?q=Linda%20Flor';
+        ?>
+        <a class="home-brand home-brand--tuffer" href="<?=e(url($tufferBrandHref))?>">
+            <span class="home-brand__visual home-brand__visual--tuffer"><img src="<?=e(upload_asset('platform/logos/tuffer-logo.svg'))?>" alt="Tuffer" loading="lazy"></span>
+            <span class="home-brand__content"><span class="home-brand__eyebrow">ESSENCIAIS</span><strong>Tuffer</strong><span>Conforto e atitude em peças para todos os dias.</span><b>Conhecer a marca <span aria-hidden="true">→</span></b></span>
+        </a>
+        <a class="home-brand home-brand--linda" href="<?=e(url($lindaBrandHref))?>">
+            <span class="home-brand__visual home-brand__visual--linda"><span class="home-brand__flower" aria-hidden="true">✿</span><span class="home-brand__wordmark">Linda Flor</span></span>
+            <span class="home-brand__content"><span class="home-brand__eyebrow">DELICADEZA</span><strong>Linda Flor</strong><span>Peças femininas que valorizam seu conforto e seu estilo.</span><b>Conhecer a marca <span aria-hidden="true">→</span></b></span>
+        </a>
+    </div>
+</section>
 <div class="quick-cart-modal" hidden data-quick-cart-modal>
     <button class="quick-cart-modal__backdrop" type="button" data-close-quick-cart tabindex="-1" aria-hidden="true" aria-label="Fechar compra rápida"></button>
     <section class="quick-cart-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="quick-cart-title">
@@ -64,13 +105,3 @@ $bannerLink = static function(mixed $configured, string $fallback): array {
 
 <a class="official-banner official-banner--asset container" href="<?=e($wideBannerHref)?>"<?=$wideBannerExternal?' target="_blank" rel="noopener noreferrer"':''?>><img src="<?= e(upload_asset($platformSettings['official_wide_banner'] ?? 'platform/banners/official-wide.svg')) ?>" alt="Loja oficial Tuffer, para todos os estilos e todos os dias"></a>
 
-<section class="home-section home-carousel container stores-section" data-home-carousel>
-    <div class="home-heading"><div><span>Lojas oficiais</span><h2>Lojas para explorar</h2></div><a class="outline-link" href="<?= e(url('/lojas')) ?>">Explorar produtos &nbsp; →</a></div>
-    <div class="seller-grid home-carousel__track" data-carousel-track>
-        <?php if ($stores): foreach ($stores as $store) require dirname(__DIR__).'/components/public/seller-card.php'; else: ?>
-            <?php $store=['name'=>'Tuffer','slug'=>'','description'=>'Loja oficial na Tuffer.','logo_url'=>'platform/logos/tuffer-logo.svg','banner_url'=>'platform/banners/store-card-tuffer.svg']; require dirname(__DIR__).'/components/public/seller-card.php'; ?>
-            <?php $store=['name'=>'Lojas Parceiras','slug'=>'','description'=>'Novas marcas chegando em breve.','logo_url'=>null,'banner_url'=>null]; require dirname(__DIR__).'/components/public/seller-card.php'; ?>
-        <?php endif; ?>
-    </div>
-    <div class="home-carousel__controls" data-carousel-controls><div class="home-carousel__dots" data-carousel-dots aria-label="Selecionar lojas"></div><div class="home-carousel__arrows"><button type="button" data-carousel-previous aria-label="Lojas anteriores">←</button><button type="button" data-carousel-next aria-label="Próximas lojas">→</button></div></div>
-</section>
