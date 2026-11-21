@@ -23,7 +23,7 @@ $bannerLink = static function(mixed $configured, string $fallback): array {
         <div><span>LANÇAMENTOS</span><h2 id="home-launches-title">Novidades para você</h2><p>Descubra os últimos produtos do nosso catálogo.</p></div>
         <div class="home-launches__heading-actions">
             <a class="outline-link" href="<?=e(url('/produtos'))?>">Ver todos os produtos <span aria-hidden="true">→</span></a>
-            <?php if(count($products)>4): ?><div class="home-launches__navigation" aria-label="Navegação dos lançamentos">
+            <?php if(count($products)>1): ?><div class="home-launches__navigation" aria-label="Navegação dos lançamentos">
                 <button type="button" data-product-previous aria-label="Ver produtos anteriores">←</button>
                 <button type="button" data-product-next aria-label="Ver próximos produtos">→</button>
             </div><?php endif; ?>

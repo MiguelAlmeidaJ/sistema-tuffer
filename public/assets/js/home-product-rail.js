@@ -40,6 +40,28 @@ document.querySelectorAll('[data-product-rail]').forEach(rail=>{
   });
   if('ResizeObserver' in window) new ResizeObserver(refresh).observe(track);
   else window.addEventListener('resize',refresh);
-  refresh();
+  // Autoplay suave somente enquanto o visitante não estiver interagindo.
+  const reducedMotion=matchMedia('(prefers-reduced-motion:reduce)');
+  let timer=0;
+  const stop=()=>{if(timer){clearInterval(timer);timer=0}};
+  const start=()=>{
+    stop();
+    if(reducedMotion.matches||document.hidden||cards().length<=position().visible)return;
+    timer=setInterval(()=>{
+      const {index,visible}=position();
+      const max=Math.max(0,cards().length-visible);
+      if(index>=max)track.scrollTo({left:0,behavior:'smooth'});
+      else move(1);
+    },5500);
+  };
+  rail.addEventListener('pointerenter',stop);
+  rail.addEventListener('pointerleave',start);
+  rail.addEventListener('focusin',stop);
+  rail.addEventListener('focusout',start);
+  track.addEventListener('touchstart',stop,{passive:true});
+  track.addEventListener('touchend',start,{passive:true});
+  document.addEventListener('visibilitychange',()=>document.hidden?stop():start());
+  reducedMotion.addEventListener?.('change',start);
+  refresh();start();
 });
 })();
