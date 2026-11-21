@@ -9,6 +9,12 @@ $loginPath = '/entrar' . ($redirectPath !== '' ? '?redirect=' . rawurlencode($re
         <p>Complete seus dados e defina uma senha segura. Leva menos de um minuto.</p>
     </div>
 
+<?php if (trim((string) ($_ENV['GOOGLE_CLIENT_ID'] ?? '')) !== '' && trim((string) ($_ENV['GOOGLE_CLIENT_SECRET'] ?? '')) !== ''): ?>
+            <a class="account-gate__google" style="display:flex;margin:16px 0;min-height:50px;align-items:center;justify-content:center;gap:10px;border:1px solid #dadce0;border-radius:12px;text-decoration:none;color:#242424;font-weight:750" href="<?=e(url('/auth/google?redirect='.rawurlencode($redirectPath !== '' ? $redirectPath : '/minha-conta')))?>">
+              <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true"><path fill="#4285F4" d="M21.35 12.24c0-.72-.06-1.23-.2-1.77H12v3.43h5.36a4.6 4.6 0 0 1-2 3.03v2.5h3.24c1.9-1.75 2.75-4.33 2.75-7.19Z"/><path fill="#34A853" d="M12 21.75c2.63 0 4.83-.86 6.44-2.32l-3.23-2.5c-.88.59-2.02.94-3.21.94-2.47 0-4.56-1.67-5.31-3.92H3.35v2.57A9.75 9.75 0 0 0 12 21.75Z"/><path fill="#FBBC05" d="M6.69 13.95A5.8 5.8 0 0 1 6.4 12c0-.68.11-1.35.29-1.95V7.48H3.35A9.76 9.76 0 0 0 2.25 12c0 1.58.38 3.08 1.1 4.52l3.34-2.57Z"/><path fill="#EA4335" d="M12 6.13c1.43 0 2.72.49 3.74 1.46l2.88-2.88A9.27 9.27 0 0 0 12 2.25a9.75 9.75 0 0 0-8.65 5.23l3.34 2.57c.75-2.25 2.84-3.92 5.31-3.92Z"/></svg>
+              Continuar com Google
+            </a>
+            <?php endif; ?>
     <ol class="auth-steps" aria-label="Etapas do cadastro">
         <li class="is-active" data-step-indicator="1"><span>1</span> Seus dados</li>
         <li data-step-indicator="2"><span>2</span> Segurança</li>

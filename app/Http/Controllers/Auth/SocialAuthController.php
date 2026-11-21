@@ -21,7 +21,7 @@ final class SocialAuthController extends Controller
     {
         $provider = 'google';
         try {
-            $url = (new SocialAuthService())->authorizationUrl($provider);
+            $url = (new SocialAuthService())->authorizationUrl($provider, SocialAuthService::safeReturnPath((string) ($_GET['redirect'] ?? '')));
             return Response::redirectExternal($url, ['accounts.google.com']);
         } catch (RuntimeException $exception) {
             Session::flash('error', $exception->getMessage());
@@ -46,7 +46,8 @@ final class SocialAuthController extends Controller
             Auth::login($user);
             Database::connection()->prepare('UPDATE users SET last_login_at=NOW(),email_verified_at=COALESCE(email_verified_at,NOW()) WHERE id=?')->execute([$user['id']]);
             Session::flash('success', 'Login realizado com ' . $service->label($provider) . '.');
-            return Response::redirect('/minha-conta');
+            $returnTo = $service->consumeReturnPath($provider);
+            return Response::redirect($returnTo !== '' ? $returnTo : '/minha-conta');
         } catch (RuntimeException $exception) {
             Session::flash('error', $exception->getMessage());
             return Response::redirect('/entrar');

@@ -1,0 +1,27 @@
+/* Modal de autenticação de visitantes — exclusivo do site público */
+.account-gate{width:min(92vw,460px);max-height:min(92dvh,780px);overflow-y:auto;margin:auto;padding:0;border:1px solid #e8e5e1;border-radius:24px;background:#fff;color:#181818;box-shadow:0 30px 100px rgba(0,0,0,.28)}
+.account-gate::backdrop{background:rgba(10,10,12,.72);backdrop-filter:blur(6px)}
+.account-gate__content{padding:clamp(24px,4vw,38px);display:grid;gap:11px}
+.account-gate__brand{display:flex;justify-content:center;margin-bottom:13px}.account-gate__brand img{display:block;max-width:110px;max-height:47px;object-fit:contain}
+.account-gate__eyebrow{color:#cc0621;text-transform:uppercase;font-size:.65rem;letter-spacing:.17em;font-weight:850;text-align:center}
+.account-gate h2{font-size:clamp(1.55rem,4vw,2rem);font-weight:900;letter-spacing:-.05em;line-height:1.15;text-align:center;margin:0}
+.account-gate__content>p{font-size:.82rem;line-height:1.6;color:#6e6a66;text-align:center;margin:0 0 11px}
+.account-gate__google{min-height:49px;display:flex;align-items:center;justify-content:center;gap:12px;text-decoration:none;color:#272522;border:1px solid #dcd8d4;border-radius:12px;font-weight:800;font-size:.81rem;background:#fff}
+.account-gate__google:hover{background:#f7f7f7}
+.account-gate__divider{display:flex;align-items:center;gap:13px;color:#89837c;font-size:.72rem;margin:8px 0}
+.account-gate__divider:before,.account-gate__divider:after{content:"";height:1px;background:#e9e5e1;flex:1}
+.account-gate__form{display:grid;gap:8px}
+.account-gate__form label{font-weight:750;font-size:.74rem}
+.account-gate__form input{width:100%;height:48px;border:1px solid #e1dcd6;border-radius:11px;padding:0 13px;background:#fff;font-size:.85rem;color:#1e1e1e}
+.account-gate__form input:focus{outline:2px solid #dd122a;outline-offset:1px}
+.account-gate__help{display:flex;justify-content:flex-end;margin:0 0 7px}
+.account-gate__help a{color:#7d726e;text-decoration:none;font-size:.7rem}
+.account-gate__primary{min-height:52px;border:0;border-radius:12px;background:#d5001b;color:#fff;font-weight:850;font-size:.85rem;cursor:pointer}
+.account-gate__primary:hover{background:#b50018}
+.account-gate__register{display:grid;gap:8px;text-align:center;padding-top:12px;margin-top:7px;border-top:1px solid #eee9e4}
+.account-gate__register span{font-size:.73rem;color:#74706b}
+.account-gate__register>a{display:block;padding:13px;border:1px solid #d5001b;color:#c4001a;border-radius:12px;text-decoration:none;font-weight:850;font-size:.8rem}
+.account-gate__privacy{color:#8b857e;text-align:center;font-size:.64rem;line-height:1.6;margin-top:7px}
+.account-gate__privacy a{color:inherit;text-decoration:underline}
+@media(max-height:620px){.account-gate__content{padding:16px 24px;gap:7px}.account-gate__brand{margin:0}.account-gate__content>p{margin:0}.account-gate__register{margin:0}}
+@media(prefers-reduced-motion:reduce){.account-gate::backdrop{backdrop-filter:none}}

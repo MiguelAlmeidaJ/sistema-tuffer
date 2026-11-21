@@ -34,7 +34,7 @@ final class SocialAuthService
         };
     }
 
-    public function authorizationUrl(string $provider): string
+    public function authorizationUrl(string $provider, string $returnTo = ''): string
     {
         $config = $this->provider($provider);
         if ($config['client_id'] === '' || $config['client_secret'] === '') {
@@ -44,7 +44,7 @@ final class SocialAuthService
         $state = bin2hex(random_bytes(32));
         $pending = Session::get('social_oauth', []);
         if (!is_array($pending)) $pending = [];
-        $pending[$provider] = ['state' => $state, 'created_at' => time()];
+        $pending[$provider] = ['state' => $state, 'created_at' => time(), 'return_to' => self::safeReturnPath($returnTo)];
         Session::put('social_oauth', $pending);
 
         $parameters = [
@@ -68,10 +68,31 @@ final class SocialAuthService
         unset($pending[$provider]);
         Session::put('social_oauth', $pending);
 
-        return is_array($attempt)
+        $valid = is_array($attempt)
             && isset($attempt['state'], $attempt['created_at'])
             && time() - (int) $attempt['created_at'] <= 600
             && hash_equals((string) $attempt['state'], $state);
+        if ($valid) {
+            Session::put('social_oauth_return_' . $provider, self::safeReturnPath((string) ($attempt['return_to'] ?? '')));
+        }
+        return $valid;
+    }
+
+    public function consumeReturnPath(string $provider): string
+    {
+        $path = (string) Session::get('social_oauth_return_' . $provider, '');
+        Session::forget('social_oauth_return_' . $provider);
+        return self::safeReturnPath($path);
+    }
+
+    public static function safeReturnPath(string $path): string
+    {
+        if ($path === '' || !str_starts_with($path, '/') || str_starts_with($path, '//')) return '';
+        if (str_contains($path, '\\') || preg_match('/[\\x00-\\x1F\\x7F]/', $path) === 1) return '';
+        $pathname = (string) (parse_url($path, PHP_URL_PATH) ?: '');
+        if (in_array($pathname, ['/entrar','/cadastro','/sair'], true)
+            || str_starts_with($pathname, '/auth/')) return '';
+        return $path;
     }
 
     /** @return array{id:string,name:string,email:string,email_verified:bool,avatar:?string} */

@@ -15,12 +15,14 @@
     <link rel="stylesheet" href="<?= e(asset('css/commerce-ux.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/guidance.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/customer-flow.css')) ?>">
+    <?php if (empty($authUser)): ?><link rel="stylesheet" href="<?=e(asset('css/public/account-gate.css'))?>"><?php endif;?>
     <style>:root{<?= platform_theme_style($platformSettings) ?>}</style>
     <script defer src="<?= e(asset('js/checkout-card.js')) ?>"></script>
     <script defer src="<?= e(asset('js/app.js')) ?>"></script>
     <script defer src="<?= e(asset('js/checkout-installments.js')) ?>"></script>
     <script defer src="<?= e(asset('js/commerce-ux.js')) ?>"></script>
     <script defer src="<?= e(asset('js/purchase-assistant.js')) ?>"></script>
+    <?php if (empty($authUser)): ?><script defer src="<?=e(asset('js/account-gate.js'))?>"></script><?php endif;?>
     <?php foreach($schemas as $schema):?><script type="application/ld+json"><?=json_encode($schema,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT)?></script><?php endforeach;?>
 </head>
 <body class="public-shell <?=e(platform_theme_classes($platformSettings))?>">
@@ -39,5 +41,6 @@
     <?php if ($flashError && $checkoutRequest): ?><div class="toast toast--guide" role="status">Não foi possível concluir essa etapa agora. Seu carrinho continua salvo; confira a orientação abaixo e tente novamente.</div><?php elseif ($flashError): ?><div class="toast toast--error" role="alert"><?= e($flashError) ?></div><?php endif; ?>
     <main><?= $content ?></main>
     <?php require dirname(__DIR__) . '/components/public/footer.php'; ?>
+    <?php if (empty($authUser)): require dirname(__DIR__) . '/components/public/account-gate.php'; endif; ?>
 </body>
 </html>

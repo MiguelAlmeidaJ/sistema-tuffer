@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\SellerRegisterController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\ResetPasswordController;
+use App\Http\Controllers\Auth\SocialAuthController;
 
 $router->get('/entrar', [LoginController::class, 'create'], ['guest']);
 $router->post('/entrar', [LoginController::class, 'store'], ['guest', 'csrf']);
@@ -22,3 +23,6 @@ $router->post('/redefinir-senha/codigo', [ResetPasswordController::class, 'verif
 $router->get('/redefinir-senha', [ResetPasswordController::class, 'edit'], ['guest']);
 $router->post('/redefinir-senha', [ResetPasswordController::class, 'update'], ['guest', 'csrf']);
 $router->get('/senha-alterada', [ResetPasswordController::class, 'success'], ['guest']);
+
+$router->get('/auth/google', [SocialAuthController::class, 'redirect'], ['guest']);
+$router->get('/auth/google/callback', [SocialAuthController::class, 'callback'], ['guest']);

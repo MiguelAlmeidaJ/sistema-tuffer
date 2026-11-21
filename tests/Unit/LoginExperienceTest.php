@@ -15,12 +15,12 @@ final class LoginExperienceTest extends TestCase
         $this->root = dirname(__DIR__, 2);
     }
 
-    public function testLoginKeepsBrandBeforeWelcomeAndSocialLoginIsDisabled(): void
+    public function testLoginKeepsBrandBeforeWelcomeAndIncludesGoogle(): void
     {
         $view = file_get_contents($this->root . '/resources/views/auth/login.php');
         self::assertIsString($view);
         self::assertStringNotContainsString('auth-social__button', $view);
-        self::assertStringNotContainsString('/auth/google', $view);
+        self::assertStringContainsString('/auth/google', $view);
         self::assertStringNotContainsString('ou entre com seu e-mail', mb_strtolower($view));
         self::assertStringContainsString('auth-login__logo', $view);
         self::assertStringContainsString('Criar minha conta', $view);
@@ -31,12 +31,12 @@ final class LoginExperienceTest extends TestCase
         );
     }
 
-    public function testSocialAuthenticationRoutesAreNotExposed(): void
+    public function testGoogleAuthenticationRoutesAreExposed(): void
     {
         $routes = file_get_contents($this->root . '/routes/auth.php');
         self::assertIsString($routes);
-        self::assertStringNotContainsString('/auth/google', $routes);
-        self::assertStringNotContainsString('SocialAuthController', $routes);
+        self::assertStringContainsString('/auth/google', $routes);
+        self::assertStringContainsString('SocialAuthController', $routes);
     }
 
     public function testLoginStylesKeepTheAccountCreationLabelVisible(): void
