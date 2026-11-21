@@ -78,3 +78,14 @@
 @media(max-width:1100px){.home-launches__track{grid-auto-columns:calc((100% - 40px)/3)}}
 @media(max-width:780px){.home-launches__track{grid-auto-columns:calc((100% - 20px)/2)}}
 @media(max-width:560px){.home-launches__track{grid-auto-columns:82%;gap:14px}.home-launches__track .product-card__image{aspect-ratio:4/4.4}.home-categories__media{width:44px;height:55px;flex-basis:44px}.home-categories__empty-media:after{inset:19%}.home-categories__item{padding:10px;min-height:78px}}
+
+/* Categorias textuais — sem ícones, miniaturas ou espaços reservados para imagens */
+.home-categories__grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.home-categories__item{min-height:93px;padding:21px 23px;gap:0;border-radius:15px;background:#fff;box-shadow:none}
+.home-categories__info{padding-right:18px;gap:8px}
+.home-categories__info strong{font-size:.9rem;letter-spacing:-.015em}
+.home-categories__info small{font-size:.7rem}
+.home-categories__arrow{right:19px;top:20px;color:#b6a9a0;font-size:.95rem}
+.home-categories__item:hover .home-categories__arrow{color:#cb0924}
+@media(max-width:900px){.home-categories__grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:620px){.home-categories__grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.home-categories__item{min-height:85px;padding:16px 14px}.home-categories__info strong{font-size:.76rem}.home-categories__info small{font-size:.64rem}.home-categories__arrow{right:11px;top:12px}}

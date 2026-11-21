@@ -88,7 +88,6 @@ $deliverySecondary = $hasDeliveryAddress
         <?php if (!empty($menuCategories)): foreach ($menuCategories as $menuCategory): ?><a href="<?= e(url('/categoria/' . $menuCategory['slug'])) ?>"><?= e($menuCategory['name']) ?></a><?php endforeach; else: ?>
         <a href="<?= e(url('/categoria/moda-masculina')) ?>">Moda Masculina</a><a href="<?= e(url('/categoria/moda-feminina')) ?>">Moda Feminina</a><a href="<?= e(url('/categoria/kits')) ?>">Kits</a>
         <?php endif; ?>
-        <a href="<?= e(url('/lojas')) ?>">Loja Oficial</a>
     </nav>
     <a class="delivery-bar<?= $hasDeliveryAddress ? ' has-address' : '' ?>" href="<?= e($authUser ? url('/minha-conta/enderecos') : $addressLoginUrl) ?>">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2"/></svg>
@@ -106,7 +105,6 @@ $deliverySecondary = $hasDeliveryAddress
                 <a href="<?= e(url('/categoria/moda-feminina')) ?>"><span>Moda Feminina</span><b>→</b></a>
                 <a href="<?= e(url('/categoria/kits')) ?>"><span>Kits</span><b>→</b></a>
                 <?php endif; ?>
-                <a href="<?= e(url('/lojas')) ?>"><span>Lojas oficiais</span><b>→</b></a>
             </nav>
             <footer>
                 <a href="<?= e($authUser ? url(match ($authUser['type']) {'admin'=>'/admin','seller','operator'=>'/vendedor',default=>'/minha-conta'}) : $guestLoginUrl) ?>"><?= $authUser ? 'Minha conta' : 'Entrar' ?></a>

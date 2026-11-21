@@ -46,10 +46,7 @@ $bannerLink = static function(mixed $configured, string $fallback): array {
     <div class="home-categories__grid">
         <?php foreach($categories as $index=>$category): ?>
         <a href="<?=e(url('/categoria/'.$category['slug']))?>" class="home-categories__item">
-            <span class="home-categories__media">
-                <?php if(!empty($category['image_path'])): ?><img src="<?=e(upload_asset($category['image_path']))?>" alt="" loading="lazy">
-                <?php else: ?><span class="home-categories__empty-media" aria-hidden="true"></span><?php endif;?>
-            </span>
+
             <span class="home-categories__info"><strong><?=e($category['name'])?></strong><small><?= (int)$category['products_count'] ?> <?= (int)$category['products_count']===1?'produto':'produtos' ?></small></span>
             <span class="home-categories__arrow" aria-hidden="true">↗</span>
         </a>

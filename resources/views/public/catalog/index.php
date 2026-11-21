@@ -34,11 +34,6 @@ $pageUrl = static function (int $target) use ($catalogAction): string {
                         <option value="">Todas as categorias</option><?php foreach ($categories as $category): ?>
                             <option value="<?= e($category['slug']) ?>" <?= $filters['category'] === $category['slug'] ? 'selected' : '' ?>><?= e($category['name']) ?></option><?php endforeach; ?>
                     </select></label><?php endif; ?>
-            <label>Loja<select name="store">
-                    <option value="">Todas as lojas</option><?php foreach ($stores as $store): ?>
-                        <option value="<?= e($store['slug']) ?>" <?= $filters['store'] === $store['slug'] ? 'selected' : '' ?>>
-                            <?= e($store['name']) ?></option><?php endforeach; ?>
-                </select></label>
             <?php if ($brands): ?><label>Marca<select name="brand">
                         <option value="">Todas as marcas</option><?php foreach ($brands as $brand): ?>
                             <option value="<?= e($brand['slug']) ?>" <?= $filters['brand'] === $brand['slug'] ? 'selected' : '' ?>>
