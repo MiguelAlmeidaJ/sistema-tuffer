@@ -114,7 +114,7 @@ foreach (array_merge($adminOverview, ...array_values($adminGroups)) as $item) {
             <p class="menu-section-title">Conta e benefícios</p>
             <?php foreach($customerMenu as [$label,$href]):
                 $icon=$customerIcon($href);
-                if(!in_array($icon,['wholesale','profile'],true))continue;
+                if($icon!=='wholesale')continue;
                 $active=$isActiveMenu($href); ?>
                 <a class="menu-item <?=$active?'is-active':''?>" href="<?=e(url($href))?>" <?=$active?'aria-current="page"':''?> aria-label="<?=e($label)?>" data-sidebar-tooltip="<?=e($label)?>"><i><?=$menuIcon($icon)?></i><span><?=e($label)?></span></a>
             <?php endforeach;?>
