@@ -67,3 +67,19 @@
 :is(.dashboard-area-admin,.dashboard-area-seller) .sidebar-head .brand{max-width:100%}
 :is(.dashboard-area-admin,.dashboard-area-seller) .user-dropdown__menu{max-height:calc(100vh - 100px);overflow-y:auto}
 @media(max-width:760px){:is(.dashboard-area-admin,.dashboard-area-seller) .dashboard-desktop-toggle{display:none}:is(.dashboard-area-admin,.dashboard-area-seller) .sidebar.is-collapsed .sidebar-favicon{display:none}:is(.dashboard-area-admin,.dashboard-area-seller) .sidebar.is-collapsed .sidebar-head .brand{display:inline-flex}}
+
+/* Ajustes específicos dos grupos do menu administrativo no tema claro. */
+.dashboard-area-admin .sidebar-groups details>summary{color:#68766e;border-radius:10px}
+.dashboard-area-admin .sidebar-groups details>summary:hover{background:#f4f6f4;color:#26372d}
+.dashboard-area-admin .sidebar-groups details[open]>summary{color:#45564c}
+.dashboard-area-admin .sidebar-section-chevron{color:#87928b}
+.dashboard-area-admin .sidebar-groups details>div{border-left-color:#e4e9e4}
+.dashboard-area-admin .sidebar-groups a i{background:#f5f7f5;color:#6e8072}
+.dashboard-area-admin .sidebar-groups a.is-active i{background:#f9dce2;color:#b7132b}
+.dashboard-area-admin .sidebar.is-collapsed .sidebar-groups details>div{border-left:0}
+.dashboard-area-admin .sidebar.is-collapsed .sidebar-groups a i{background:transparent}
+.dashboard-area-admin .sidebar.is-collapsed .sidebar-groups a.is-active i{color:#b7132b}
+:is(.dashboard-area-admin,.dashboard-area-seller) .sidebar-menu a:focus-visible,
+:is(.dashboard-area-admin,.dashboard-area-seller) .dashboard-desktop-toggle:focus-visible,
+:is(.dashboard-area-admin,.dashboard-area-seller) .user-dropdown summary:focus-visible{outline:2px solid #d21635;outline-offset:3px}
+@media(max-width:760px){.dashboard-area-admin .sidebar-groups details>div{border-left-color:#e4e9e4}}
