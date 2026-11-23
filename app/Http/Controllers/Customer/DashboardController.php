@@ -37,10 +37,14 @@ final class DashboardController extends Controller
         $latestStatement->execute([$userId]);
         $latestOrder = $latestStatement->fetch() ?: null;
 
+        $addressCountStatement = $pdo->prepare('SELECT COUNT(*) FROM user_addresses WHERE user_id=?');
+        $addressCountStatement->execute([$userId]);
+        $addressCount = (int)$addressCountStatement->fetchColumn();
         return $this->page('customer/dashboard', 'layouts/customer', [
             'pageTitle' => 'Visão geral',
             'stats' => $stats,
             'latestOrder' => $latestOrder,
+            'showAddressOnboarding' => $addressCount === 0,
         ]);
     }
 }
