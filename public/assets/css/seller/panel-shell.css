@@ -83,3 +83,11 @@
 :is(.dashboard-area-admin,.dashboard-area-seller) .dashboard-desktop-toggle:focus-visible,
 :is(.dashboard-area-admin,.dashboard-area-seller) .user-dropdown summary:focus-visible{outline:2px solid #d21635;outline-offset:3px}
 @media(max-width:760px){.dashboard-area-admin .sidebar-groups details>div{border-left-color:#e4e9e4}}
+
+/* Sem logotipo completo no menu; favicon continua identificando o modo compacto. */
+:is(.dashboard-area-admin,.dashboard-area-seller) .sidebar:not(.is-collapsed) .sidebar-head{justify-content:flex-end}
+@media(max-width:760px){
+  :is(.dashboard-area-admin,.dashboard-area-seller) .sidebar .sidebar-favicon,
+  :is(.dashboard-area-admin,.dashboard-area-seller) .sidebar.is-collapsed .sidebar-favicon{display:block;width:36px;height:36px;margin-right:auto}
+  :is(.dashboard-area-admin,.dashboard-area-seller) .sidebar-head{justify-content:space-between}
+}
