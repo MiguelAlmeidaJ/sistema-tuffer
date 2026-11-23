@@ -18,9 +18,14 @@ use App\Http\Controllers\Seller\ReportController;
 use App\Http\Controllers\Seller\SettingsController;
 use App\Http\Controllers\Seller\PaymentSettingsController;
 use App\Http\Controllers\Seller\StoreContextController;
+use App\Http\Controllers\Seller\AccountController;
 
 $router->group(['prefix'=>'/vendedor','middleware'=>['auth','role:seller,operator']],static function($router):void{
     $router->get('/onboarding',[OnboardingController::class,'index']);
+    $router->get('/minha-conta',[AccountController::class,'edit']);
+    $router->post('/minha-conta',[AccountController::class,'update'],['csrf']);
+    $router->get('/minha-conta/senha',[AccountController::class,'password']);
+    $router->post('/minha-conta/senha',[AccountController::class,'changePassword'],['csrf']);
     $router->group(['middleware'=>['seller.approved']],static function($router):void{
         $router->get('/',[DashboardController::class,'index']);$router->post('/selecionar-loja',[StoreContextController::class,'select'],['csrf']);$router->get('/relatorios',[ReportController::class,'index']);$router->get('/financeiro',[FinanceController::class,'index']);$router->post('/financeiro/carteira/transferir',[FinanceController::class,'withdraw'],['role:seller','csrf']);
         $router->get('/fiscal',[FiscalController::class,'index'],['role:seller']);$router->post('/fiscal/perfil',[FiscalController::class,'saveProfile'],['role:seller','csrf']);$router->post('/fiscal/produtos/{id}',[FiscalController::class,'saveProduct'],['role:seller','csrf']);$router->post('/fiscal/documentos/{id}/registrar',[FiscalController::class,'registerDocument'],['role:seller','csrf']);$router->get('/fiscal/integracao',[FiscalIntegrationController::class,'index'],['role:seller']);$router->post('/fiscal/integracao/token',[FiscalIntegrationController::class,'rotateToken'],['role:seller','csrf']);$router->post('/fiscal/integracao/token/revogar',[FiscalIntegrationController::class,'revokeToken'],['role:seller','csrf']);$router->post('/fiscal/integracao/documentos/{id}/registrar',[FiscalIntegrationController::class,'register'],['role:seller','csrf']);$router->post('/fiscal/integracao/documentos/{id}/arquivos',[FiscalIntegrationController::class,'uploadFiles'],['role:seller','csrf']);$router->post('/fiscal/integracao/documentos/{id}/cancelar',[FiscalIntegrationController::class,'cancel'],['role:seller','csrf']);$router->get('/fiscal/webhook',[FiscalWebhookController::class,'index'],['role:seller']);$router->post('/fiscal/webhook',[FiscalWebhookController::class,'configure'],['role:seller','csrf']);$router->post('/fiscal/webhook/desativar',[FiscalWebhookController::class,'disable'],['role:seller','csrf']);
