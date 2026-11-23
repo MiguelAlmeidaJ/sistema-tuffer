@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="<?= e(asset('css/guidance.css')) ?>">
     <style>:root{<?= platform_theme_style($platformSettings) ?>}</style>
     <script defer src="<?= e(asset('js/app.js')) ?>"></script>
+    <script defer src="<?= e(asset('js/password-modal.js')) ?>"></script>
     <script defer src="<?= e(asset('js/commerce-ux.js')) ?>"></script>
     <script defer src="<?= e(asset('js/admin-card-installments.js')) ?>"></script>
 </head>
@@ -24,6 +25,7 @@
             <?php if ($flashError && ($dashboardArea ?? '') === 'customer'): ?><div class="alert alert--guide"><?= e($flashError) ?></div><?php elseif ($flashError): ?><div class="alert alert--error"><?= e($flashError) ?></div><?php endif; ?>
             <?= $content ?>
         </main>
+        <?php if (in_array(($dashboardArea ?? ''), ['admin', 'seller'], true)) require dirname(__DIR__) . '/components/dashboard/password-modal.php'; ?>
     </div>
 </body>
 </html>
