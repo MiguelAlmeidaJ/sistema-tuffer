@@ -33,6 +33,10 @@ $menuIcon = static function(string $name): string {
         'coupon' => '<path d="M3 7a2 2 0 0 0 2-2h14v5a2 2 0 0 0 0 4v5H5a2 2 0 0 0-2-2V7Z"/><path d="M13 7v2M13 11v2M13 15v2"/>',
         'messages' => '<path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z"/><path d="M8 10h8M8 14h5"/>',
         'settings' => '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21H9.6v-.1A1.7 1.7 0 0 0 8.5 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3V9.6h.1A1.7 1.7 0 0 0 4.6 8.5a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.1A1.7 1.7 0 0 0 15.5 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.15.38.37.72.66 1 .3.28.68.43 1.08.43H21v4h-.1A1.7 1.7 0 0 0 19.4 15Z"/>',
+        'address' => '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
+        'heart' => '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 1 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/>',
+        'bell' => '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',
+        'profile' => '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
         'chevron' => '<path d="m9 18 6-6-6-6"/>',
         'collapse' => '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16m7-11-3 3 3 3"/>',
     ];
@@ -84,7 +88,38 @@ foreach (array_merge($adminOverview, ...array_values($adminGroups)) as $item) {
         <div class="sidebar-primary"><p class="menu-section-title">Administração</p><?php foreach($adminOverview as [$icon,$label,$href]):$active=$activeAdminHref===$href;?><a class="menu-item <?=$active?'is-active':''?>" href="<?=e(url($href))?>" <?=$active?'aria-current="page"':''?> aria-label="<?=e($label)?>" data-sidebar-tooltip="<?=e($label)?>"><i><?=$menuIcon($icon)?></i><span><?=e($label)?></span></a><?php endforeach;?></div>
         <div class="sidebar-groups"><?php foreach($adminGroups as $group=>$items):$groupActive=(bool)array_filter($items,static fn(array $item):bool=>$activeAdminHref===$item[2]);?><details <?=$groupActive?'open':''?>><summary><span><?=e($group)?></span><i class="sidebar-section-chevron"><?=$menuIcon('chevron')?></i></summary><div><?php foreach($items as [$icon,$label,$href]):$active=$activeAdminHref===$href;?><a class="menu-item <?=$active?'is-active':''?>" href="<?=e(url($href))?>" <?=$active?'aria-current="page"':''?> aria-label="<?=e($label)?>" data-sidebar-tooltip="<?=e($label)?>"><i><?=$menuIcon($icon)?></i><span><?=e($label)?></span></a><?php endforeach;?></div></details><?php endforeach;?></div>
     <?php elseif($dashboardArea==='seller'):?><div class="sidebar-primary"><p class="menu-section-title"><?= e($dashboardName) ?></p><?php foreach($sellerMenu as [$icon,$label,$href]):$active=$icon==='settings'?str_starts_with($currentPath,(string)parse_url(url('/vendedor/configuracoes'),PHP_URL_PATH)):$isActiveMenu($href);?><a class="menu-item <?=$active?'is-active':''?>" href="<?=e(url($href))?>" <?=$active?'aria-current="page"':''?> aria-label="<?=e($label)?>" data-sidebar-tooltip="<?=e($label)?>"><i><?=$menuIcon($icon)?></i><span><?=e($label)?></span></a><?php endforeach;?></div>
-    <?php else:?><p class="menu-section-title"><?= e($dashboardName) ?></p><?php foreach ($menus[$dashboardArea] as [$label,$href]):$active=$isActiveMenu($href);?><a class="menu-item <?= $active ? 'is-active' : '' ?>" href="<?= e(url($href)) ?>" <?= $active ? 'aria-current="page"' : '' ?>><?= e($label) ?></a><?php endforeach; ?><?php endif;?></nav>
-    <?php if($dashboardArea==='customer'):?><footer class="sidebar-profile"><div class="sidebar-profile__identity"><span><?=e(mb_strtoupper(mb_substr((string)($authUser['name']??'A'),0,1)))?></span><div><strong><?=e($authUser['name']??'Administrador')?></strong><small><?=e($authUser['email']??'')?></small></div></div><form action="<?= e(url('/sair')) ?>" method="post"><?= csrf_field() ?><button type="submit" title="Sair da conta"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4M14 8l4 4-4 4M9 12h9"/></svg><span>Sair</span></button></form></footer><?php endif;?>
+    <?php else:?>
+        <?php
+        $customerIcon = static function (string $href): string {
+            if (str_contains($href, '/pedidos')) return 'orders';
+            if (str_contains($href, '/enderecos')) return 'address';
+            if (str_contains($href, '/favoritos')) return 'heart';
+            if (str_contains($href, '/mensagens')) return 'messages';
+            if (str_contains($href, '/notificacoes')) return 'bell';
+            if (str_contains($href, '/atacado')) return 'wholesale';
+            if (str_contains($href, '/perfil')) return 'profile';
+            return 'dashboard';
+        };
+        ?>
+        <div class="sidebar-primary">
+            <p class="menu-section-title"><?=e($dashboardName)?></p>
+            <?php foreach($customerMenu as [$label,$href]):
+                $icon=$customerIcon($href);
+                $active=$isActiveMenu($href);
+                if($icon==='dashboard' || $icon==='orders' || $icon==='address' || $icon==='heart' || $icon==='messages' || $icon==='bell'):?>
+                <a class="menu-item <?=$active?'is-active':''?>" href="<?=e(url($href))?>" <?=$active?'aria-current="page"':''?> aria-label="<?=e($label)?>" data-sidebar-tooltip="<?=e($label)?>"><i><?=$menuIcon($icon)?></i><span><?=e($label)?></span></a>
+            <?php endif;endforeach;?>
+        </div>
+        <div class="sidebar-primary sidebar-customer-extra">
+            <p class="menu-section-title">Conta e benefícios</p>
+            <?php foreach($customerMenu as [$label,$href]):
+                $icon=$customerIcon($href);
+                if(!in_array($icon,['wholesale','profile'],true))continue;
+                $active=$isActiveMenu($href); ?>
+                <a class="menu-item <?=$active?'is-active':''?>" href="<?=e(url($href))?>" <?=$active?'aria-current="page"':''?> aria-label="<?=e($label)?>" data-sidebar-tooltip="<?=e($label)?>"><i><?=$menuIcon($icon)?></i><span><?=e($label)?></span></a>
+            <?php endforeach;?>
+        </div>
+    <?php endif;?></nav>
+    <?php if(false):?><footer class="sidebar-profile"><div class="sidebar-profile__identity"><span><?=e(mb_strtoupper(mb_substr((string)($authUser['name']??'A'),0,1)))?></span><div><strong><?=e($authUser['name']??'Administrador')?></strong><small><?=e($authUser['email']??'')?></small></div></div><form action="<?= e(url('/sair')) ?>" method="post"><?= csrf_field() ?><button type="submit" title="Sair da conta"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4M14 8l4 4-4 4M9 12h9"/></svg><span>Sair</span></button></form></footer><?php endif;?>
 </aside>
 <div class="sidebar-backdrop" data-sidebar-close></div>
