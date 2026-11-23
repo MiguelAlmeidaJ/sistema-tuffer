@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/responsive.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/seller/panel-shell.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset('css/seller/password-modal.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/commerce-ux.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/guidance.css')) ?>">
     <style>:root{<?= platform_theme_style($platformSettings) ?>}</style>
