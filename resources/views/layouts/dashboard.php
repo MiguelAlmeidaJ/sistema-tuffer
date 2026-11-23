@@ -8,12 +8,14 @@
     <link rel="stylesheet" href="<?= e(asset('css/responsive.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/seller/panel-shell.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/customer/panel-shell.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset('css/customer/addresses.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/seller/password-modal.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/commerce-ux.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/guidance.css')) ?>">
     <style>:root{<?= platform_theme_style($platformSettings) ?>}</style>
     <script defer src="<?= e(asset('js/app.js')) ?>"></script>
     <script defer src="<?= e(asset('js/password-modal.js')) ?>"></script>
+    <script defer src="<?= e(asset('js/customer-addresses.js')) ?>"></script>
     <script defer src="<?= e(asset('js/commerce-ux.js')) ?>"></script>
     <script defer src="<?= e(asset('js/admin-card-installments.js')) ?>"></script>
 </head>
