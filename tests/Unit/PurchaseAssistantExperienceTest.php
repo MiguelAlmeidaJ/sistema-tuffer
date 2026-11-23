@@ -49,7 +49,8 @@ final class PurchaseAssistantExperienceTest extends TestCase
         self::assertIsString($cart);
         self::assertIsString($checkout);
         self::assertIsString($bootstrap);
-        self::assertStringContainsString('purchase-assistant.php', $cart);
+        self::assertStringNotContainsString('purchase-assistant.php', $cart);
+        self::assertStringContainsString('cart-clean-heading', $cart);
         self::assertStringContainsString('purchase-assistant.php', $checkout);
         self::assertStringContainsString('data-profile-complete', $checkout);
         self::assertStringContainsString('id="checkout-shipping"', $checkout);

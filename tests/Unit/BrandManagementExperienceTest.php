@@ -44,7 +44,8 @@ final class BrandManagementExperienceTest extends TestCase
         $home=file_get_contents($this->root.'/resources/views/public/home.php');
         $controller=file_get_contents($this->root.'/app/Http/Controllers/Public/HomeController.php');
         self::assertStringNotContainsString('home-categories__placeholder', $home);
-        self::assertStringContainsString('home-categories__empty-media', $home);
+        self::assertStringContainsString('home-categories__info', $home);
+        self::assertStringNotContainsString('home-categories__media', $home);
         self::assertStringContainsString('cover_image_path', $home);
         self::assertStringContainsString('SELECT name,slug,cover_image_path FROM brands', $controller);
         self::assertStringContainsString('data-product-progress', $home);

@@ -60,7 +60,7 @@ final class AsaasSandboxAccessTest extends TestCase
     {
         $root=dirname(__DIR__,2);
         self::assertStringContainsString("commerce-refresh.css",file_get_contents($root.'/public/assets/css/app.css'));
-        self::assertStringContainsString("commerce-assurance-strip",file_get_contents($root.'/resources/views/public/cart/index.php'));
+        self::assertStringContainsString("cart-clean-heading",file_get_contents($root.'/resources/views/public/cart/index.php'));
         self::assertStringContainsString("commerce-sandbox-notice",file_get_contents($root.'/resources/views/public/checkout/index.php'));
     }
 }
