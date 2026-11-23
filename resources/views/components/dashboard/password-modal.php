@@ -3,11 +3,12 @@ $passwordModalAction = ($dashboardArea ?? '') === 'admin' ? '/admin/minha-conta/
 ?>
 <dialog class="password-dialog" id="password-dialog" aria-labelledby="password-dialog-title" aria-describedby="password-dialog-description">
   <div class="password-dialog__heading">
-    <div class="password-dialog__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+    <div class="password-dialog__heading-copy">
+      <h2 id="password-dialog-title">Alterar minha senha</h2>
+      <p id="password-dialog-description" class="password-dialog__intro">Defina uma senha segura para sua conta. Depois de salvar, você precisará entrar novamente.</p>
+    </div>
     <button type="button" class="password-dialog__close" data-password-modal-close aria-label="Fechar janela">&times;</button>
   </div>
-  <h2 id="password-dialog-title">Alterar minha senha</h2>
-  <p id="password-dialog-description" class="password-dialog__intro">Atualize sua senha com segurança. Você precisará entrar novamente após salvar.</p>
   <?php if (isset($_GET['alterar-senha']) && $flashError): ?><div class="password-dialog__error" role="alert"><?=e($flashError)?></div><?php endif; ?>
   <form method="post" action="<?=e(url($passwordModalAction))?>" class="password-dialog__form" data-password-form>
     <?=csrf_field()?>
