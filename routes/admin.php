@@ -20,9 +20,14 @@ use App\Http\Controllers\Admin\MonitoringController;
 use App\Http\Controllers\Admin\PagarmeDiagnosticController;
 use App\Http\Controllers\Admin\FinancialSettlementController;
 use App\Http\Controllers\Admin\ShippingWalletController;
+use App\Http\Controllers\Admin\AccountController;
 
 $router->group(['prefix' => '/admin', 'middleware' => ['auth', 'role:admin']], static function ($router): void {
     $router->get('/', [DashboardController::class, 'index']);
+    $router->get('/minha-conta', [AccountController::class, 'edit']);
+    $router->post('/minha-conta', [AccountController::class, 'update'], ['csrf']);
+    $router->get('/minha-conta/senha', [AccountController::class, 'password']);
+    $router->post('/minha-conta/senha', [AccountController::class, 'changePassword'], ['csrf']);
     $router->get('/relatorios', [ReportController::class, 'index']);
     $router->get('/financeiro', [FinanceController::class, 'index']);
     $router->get('/fiscal', [FiscalController::class, 'index']);
