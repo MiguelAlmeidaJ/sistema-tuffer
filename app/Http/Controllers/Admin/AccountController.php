@@ -39,7 +39,7 @@ final class AccountController extends Controller
 
     public function password(): string
     {
-        return $this->page('admin/account/password', 'layouts/admin', ['pageTitle'=>'Alterar minha senha']);
+        return Response::redirect('/admin/minha-conta?alterar-senha=1');
     }
 
     public function changePassword(): string
@@ -54,16 +54,16 @@ final class AccountController extends Controller
         if(!$user) return Response::redirect('/entrar');
         if(!password_verify($current,(string)$user['password_hash'])) {
             Session::flash('error','Senha atual incorreta.');
-            return Response::redirect('/admin/minha-conta/senha');
+            return Response::redirect('/admin/minha-conta?alterar-senha=1');
         }
         if(($error=PasswordPolicy::error($new))!==null || $new!==$confirmation) {
             Session::flash('error',$error??'As novas senhas não coincidem.');
-            return Response::redirect('/admin/minha-conta/senha');
+            return Response::redirect('/admin/minha-conta?alterar-senha=1');
         }
         foreach(array_merge([(string)$user['password_hash']],(new UserRepository())->recentPasswordHashes((int)$user['id'])) as $hash) {
             if(password_verify($new,$hash)) {
                 Session::flash('error','Escolha uma senha ainda não utilizada nesta conta.');
-                return Response::redirect('/admin/minha-conta/senha');
+                return Response::redirect('/admin/minha-conta?alterar-senha=1');
             }
         }
         try {
@@ -76,7 +76,7 @@ final class AccountController extends Controller
             if($pdo->inTransaction()) $pdo->rollBack();
             Logger::exception($exception,['user_id'=>$user['id']],'admin_password_change');
             Session::flash('error','Não foi possível alterar a senha. Tente novamente.');
-            return Response::redirect('/admin/minha-conta/senha');
+            return Response::redirect('/admin/minha-conta?alterar-senha=1');
         }
         try {
             (new QueuedMailService())->enqueue((string)$user['name'],(string)$user['email'],'Sua senha Tuffer foi alterada','Sua senha foi alterada. Se não foi você, entre em contato com o suporte.','password_changed','user',(int)$user['id'],'admin-password-changed:'.$user['id'].':'.time());
