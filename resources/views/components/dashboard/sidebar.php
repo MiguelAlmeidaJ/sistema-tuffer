@@ -120,6 +120,5 @@ foreach (array_merge($adminOverview, ...array_values($adminGroups)) as $item) {
             <?php endforeach;?>
         </div>
     <?php endif;?></nav>
-    <?php if(false):?><footer class="sidebar-profile"><div class="sidebar-profile__identity"><span><?=e(mb_strtoupper(mb_substr((string)($authUser['name']??'A'),0,1)))?></span><div><strong><?=e($authUser['name']??'Administrador')?></strong><small><?=e($authUser['email']??'')?></small></div></div><form action="<?= e(url('/sair')) ?>" method="post"><?= csrf_field() ?><button type="submit" title="Sair da conta"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4M14 8l4 4-4 4M9 12h9"/></svg><span>Sair</span></button></form></footer><?php endif;?>
 </aside>
 <div class="sidebar-backdrop" data-sidebar-close></div>
