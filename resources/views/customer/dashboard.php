@@ -113,3 +113,5 @@ $statusMessages = [
         </aside>
     </div>
 </div>
+
+<?php if(!empty($showAddressOnboarding)):?><?php $addressModalAutoOpen=true;require dirname(__DIR__).'/components/dashboard/customer-address-modal.php';?><?php endif;?>
