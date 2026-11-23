@@ -65,6 +65,14 @@ final class AsaasClient
         if (!$this->configured()) {
             throw new RuntimeException('Asaas não está ativado e configurado para o checkout.');
         }
+        // Consultas para conciliação/webhook seguem possíveis; mutações em produção
+        // exigem as duas autorizações explícitas, mesmo quando executadas na fila.
+        if ($method !== 'GET'
+            && $this->baseUrl === 'https://api.asaas.com/v3'
+            && (!filter_var($_ENV['ASAAS_CHECKOUT_ENABLED'] ?? false, FILTER_VALIDATE_BOOL)
+                || !filter_var($_ENV['ASAAS_PRODUCTION_APPROVED'] ?? false, FILTER_VALIDATE_BOOL))) {
+            throw new RuntimeException('Operações reais Asaas bloqueadas: ative checkout e autorização de produção.');
+        }
         if (!preg_match('~^/(?:customers|payments)(?:[/?][A-Za-z0-9_?=&.%-]+)*$~', $path)) {
             throw new RuntimeException('Endpoint Asaas não permitido.');
         }

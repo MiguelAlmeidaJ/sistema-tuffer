@@ -301,8 +301,7 @@ final class MelhorEnvioTrackingService
 
     private function baseUrl(): string
     {
-        $sandbox = filter_var($_ENV['MELHOR_ENVIO_SANDBOX'] ?? true, FILTER_VALIDATE_BOOL);
-        $configured = rtrim(trim((string) ($_ENV['MELHOR_ENVIO_BASE_URL'] ?? '')), '/');
-        return $configured !== '' ? $configured : ($sandbox ? 'https://sandbox.melhorenvio.com.br' : 'https://www.melhorenvio.com.br');
+        return MelhorEnvioEnvironment::baseUrl();
     }
+
 }

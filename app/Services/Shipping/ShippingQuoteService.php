@@ -479,13 +479,7 @@ final class ShippingQuoteService
 
     private function apiUrl(string $path): string
     {
-        $sandbox = filter_var($_ENV['MELHOR_ENVIO_SANDBOX'] ?? true, FILTER_VALIDATE_BOOL);
-        $configuredBase = rtrim(trim((string) ($_ENV['MELHOR_ENVIO_BASE_URL'] ?? '')), '/');
-        $base = $configuredBase !== '' ? $configuredBase : ($sandbox ? 'https://sandbox.melhorenvio.com.br' : 'https://www.melhorenvio.com.br');
-        if (str_ends_with($base, '/api/v2')) {
-            $base = substr($base, 0, -7);
-        }
-        return $base . '/' . ltrim($path, '/');
+        return MelhorEnvioEnvironment::baseUrl() . '/' . ltrim($path, '/');
     }
 
     private function token(): string

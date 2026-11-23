@@ -162,14 +162,7 @@ final class MelhorEnvioWalletService
 
     private function baseUrl(): string
     {
-        $sandbox = filter_var($_ENV['MELHOR_ENVIO_SANDBOX'] ?? true, FILTER_VALIDATE_BOOL);
-        $configured = rtrim(trim((string) ($_ENV['MELHOR_ENVIO_BASE_URL'] ?? '')), '/');
-        $base = $configured !== '' ? $configured : ($sandbox ? 'https://sandbox.melhorenvio.com.br' : 'https://melhorenvio.com.br');
-        $parts = parse_url($base);
-        $host = strtolower((string) ($parts['host'] ?? ''));
-        if (($parts['scheme'] ?? '') !== 'https' || !in_array($host, ['sandbox.melhorenvio.com.br', 'melhorenvio.com.br', 'www.melhorenvio.com.br'], true)) {
-            throw new RuntimeException('A URL configurada do Melhor Envio não é válida.');
-        }
-        return str_ends_with($base, '/api/v2') ? substr($base, 0, -7) : $base;
+        return MelhorEnvioEnvironment::baseUrl();
     }
+
 }
