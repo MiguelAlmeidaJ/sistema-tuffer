@@ -51,6 +51,10 @@ final class CheckoutController extends Controller
             $statement = Database::connection()->prepare('SELECT * FROM user_addresses WHERE user_id=? ORDER BY is_default DESC,id DESC');
             $statement->execute([Auth::id()]);
             $addresses = $statement->fetchAll();
+            if ($addresses === []) {
+                // Solicita o primeiro endereço antes de prosseguir com a compra.
+                return Response::redirect('/minha-conta/enderecos?return=/checkout');
+            }
         }
         $postalCode = (string)($cart['postal_code'] ?? '');
         $matchedAddressId = null;
