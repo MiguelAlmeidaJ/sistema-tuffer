@@ -64,20 +64,20 @@ $steps=[
 $lastDone=-1;foreach($steps as $index=>$step){if($step['done'])$lastDone=$index;}
 $recentEvents=array_slice($trackingEvents,0,3);
 ?>
-<div class="seller-order-detail">
+<div class="seller-order-detail order-detail-page order-detail-page--seller">
     <header class="seller-order-detail__heading">
         <div>
             <nav class="seller-order-breadcrumb"><a href="<?=e(url('/vendedor/pedidos'))?>">Pedidos</a><span>›</span><strong>Detalhes do pedido</strong></nav>
-            <h2>Detalhes do pedido</h2>
-            <p>Informações essenciais, pagamento e entrega.</p>
+            <h2>Pedido em detalhes</h2>
+            <p>Acompanhe a operação, os produtos e os próximos passos da entrega.</p>
         </div>
         <a class="button button--secondary" href="<?=e(url('/vendedor/pedidos'))?>">← Voltar para pedidos</a>
     </header>
 
     <section class="panel seller-order-hero">
         <div class="seller-order-hero__identity">
-            <span class="seller-order-hero__icon" aria-hidden="true">▣</span>
-            <div><small>PEDIDO</small><h1><?=e($order['code'])?></h1><p>Loja: <strong><?=e($currentStore['name'])?></strong> · <?=date('d/m/Y \à\s H:i',strtotime($order['order_created_at']))?></p></div>
+            
+            <div><small>PEDIDO DA LOJA</small><h1>#<?=e($order['code'])?></h1><p>Loja: <strong><?=e($currentStore['name'])?></strong> · <?=date('d/m/Y \à\s H:i',strtotime($order['order_created_at']))?></p></div>
         </div>
         <div class="seller-order-hero__status"><?php $status=$order['status'];require dirname(__DIR__,2).'/components/dashboard/status-badge.php';?><span><?=e($shipmentPosted?'Pacote postado':'Aguardando próxima etapa')?></span></div>
         <div class="seller-order-hero__actions seller-order-hero__actions--compact">
@@ -98,6 +98,12 @@ $recentEvents=array_slice($trackingEvents,0,3);
             </details>
         </div>
     </section>
+
+    <div class="order-detail-highlights order-detail-highlights--seller">
+      <div><span>Valor total dos itens</span><strong><?=$money((float)$order['products_total'])?></strong></div>
+      <div><span>Itens vendidos</span><strong><?=array_sum(array_map(static fn(array $item):int=>(int)$item['quantity'],$items))?></strong></div>
+      <div><span>Recebimento líquido</span><strong><?=$money((float)$order['seller_net_total'])?></strong></div>
+    </div>
 
     <?php if($isPendingPayment): ?>
     <section class="panel seller-order-payment-callout" aria-labelledby="payment-action-title">
