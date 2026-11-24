@@ -1,0 +1,171 @@
+/* Tuffer · detalhes de pedidos — cliente, operação e vendedor */
+.order-detail-page{--od-ink:#17211b;--od-muted:#717c75;--od-line:#e5e9e4;--od-red:#d20a16;--od-surface:#fff;--od-soft:#f7f8f6;max-width:1480px;margin:0 auto 58px;color:var(--od-ink);display:grid;gap:22px}
+.order-detail-page *{box-sizing:border-box}
+.order-detail-back{margin:0 0 -8px}
+.order-detail-back a{display:inline-flex;align-items:center;gap:6px;color:#6f7d72;text-decoration:none;font-size:.81rem;font-weight:750;transition:color .15s}
+.order-detail-back a:hover{color:#c30d25}
+.order-detail-hero{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:7px 0 5px}
+.order-detail-kicker{display:block;color:#c70c25;font-size:.7rem;letter-spacing:.14em;font-weight:900}
+.order-detail-hero__copy{min-width:0}
+.order-detail-hero h2{margin:11px 0 13px;font-family:inherit;font-size:clamp(2rem,3.15vw,3.25rem);line-height:1.09;letter-spacing:-.052em;font-weight:900}
+.order-detail-hero h2 span{display:inline-block;color:#4b5750;font-size:.79em;font-weight:750;letter-spacing:-.035em;overflow-wrap:anywhere}
+.order-detail-hero__copy p{margin:4px 0;color:var(--od-muted);font-size:.89rem;line-height:1.5;overflow-wrap:anywhere}
+.order-detail-hero__aside{display:flex;flex-direction:column;align-items:flex-end;gap:9px;max-width:300px;text-align:right}
+.order-detail-hero__aside small{color:#89958d;font-size:.71rem}
+.order-detail-highlights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.order-detail-highlights--admin{grid-template-columns:repeat(4,minmax(0,1fr))}
+.order-detail-highlights>div{display:flex;flex-direction:column;justify-content:center;gap:14px;min-width:0;min-height:116px;padding:20px 23px;border:1px solid var(--od-line);border-radius:17px;background:#fff;box-shadow:0 5px 20px rgba(24,35,27,.022)}
+.order-detail-highlights>div:first-child{border-color:#efdcde;background:#fffafa}
+.order-detail-highlights span{color:#78847b;font-size:.76rem;font-weight:650}
+.order-detail-highlights strong{color:#171c19;font-size:clamp(1.3rem,2.2vw,2rem);line-height:1.12;letter-spacing:-.04em;overflow-wrap:anywhere;font-weight:850}
+.order-detail-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;align-items:start;gap:18px}
+.order-detail-main,.order-detail-side{display:grid;gap:18px;min-width:0}
+.order-detail-side{position:sticky;top:20px}
+.order-detail-card{min-width:0;margin:0!important;border:1px solid var(--od-line)!important;border-radius:18px!important;background:#fff!important;box-shadow:0 8px 26px rgba(24,35,27,.025)!important;padding:25px!important}
+.order-detail-card h3{margin:0 0 18px;font-family:inherit;font-size:1.12rem;line-height:1.25;letter-spacing:-.025em}
+.order-detail-section-heading{display:flex;align-items:end;justify-content:space-between;gap:16px;margin:11px 0 0}
+.order-detail-section-heading h3{font-family:inherit;font-size:1.45rem;letter-spacing:-.036em;line-height:1.2;margin:8px 0 0}
+.order-detail-section-heading>small{color:#78847c;font-size:.76rem;font-weight:700}
+.order-detail-payment{padding:27px!important;border-color:#e8dfe0!important;background:linear-gradient(135deg,#fff 70%,#fff8f8)!important}
+.order-detail-payment .panel-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:15px}
+.order-detail-payment .panel-head small{font-size:.7rem;letter-spacing:.13em;color:#c70c25;font-weight:900}
+.order-detail-payment .panel-head h3{font-size:1.3rem;margin:8px 0 0}
+.order-detail-payment p{font-size:.88rem;line-height:1.7;color:#525e55;margin:12px 0}
+.order-detail-payment .button{max-width:100%;text-align:center;white-space:normal;min-height:43px;padding:12px 19px;border-radius:12px;text-decoration:none}
+.order-detail-payment form{margin-top:16px}
+.order-detail-payment img{max-width:220px;width:100%;height:auto;object-fit:contain}
+.order-detail-payment #pix-copy-code{display:block;max-width:100%;min-height:80px;margin-top:8px;padding:12px;border:1px solid #dde4de;border-radius:11px;background:#fafbfa;font:inherit;font-size:.81rem;overflow-wrap:anywhere}
+.order-detail-totals dl{display:grid;gap:0;margin:0}
+.order-detail-totals dl>div{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 0;border-bottom:1px solid #eff1ee;color:#69746c;font-size:.84rem}
+.order-detail-totals dl>div dd{margin:0;color:#26332a;font-weight:750;white-space:nowrap}
+.order-detail-grand{display:flex;flex-direction:column;gap:7px;margin-top:17px;padding:17px 0 0;border-top:1px solid #e5e9e4}
+.order-detail-grand span{color:#6d7b70;font-size:.79rem;font-weight:700}
+.order-detail-grand strong{font-size:1.9rem;line-height:1.15;letter-spacing:-.04em;color:#151d17;white-space:nowrap}
+.order-detail-address>strong{font-size:.9rem;display:block;margin:0 0 10px}
+.order-detail-address address{font-style:normal;font-size:.86rem;line-height:1.85;color:#657169}
+.order-detail-help{border:1px solid #eceee9;border-radius:16px;background:#fafbf9;padding:21px 24px}
+.order-detail-help strong{display:block;font-size:.91rem}
+.order-detail-help p{margin:8px 0 15px;color:#768279;font-size:.8rem;line-height:1.6}
+.order-detail-help a{color:#bd0b22;font-weight:800;font-size:.8rem;text-decoration:none}
+.order-detail-store{padding:0!important;overflow:hidden}
+.order-detail-store>.panel-head{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:22px 24px;margin:0!important;border-bottom:1px solid #edf0eb}
+.order-detail-store>.panel-head h3{margin:5px 0 0;font-size:1.12rem}
+.order-detail-store>.panel-head small{color:#8c958e;font-size:.7rem;font-weight:800;letter-spacing:.04em;overflow-wrap:anywhere}
+.order-detail-store .order-detail-table{overflow-x:auto;width:100%;margin:0;padding:0}
+.order-detail-store table{width:100%;border-collapse:collapse;table-layout:auto}
+.order-detail-store th{padding:13px 18px;background:#fafbf9;color:#7f8b82;font-size:.7rem;font-weight:800;letter-spacing:.04em;text-align:left;white-space:nowrap}
+.order-detail-store td{padding:18px;border-top:1px solid #eef0eb;color:#303a32;font-size:.82rem;vertical-align:middle}
+.order-detail-store td:first-child{width:48%;min-width:180px}
+.order-detail-store td strong{display:block;font-size:.84rem;font-weight:750;line-height:1.45;overflow-wrap:anywhere}
+.order-detail-store td small{display:block;color:#859087;font-size:.7rem;margin-top:5px;overflow-wrap:anywhere}
+.order-detail-store th:not(:first-child),.order-detail-store td:not(:first-child){text-align:right}
+.order-detail-store .order-detail-fiscal{margin:0;padding:22px 24px;border-top:1px solid #edf0eb}
+.order-detail-store .order-detail-fiscal h4{font-family:inherit;margin:0 0 12px;font-size:.96rem}
+.order-detail-store .order-detail-fiscal-row{margin:10px 0 0;border-radius:12px;overflow-wrap:anywhere}
+.order-detail-store .order-detail-fiscal a{display:inline-flex;margin:8px 8px 0 0}
+.order-detail-page--customer [class*="purchase-flow"]{max-width:100%;margin:2px 0 0}
+.order-detail-page--customer .dashboard-heading{display:none}
+.order-detail-page--admin .admin-order-shipments{display:grid;gap:18px;min-width:0}
+.order-detail-page--admin .admin-order-shipment{margin:0;border:1px solid var(--od-line);border-radius:18px;background:#fff;box-shadow:0 7px 25px rgba(24,35,27,.025);overflow:hidden}
+.order-detail-page--admin .admin-order-shipment__head{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:22px 25px;margin:0;border-bottom:1px solid #edf0ec}
+.order-detail-page--admin .admin-order-shipment__head small{color:#bd1027;font-size:.68rem;font-weight:850;letter-spacing:.065em;overflow-wrap:anywhere}
+.order-detail-page--admin .admin-order-shipment__head h3{font-size:1.25rem;margin:5px 0;font-family:inherit;letter-spacing:-.025em}
+.order-detail-page--admin .admin-order-shipment__head p{font-size:.76rem;color:#7c887e}
+.order-detail-page--admin .admin-order-shipment .table-wrap{width:100%;overflow-x:auto}
+.order-detail-page--admin .admin-order-shipment table{width:100%;border-collapse:collapse}
+.order-detail-page--admin .admin-order-shipment th{padding:14px 20px;background:#fafbf9;color:#7e8a80;font-size:.68rem;font-weight:850;text-transform:uppercase;letter-spacing:.04em}
+.order-detail-page--admin .admin-order-shipment td{padding:16px 20px;border-top:1px solid #eff1ed;font-size:.79rem;color:#263329;overflow-wrap:anywhere}
+.order-detail-page--admin .admin-order-shipment__summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:18px 22px}
+.order-detail-page--admin .admin-order-shipment__summary article{min-width:0;display:flex;flex-direction:column;gap:7px;padding:14px;border:1px solid #edf0ec;border-radius:12px;background:#fafbf9}
+.order-detail-page--admin .admin-order-shipment__summary small{color:#7d897d;font-size:.66rem;font-weight:800;letter-spacing:.05em}
+.order-detail-page--admin .admin-order-shipment__summary strong{color:#26332a;font-size:.88rem;overflow-wrap:anywhere;line-height:1.35}
+.order-detail-page--admin .admin-order-shipment__summary span{color:#7b867e;font-size:.71rem;line-height:1.4;overflow-wrap:anywhere}
+.order-detail-page--admin .admin-order-shipment__actions{display:flex;gap:10px;flex-wrap:wrap;padding:18px 23px;border-top:1px solid #edf0ec}
+.order-detail-page--admin .admin-order-shipment__actions form{margin:0}
+.order-detail-page--admin .order-detail-review{display:grid;grid-template-columns:minmax(0,1fr) minmax(290px,.78fr);gap:18px;align-items:start}
+.order-detail-page--admin .order-detail-review>aside{display:grid;gap:16px;min-width:0}
+.order-detail-page--admin .order-detail-review .panel{min-width:0;border:1px solid var(--od-line);border-radius:17px;padding:23px;background:#fff;margin:0}
+.order-detail-page--admin .order-detail-review .panel h3{font-family:inherit;font-size:1.1rem;margin:0 0 16px;letter-spacing:-.025em}
+.order-detail-page--admin .order-detail-review .panel p{font-size:.84rem;line-height:1.7;color:#617067;overflow-wrap:anywhere}
+.order-detail-page--admin .order-detail-review .compact-orders{display:grid;gap:0}
+.order-detail-page--admin .order-detail-review .compact-orders>div{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 15px;padding:15px 0;border-bottom:1px solid #edf0ed}
+.order-detail-page--admin .order-detail-review .compact-orders>div strong{color:#263329;font-size:.84rem}
+.order-detail-page--admin .order-detail-review .compact-orders>div span{color:#76847a;font-size:.74rem}
+.order-detail-page--admin .order-detail-review .compact-orders>div b{color:#8c978e;font-size:.7rem;grid-column:1/-1;font-weight:600}
+.order-detail-page--admin .order-detail-admin-total{display:block;margin-top:12px;border-top:1px solid #e7ece7;padding-top:16px;font-size:1.38rem;letter-spacing:-.025em;overflow-wrap:anywhere}
+.order-detail-page--admin .order-detail-review form{margin-top:12px}
+.order-detail-page--admin .admin-shipping-replacement{max-width:100%;overflow:hidden}
+.order-detail-page--admin .admin-shipping-replacement__options{min-width:0}
+.order-detail-page--seller{gap:17px}
+.order-detail-page--seller .seller-order-detail__heading{padding:0;align-items:center}
+.order-detail-page--seller .seller-order-detail__heading h2{font-size:clamp(1.8rem,3vw,2.75rem);letter-spacing:-.05em;margin:11px 0 7px}
+.order-detail-page--seller .seller-order-detail__heading p{font-size:.84rem;color:#758078}
+.order-detail-page--seller .seller-order-hero{border:1px solid #e4e8e3;border-radius:18px;padding:25px;background:linear-gradient(130deg,#fff,#fcfcfb);box-shadow:0 7px 25px rgba(24,35,27,.03)}
+.order-detail-page--seller .seller-order-hero__identity{gap:0;min-width:0}
+.order-detail-page--seller .seller-order-hero__identity h1{font-size:clamp(1.3rem,2.7vw,2.15rem);overflow-wrap:anywhere}
+.order-detail-page--seller .seller-order-hero__identity small{font-size:.68rem;letter-spacing:.11em}
+.order-detail-page--seller .seller-order-hero__identity p{font-size:.79rem;line-height:1.6}
+.order-detail-page--seller .seller-order-hero__actions{align-items:center;gap:9px}
+.order-detail-page--seller .seller-order-hero__actions .button{border-radius:11px;white-space:normal;text-align:center}
+.order-detail-page--seller .seller-order-summary-card,.order-detail-page--seller .seller-order-finance,.order-detail-page--seller .seller-order-actions-card{border:1px solid #e5e9e4;background:#fff;border-radius:17px;box-shadow:0 7px 24px rgba(24,35,27,.025)}
+.order-detail-page--seller .seller-order-summary-card{min-width:0;min-height:180px;padding:20px}
+.order-detail-page--seller .seller-order-summary-card h3{font-size:.9rem}
+.order-detail-page--seller .seller-order-summary-card p{font-size:.74rem;line-height:1.6;overflow-wrap:anywhere}
+.order-detail-page--seller .seller-order-summary-card dl>div{font-size:.74rem}
+.order-detail-page--seller .seller-order-section-head{padding:20px 24px}
+.order-detail-page--seller .seller-order-items,.order-detail-page--seller .seller-order-logistics{border:1px solid #e5e9e4;border-radius:17px;background:#fff}
+.order-detail-page--seller .seller-order-items th{font-size:.68rem}
+.order-detail-page--seller .seller-order-items td{font-size:.78rem}
+.order-detail-page--seller .seller-order-disclosure{border-radius:17px}
+.order-detail-page--seller .seller-order-disclosure>summary{border-radius:16px}
+@media(max-width:1200px){
+.order-detail-grid{grid-template-columns:minmax(0,1fr) 300px}
+.order-detail-page--admin .admin-order-shipment__summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+.order-detail-highlights--admin{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:960px){
+.order-detail-grid{grid-template-columns:1fr}
+.order-detail-side{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.order-detail-help{grid-column:1/-1}
+.order-detail-page--seller .seller-order-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.order-detail-page--admin .order-detail-review{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+.order-detail-page{gap:16px;margin-bottom:30px}
+.order-detail-hero{align-items:start;flex-direction:column;gap:13px}
+.order-detail-hero h2{font-size:clamp(1.6rem,7vw,2.4rem)}
+.order-detail-hero h2 span{display:block;margin-top:6px;font-size:.82em}
+.order-detail-hero__aside{align-items:flex-start;text-align:left}
+.order-detail-highlights,.order-detail-highlights--admin{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.order-detail-highlights>div{padding:16px;min-height:95px;gap:10px}
+.order-detail-highlights strong{font-size:1.28rem}
+.order-detail-highlights span{font-size:.7rem}
+.order-detail-highlights>div:first-child{grid-column:1/-1}
+.order-detail-card{padding:20px!important}
+.order-detail-payment{padding:20px!important}
+.order-detail-side{grid-template-columns:1fr}
+.order-detail-help{grid-column:auto}
+.order-detail-section-heading{align-items:flex-start}
+.order-detail-section-heading h3{font-size:1.23rem}
+.order-detail-store{padding:0!important}
+.order-detail-store>.panel-head{padding:18px;align-items:flex-start;flex-direction:column}
+.order-detail-store th,.order-detail-store td{padding:12px 14px}
+.order-detail-store table{min-width:510px}
+.order-detail-store .order-detail-fiscal{padding:18px}
+.order-detail-page--admin .admin-order-shipment__head{align-items:flex-start;flex-direction:column;padding:18px}
+.order-detail-page--admin .admin-order-shipment__summary{padding:12px;gap:8px}
+.order-detail-page--admin .admin-order-shipment__summary article{padding:11px}
+.order-detail-page--admin .admin-order-shipment__actions{padding:16px}
+.order-detail-page--admin .admin-order-shipment__actions .button{width:100%;text-align:center}
+.order-detail-page--seller .seller-order-hero{padding:18px;grid-template-columns:1fr}
+.order-detail-page--seller .seller-order-hero__status{align-items:flex-start}
+.order-detail-page--seller .seller-order-summary-grid{grid-template-columns:1fr}
+.order-detail-page--seller .seller-order-detail__heading{align-items:flex-start;flex-direction:column}
+.order-detail-page--seller .seller-order-detail__heading>a{width:100%;text-align:center}
+.order-detail-page--seller .seller-order-progress__track{overflow-x:auto}
+}
+@media(max-width:370px){
+.order-detail-highlights,.order-detail-highlights--admin{grid-template-columns:1fr}
+.order-detail-highlights>div:first-child{grid-column:auto}
+.order-detail-page--admin .admin-order-shipment__summary{grid-template-columns:1fr}
+}
