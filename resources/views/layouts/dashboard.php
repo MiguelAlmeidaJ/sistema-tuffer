@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="<?= e(asset('css/seller/password-modal.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/commerce-ux.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/guidance.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset('css/layouts/order-details-refresh.css')) ?>">
     <style>:root{<?= platform_theme_style($platformSettings) ?>}</style>
     <script defer src="<?= e(asset('js/app.js')) ?>"></script>
     <script defer src="<?= e(asset('js/password-modal.js')) ?>"></script>
