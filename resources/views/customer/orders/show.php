@@ -15,7 +15,7 @@ foreach($sellerOrders as $sellerOrder){foreach($sellerOrder['items'] as $item){$
 <div class="order-detail-page order-detail-page--customer">
 <nav class="order-detail-back"><a href="<?=e(url('/minha-conta/pedidos'))?>">← Meus pedidos</a></nav>
 <header class="order-detail-hero">
- <div class="order-detail-hero__copy"><span class="order-detail-kicker">DETALHES DA COMPRA</span><h2>Pedido <span>#<?=e($order['code'])?></span></h2><p>Realizado em <?=date('d/m/Y \\à\\s H:i',strtotime((string)$order['created_at']))?></p></div>
+ <div class="order-detail-hero__copy"><span class="order-detail-kicker">DETALHES DA COMPRA</span><h2>Pedido <span>#<?=e($order['code'])?></span></h2><p>Realizado em <?=date('d/m/Y H:i',strtotime((string)$order['created_at']))?></p></div>
  <div class="order-detail-hero__aside"><?php $status=$displayOrderStatus; require dirname(__DIR__,2).'/components/dashboard/status-badge.php'; ?><small>Acompanhe as atualizações deste pedido</small></div>
 </header>
 <div class="order-detail-highlights" aria-label="Resumo do pedido">
