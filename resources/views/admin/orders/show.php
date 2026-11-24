@@ -1,6 +1,17 @@
 <?php if(!$order):?><section class="panel"><div class="empty-state"><h3>Pedido não encontrado</h3></div></section><?php else:?>
 <?php $money=static fn(float $value):string=>'R$ '.number_format($value,2,',','.'); ?>
-<div class="dashboard-heading"><div><a class="back-link" href="<?=e(url('/admin/pedidos'))?>">← Voltar para pedidos</a><span class="eyebrow">PEDIDO</span><h2><?=e($order['code'])?></h2><p><?=e($order['customer_name'])?> · <?=e($order['customer_email'])?> · <?=date('d/m/Y H:i',strtotime($order['created_at']))?></p></div><?php $status=$order['status'];require dirname(__DIR__,2).'/components/dashboard/status-badge.php';?></div>
+<div class="order-detail-page order-detail-page--admin">
+<nav class="order-detail-back"><a href="<?=e(url('/admin/pedidos'))?>">← Todos os pedidos</a></nav>
+<header class="order-detail-hero">
+<div class="order-detail-hero__copy"><span class="order-detail-kicker">GESTÃO DE PEDIDOS</span><h2>Pedido <span>#<?=e($order['code'])?></span></h2><p><?=e($order['customer_name'])?> · <?=e($order['customer_email'])?></p><p>Realizado em <?=date('d/m/Y H:i',strtotime($order['created_at']))?></p></div>
+<div class="order-detail-hero__aside"><?php $status=$order['status'];require dirname(__DIR__,2).'/components/dashboard/status-badge.php';?><small>Situação atual</small></div>
+</header>
+<div class="order-detail-highlights order-detail-highlights--admin">
+<div><span>Total do pedido</span><strong><?=$money((float)$order['grand_total'])?></strong></div>
+<div><span>Valor dos produtos</span><strong><?=$money((float)$order['products_total'])?></strong></div>
+<div><span>Remessas vinculadas</span><strong><?=count($sellerOrders)?></strong></div>
+<div><span>Pagamentos registrados</span><strong><?=count($payments)?></strong></div>
+</div>
 
 <?php if (!empty($manualApprovalEligible)): ?>
 <section class="panel" style="margin-bottom:1.25rem;border:1px solid #d6b680">
@@ -23,6 +34,7 @@
     <p><small>Esta ação não confirma recebimento, liquidação, pagamento, split ou repasses.</small></p>
 </section>
 <?php endif; ?>
+<div class="order-detail-section-heading"><div><span class="order-detail-kicker">OPERAÇÃO E LOGÍSTICA</span><h3>Remessas do pedido</h3></div><small><?=count($sellerOrders)?> <?=count($sellerOrders)===1?'remessa':'remessas'?></small></div>
 <div class="admin-order-shipments">
 <?php foreach($sellerOrders as $sellerOrder):?>
 <?php
@@ -105,5 +117,7 @@ $labelCost=($sellerOrder['label_actual_cost']??null)!==null?(float)$sellerOrder[
 <?php endforeach;?>
 </div>
 
-<div class="review-layout"><section class="panel"><div class="panel-head"><h3>Histórico operacional</h3></div><div class="compact-orders"><?php foreach($history as $event):?><div><strong><?=e($event['notes']?:$event['status'])?></strong><span><?=e($event['status'])?></span><b><?=date('d/m/Y H:i',strtotime($event['created_at']))?></b></div><?php endforeach;?></div></section><aside><section class="panel"><h3>Totais</h3><p>Produtos: <?=$money((float)$order['products_total'])?><br>Frete: <?=$money((float)$order['shipping_total'])?><br>Descontos: <?=$money((float)$order['discount_total'])?></p><strong>Total: <?=$money((float)$order['grand_total'])?></strong></section><?php if($address):?><section class="panel"><h3>Entrega</h3><p><?=e($address['recipient_name'])?><br><?=e($address['street'].', '.$address['number'])?><br><?=e($address['city'].'/'.$address['state'])?> · <?=e($address['postal_code'])?></p></section><?php endif;?><section class="panel"><h3>Pagamentos</h3><?php foreach($payments as $payment):?><p><strong><?=e(strtoupper($payment['method']))?> · <?=$money((float)$payment['amount'])?></strong><br>Status: <?=e($payment['status'])?><br>ID externo: <?=e($payment['external_order_id']?:$payment['external_checkout_id']?:'—')?></p><?php if($payment['method']==='pix'&&$payment['integration_type']==='orders'&&$payment['status']==='paid'):?><form method="post" action="<?=e(url('/admin/pedidos/'.$order['code'].'/pagamentos/'.$payment['id'].'/estornar-pix'))?>" data-confirm="Confirmar solicitação de estorno integral deste Pix?"><?=csrf_field()?><button class="button button--secondary">Solicitar estorno integral</button></form><?php endif;?><?php endforeach;?></section></aside></div>
+<div class="order-detail-section-heading"><div><span class="order-detail-kicker">ACOMPANHAMENTO</span><h3>Histórico e informações financeiras</h3></div></div>
+<div class="review-layout order-detail-review"><section class="panel"><div class="panel-head"><h3>Histórico operacional</h3></div><div class="compact-orders"><?php foreach($history as $event):?><div><strong><?=e($event['notes']?:$event['status'])?></strong><span><?=e($event['status'])?></span><b><?=date('d/m/Y H:i',strtotime($event['created_at']))?></b></div><?php endforeach;?></div></section><aside><section class="panel order-detail-totals"><h3>Resumo financeiro</h3><p>Produtos: <?=$money((float)$order['products_total'])?><br>Frete: <?=$money((float)$order['shipping_total'])?><br>Descontos: <?=$money((float)$order['discount_total'])?></p><strong class="order-detail-admin-total">Total: <?=$money((float)$order['grand_total'])?></strong></section><?php if($address):?><section class="panel"><h3>Entrega</h3><p><?=e($address['recipient_name'])?><br><?=e($address['street'].', '.$address['number'])?><br><?=e($address['city'].'/'.$address['state'])?> · <?=e($address['postal_code'])?></p></section><?php endif;?><section class="panel"><h3>Pagamentos</h3><?php foreach($payments as $payment):?><p><strong><?=e(strtoupper($payment['method']))?> · <?=$money((float)$payment['amount'])?></strong><br>Status: <?=e($payment['status'])?><br>ID externo: <?=e($payment['external_order_id']?:$payment['external_checkout_id']?:'—')?></p><?php if($payment['method']==='pix'&&$payment['integration_type']==='orders'&&$payment['status']==='paid'):?><form method="post" action="<?=e(url('/admin/pedidos/'.$order['code'].'/pagamentos/'.$payment['id'].'/estornar-pix'))?>" data-confirm="Confirmar solicitação de estorno integral deste Pix?"><?=csrf_field()?><button class="button button--secondary">Solicitar estorno integral</button></form><?php endif;?><?php endforeach;?></section></aside></div>
+</div>
 <?php endif;?>
