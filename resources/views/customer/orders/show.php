@@ -3,22 +3,32 @@
 <?php else: ?>
 <?php
 $purchaseFlowStep='confirmation';
+$isCardPayment=($payment['method']??'')==='card';
+$isAsaas=($payment['provider']??'')==='asaas';
+$paymentStatus=(string)($payment['status']??'');
+$displayOrderStatus=$order['status'];
+if($isCardPayment&&!$isAsaas&&($order['status']??'')==='pending_payment'&&in_array($paymentStatus,['pending','processing','waiting_payment'],true))$displayOrderStatus='processing';
+$money=static fn(float $value):string=>'R$ '.number_format($value,2,',','.');
+$itemCount=0;
+foreach($sellerOrders as $sellerOrder){foreach($sellerOrder['items'] as $item){$itemCount+=(int)$item['quantity'];}}
 ?>
+<div class="order-detail-page order-detail-page--customer">
+<nav class="order-detail-back"><a href="<?=e(url('/minha-conta/pedidos'))?>">← Meus pedidos</a></nav>
+<header class="order-detail-hero">
+ <div class="order-detail-hero__copy"><span class="order-detail-kicker">DETALHES DA COMPRA</span><h2>Pedido <span>#<?=e($order['code'])?></span></h2><p>Realizado em <?=date('d/m/Y \\à\\s H:i',strtotime((string)$order['created_at']))?></p></div>
+ <div class="order-detail-hero__aside"><?php $status=$displayOrderStatus; require dirname(__DIR__,2).'/components/dashboard/status-badge.php'; ?><small>Acompanhe as atualizações deste pedido</small></div>
+</header>
+<div class="order-detail-highlights" aria-label="Resumo do pedido">
+ <div><span>Total da compra</span><strong><?=$money((float)$order['grand_total'])?></strong></div>
+ <div><span>Itens comprados</span><strong><?=$itemCount?></strong></div>
+ <div><span>Lojas neste pedido</span><strong><?=count($sellerOrders)?></strong></div>
+</div>
 <?php require dirname(__DIR__,2).'/components/public/purchase-flow-progress.php'; ?>
-<?php
-$isCardPayment = ($payment['method'] ?? '') === 'card';
-$isAsaas = ($payment['provider'] ?? '') === 'asaas';
-$paymentStatus = (string) ($payment['status'] ?? '');
-$displayOrderStatus = $order['status'];
-if ($isCardPayment && !$isAsaas && ($order['status'] ?? '') === 'pending_payment' && in_array($paymentStatus, ['pending','processing','waiting_payment'], true)) {
-    $displayOrderStatus = 'processing';
-}
-?>
-<div class="dashboard-heading"><div><span class="eyebrow">PEDIDO</span><h2>#<?= e($order['code']) ?></h2><p>Realizado em <?= date('d/m/Y H:i', strtotime($order['created_at'])) ?></p></div><?php $status=$displayOrderStatus; require dirname(__DIR__,2).'/components/dashboard/status-badge.php'; ?></div>
-
-<?php if (($order['status'] ?? '') === 'pending_payment'): ?>
+<div class="order-detail-grid">
+ <main class="order-detail-main">
+ <?php if (($order['status'] ?? '') === 'pending_payment'): ?>
 <?php $pixPayable = !empty($payment['pix_qr_code']) && in_array($paymentStatus, ['pending','waiting_payment','processing'], true) && (empty($payment['pix_expires_at']) || strtotime((string) $payment['pix_expires_at']) > time()); ?>
-<section class="panel"><div class="panel-head"><div><small>PAGAMENTO</small><h3><?php if($isCardPayment && !$isAsaas): ?><?= in_array($paymentStatus,['pending','processing','waiting_payment'],true)?'Cartão enviado · confirmação em andamento':($paymentStatus==='failed'?'Cartão não autorizado':($paymentStatus==='paid'?'Pagamento confirmado':(!empty($payment['checkout_url'])?'Continue o pagamento':'Pagamento do cartão'))); ?><?php else: ?><?= $pixPayable ? 'Pix aguardando pagamento' : (in_array($paymentStatus, ['expired','cancelled'], true) ? 'Pix expirado ou cancelado' : (!empty($payment['checkout_url']) ? 'Aguardando confirmação' : (($payment['async_status'] ?? '') === 'failed' ? 'Pagamento indisponível' : 'Preparando pagamento'))) ?><?php endif; ?></h3></div></div>
+<section class="panel order-detail-card order-detail-payment"><div class="panel-head"><div><small>PAGAMENTO</small><h3><?php if($isCardPayment && !$isAsaas): ?><?= in_array($paymentStatus,['pending','processing','waiting_payment'],true)?'Cartão enviado · confirmação em andamento':($paymentStatus==='failed'?'Cartão não autorizado':($paymentStatus==='paid'?'Pagamento confirmado':(!empty($payment['checkout_url'])?'Continue o pagamento':'Pagamento do cartão'))); ?><?php else: ?><?= $pixPayable ? 'Pix aguardando pagamento' : (in_array($paymentStatus, ['expired','cancelled'], true) ? 'Pix expirado ou cancelado' : (!empty($payment['checkout_url']) ? 'Aguardando confirmação' : (($payment['async_status'] ?? '') === 'failed' ? 'Pagamento indisponível' : 'Preparando pagamento'))) ?><?php endif; ?></h3></div></div>
 <?php if ($isCardPayment && !$isAsaas && in_array($paymentStatus,['pending','processing','waiting_payment'],true) && empty($payment['checkout_url'])): ?>
 <p>Os dados do cartão já foram enviados com segurança. Estamos aguardando a confirmação da operadora e da Pagar.me. <strong>Você não precisa pagar novamente</strong> enquanto esta mensagem estiver aparecendo.</p>
 <?php elseif ($isCardPayment && !$isAsaas && $paymentStatus === 'failed' && empty($payment['checkout_url'])): ?>
@@ -33,15 +43,31 @@ if ($isCardPayment && !$isAsaas && ($order['status'] ?? '') === 'pending_payment
 <?php elseif (!empty($payment['checkout_url'])): ?><p><?= $isCardPayment ? 'O cartão será preenchido apenas na fatura segura do Asaas.' : 'O retorno do navegador não confirma o pagamento. O pedido será atualizado somente após confirmação autenticada do provedor de pagamento.' ?></p><?php if (empty($payment['expires_at']) || strtotime((string) $payment['expires_at']) > time()): ?><p><a class="button button--primary" href="<?= e($payment['checkout_url']) ?>"><?= $isCardPayment ? 'Continuar pagamento com segurança' : 'Continuar pagamento' ?></a></p><?php endif; ?><?php elseif (($payment['async_status'] ?? '') === 'failed'): ?><p>Não foi possível preparar o pagamento automaticamente. Entre em contato com o suporte e informe o código deste pedido.</p><?php else: ?><p>A cobrança ainda está sendo preparada. Você pode tentar atualizar agora sem criar um pedido duplicado.</p><form method="post" action="<?=e(url('/minha-conta/pedidos/'.$order['code'].'/pagamento/atualizar'))?>"><?=csrf_field()?><button class="button button--primary" type="submit">Atualizar pagamento</button></form><?php endif; ?></section>
 <?php endif; ?>
 
-<section class="panel order-summary"><h3>Resumo total</h3><dl><div><dt>Produtos</dt><dd>R$ <?= number_format((float)$order['products_total'],2,',','.') ?></dd></div><div><dt>Entrega</dt><dd>R$ <?= number_format((float)$order['shipping_total'],2,',','.') ?></dd></div><div><dt>Descontos</dt><dd>− R$ <?= number_format((float)$order['discount_total'],2,',','.') ?></dd></div></dl><strong>R$ <?= number_format((float)$order['grand_total'],2,',','.') ?></strong></section>
 
-<?php foreach ($sellerOrders as $sellerOrder): ?>
-<section class="panel"><div class="panel-head"><div><small><?= e($sellerOrder['code']) ?></small><h3><?= e($sellerOrder['store_name']) ?></h3></div><?php $status=$sellerOrder['status']; require dirname(__DIR__,2).'/components/dashboard/status-badge.php'; ?></div><div class="table-wrap"><table><thead><tr><th>Produto</th><th>Quantidade</th><th>Unitário</th><th>Total</th></tr></thead><tbody><?php foreach ($sellerOrder['items'] as $item): ?><tr><td><strong><?= e($item['product_name']) ?></strong><small><?= e($item['sku']) ?></small></td><td><?= (int)$item['quantity'] ?></td><td>R$ <?= number_format((float)$item['unit_price'],2,',','.') ?></td><td>R$ <?= number_format((float)$item['total'],2,',','.') ?></td></tr><?php endforeach; ?></tbody></table></div>
+ <div class="order-detail-section-heading"><div><span class="order-detail-kicker">ITENS DO PEDIDO</span><h3>O que você comprou</h3></div><small><?=count($sellerOrders)?> <?=count($sellerOrders)===1?'loja':'lojas'?></small></div>
+ <?php foreach ($sellerOrders as $sellerOrder): ?>
+<section class="panel order-detail-card order-detail-store"><div class="panel-head"><div><small><?= e($sellerOrder['code']) ?></small><h3><?= e($sellerOrder['store_name']) ?></h3></div><?php $status=$sellerOrder['status']; require dirname(__DIR__,2).'/components/dashboard/status-badge.php'; ?></div><div class="table-wrap order-detail-table"><table><thead><tr><th>Produto</th><th>Quantidade</th><th>Unitário</th><th>Total</th></tr></thead><tbody><?php foreach ($sellerOrder['items'] as $item): ?><tr><td><strong><?= e($item['product_name']) ?></strong><small><?= e($item['sku']) ?></small></td><td><?= (int)$item['quantity'] ?></td><td>R$ <?= number_format((float)$item['unit_price'],2,',','.') ?></td><td>R$ <?= number_format((float)$item['total'],2,',','.') ?></td></tr><?php endforeach; ?></tbody></table></div>
 <?php if (!empty($sellerOrder['fiscal_documents'])): ?>
-<div style="margin-top:24px"><h4>Nota fiscal</h4><?php foreach($sellerOrder['fiscal_documents'] as $fiscal):?><div class="settings-note" style="margin-top:10px"><span>NF</span><p><strong>NF-e <?=e((string)($fiscal['number']??'—'))?> · série <?=e((string)($fiscal['series']??'—'))?></strong><?php if(($fiscal['status']??'')==='cancelled'):?> · Cancelada<?php endif;?><br><small>Chave: <?=e((string)($fiscal['access_key']??'—'))?></small><?php if(!empty($fiscal['cancellation_reason'])):?><br><small>Motivo do cancelamento: <?=e((string)$fiscal['cancellation_reason'])?></small><?php endif;?><br><?php if(!empty($fiscal['xml_storage_path'])):?><a class="button button--secondary" href="<?=e(url('/minha-conta/pedidos/'.$order['code'].'/fiscal/'.(int)$fiscal['id'].'/xml'))?>">Baixar XML</a><?php endif;?> <?php if(!empty($fiscal['danfe_storage_path'])):?><a class="button button--secondary" href="<?=e(url('/minha-conta/pedidos/'.$order['code'].'/fiscal/'.(int)$fiscal['id'].'/danfe'))?>">Baixar DANFE</a><?php endif;?></p></div><?php endforeach;?></div>
+<div class="order-detail-fiscal"><h4>Nota fiscal</h4><?php foreach($sellerOrder['fiscal_documents'] as $fiscal):?><div class="settings-note order-detail-fiscal-row"><span>NF</span><p><strong>NF-e <?=e((string)($fiscal['number']??'—'))?> · série <?=e((string)($fiscal['series']??'—'))?></strong><?php if(($fiscal['status']??'')==='cancelled'):?> · Cancelada<?php endif;?><br><small>Chave: <?=e((string)($fiscal['access_key']??'—'))?></small><?php if(!empty($fiscal['cancellation_reason'])):?><br><small>Motivo do cancelamento: <?=e((string)$fiscal['cancellation_reason'])?></small><?php endif;?><br><?php if(!empty($fiscal['xml_storage_path'])):?><a class="button button--secondary" href="<?=e(url('/minha-conta/pedidos/'.$order['code'].'/fiscal/'.(int)$fiscal['id'].'/xml'))?>">Baixar XML</a><?php endif;?> <?php if(!empty($fiscal['danfe_storage_path'])):?><a class="button button--secondary" href="<?=e(url('/minha-conta/pedidos/'.$order['code'].'/fiscal/'.(int)$fiscal['id'].'/danfe'))?>">Baixar DANFE</a><?php endif;?></p></div><?php endforeach;?></div>
 <?php endif; ?>
 </section>
 <?php endforeach; ?>
 
-<?php if ($address): ?><section class="panel"><div class="panel-head"><h3>Endereço de entrega</h3></div><p><strong><?= e($address['recipient_name']) ?></strong><br><?= e($address['street'].', '.$address['number']) ?><?= $address['complement'] ? ' · '.e($address['complement']) : '' ?><br><?= e($address['neighborhood'].' · '.$address['city'].'/'.$address['state']) ?><br>CEP <?= e($address['postal_code']) ?></p></section><?php endif; ?>
+
+ </main>
+ <aside class="order-detail-side">
+  <section class="panel order-detail-card order-detail-totals">
+   <h3>Resumo do pagamento</h3>
+   <dl><div><dt>Produtos</dt><dd><?=$money((float)$order['products_total'])?></dd></div>
+   <div><dt>Entrega</dt><dd><?=$money((float)$order['shipping_total'])?></dd></div>
+   <div><dt>Descontos</dt><dd>− <?=$money((float)$order['discount_total'])?></dd></div></dl>
+   <div class="order-detail-grand"><span>Total do pedido</span><strong><?=$money((float)$order['grand_total'])?></strong></div>
+  </section>
+  <?php if($address):?>
+  <section class="panel order-detail-card order-detail-address"><h3>Endereço de entrega</h3><strong><?=e($address['recipient_name'])?></strong><address><?=e($address['street'].', '.$address['number'])?><?=!empty($address['complement'])?' · '.e($address['complement']):''?><br><?=e($address['neighborhood'].' · '.$address['city'].'/'.$address['state'])?><br>CEP <?=e($address['postal_code'])?></address></section>
+  <?php endif;?>
+  <div class="order-detail-help"><strong>Precisa consultar outro pedido?</strong><p>O histórico completo está disponível na sua conta.</p><a href="<?=e(url('/minha-conta/pedidos'))?>">Ver todos os pedidos</a></div>
+ </aside>
+</div>
+</div>
 <?php endif; ?>
