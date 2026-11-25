@@ -76,7 +76,7 @@ sort($pages);
 
     <div class="table-wrap product-list-table"><table data-product-list><thead><tr>
         <th class="product-select-cell"><input type="checkbox" data-products-select-all aria-label="Selecionar todos os produtos desta página"></th>
-        <th>Produto</th><th>Preço</th><th>Estoque</th><th>Status</th><th>Ações</th>
+        <th>Produto</th><th>Preço</th><th>Status</th><th>Ações</th>
     </tr></thead><tbody>
     <?php foreach ($products as $product): ?><tr data-product-row>
         <td class="product-select-cell" data-label="Selecionar"><input type="checkbox" name="product_ids[]" value="<?= (int) $product['id'] ?>" form="product-bulk-form" data-product-select aria-label="Selecionar <?= e($product['name']) ?>"></td>
@@ -85,10 +85,6 @@ sort($pages);
             <span class="product-list-copy"><strong title="<?= e($product['name']) ?>"><?= e($product['name']) ?></strong><small class="table-subtitle"><?= e($product['sku'] ?: '—') ?> · <?= $product['product_type'] === 'variable' ? 'Com variações' : ($product['product_type'] === 'kit' ? 'Kit' : 'Simples') ?></small></span>
         </div></td>
         <td data-label="Preço"><span class="product-list-price">A partir de <strong>R$ <?= number_format((float) $product['price'], 2, ',', '.') ?></strong></span></td>
-        <td data-label="Estoque">
-            <?php if ($product['product_type'] === 'simple'): ?><form class="stock-form" method="post" action="<?= e(url('/vendedor/produtos/' . $product['id'] . '/estoque')) ?>"><?= csrf_field() ?><input type="hidden" name="variant_id" value="<?= $product['variant_id'] ?>"><input type="number" min="0" name="quantity" value="<?= (int) $product['stock'] ?>" aria-label="Quantidade em estoque"><button title="Salvar estoque" aria-label="Salvar estoque">✓</button></form>
-            <?php else: ?><a class="text-link" href="<?= e(url('/vendedor/produtos/' . $product['id'] . '/editar')) ?>"><?= (int) $product['stock'] ?> unidades</a><?php endif; ?>
-        </td>
         <td data-label="Status"><?php $status = $product['status']; require dirname(__DIR__, 2) . '/components/dashboard/status-badge.php'; ?><?php if (!empty($product['platform_paused'])): ?><small class="seller-moderation-state is-paused">Pausado pela plataforma</small><?php elseif (($product['moderation_status'] ?? '') === 'changes_requested'): ?><small class="seller-moderation-state">Correção solicitada</small><?php elseif (($product['moderation_status'] ?? '') === 'pending'): ?><small class="seller-moderation-state">Aguardando auditoria</small><?php endif; ?></td>
         <td data-label="Ações"><div class="product-action-buttons">
             <button type="button" class="product-action-button" data-product-quick-price
