@@ -30,18 +30,54 @@ final class ProductController extends Controller
         $perPage = (int) ($_GET['per_page'] ?? 15);
         if (!in_array($perPage, $allowedPageSizes, true)) $perPage = 15;
 
-        $count = $pdo->prepare('SELECT COUNT(*) FROM products WHERE store_id=?');
-        $count->execute([$store['id']]);
+        // Publicados por padrão; filtros sempre limitados à loja autenticada.
+        $allowedStatuses = ['active', 'draft', 'paused', 'archived', 'all'];
+        $statusFilter = (string) ($_GET['status'] ?? 'active');
+        if (!in_array($statusFilter, $allowedStatuses, true)) $statusFilter = 'active';
+        $allowedTypes = ['all', 'simple', 'variable', 'kit'];
+        $typeFilter = (string) ($_GET['type'] ?? 'all');
+        if (!in_array($typeFilter, $allowedTypes, true)) $typeFilter = 'all';
+        $stockFilter = (string) ($_GET['stock'] ?? 'all');
+        if (!in_array($stockFilter, ['all', 'available', 'out'], true)) $stockFilter = 'all';
+        $sort = (string) ($_GET['sort'] ?? 'recent');
+        $sortOptions = ['recent' => 'p.updated_at DESC, p.id DESC', 'oldest' => 'p.updated_at ASC, p.id ASC', 'name' => 'p.name ASC, p.id ASC', 'price_asc' => 'price ASC, p.id ASC', 'price_desc' => 'price DESC, p.id DESC'];
+        if (!array_key_exists($sort, $sortOptions)) $sort = 'recent';
+        $search = mb_substr(trim((string) ($_GET['q'] ?? '')), 0, 100);
+        $where = ['p.store_id = ?'];
+        $params = [(int) $store['id']];
+        if ($statusFilter !== 'all') { $where[] = 'p.status = ?'; $params[] = $statusFilter; }
+        if ($typeFilter !== 'all') { $where[] = 'p.product_type = ?'; $params[] = $typeFilter; }
+        if ($search !== '') {
+            $where[] = '(p.name LIKE ? OR p.sku LIKE ?)';
+            $term = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search) . '%';
+            $params[] = $term;
+            $params[] = $term;
+        }
+        if ($stockFilter !== 'all') {
+            $stockSql = '(SELECT COALESCE(SUM(GREATEST(0, sk2.quantity - sk2.reserved_quantity)), 0) FROM product_variants pv2 LEFT JOIN stocks sk2 ON sk2.product_variant_id = pv2.id WHERE pv2.product_id = p.id)';
+            $where[] = $stockSql . ($stockFilter === 'available' ? ' > 0' : ' = 0');
+        }
+        $whereSql = implode(' AND ', $where);
+        $count = $pdo->prepare('SELECT COUNT(*) FROM products p WHERE ' . $whereSql);
+        $count->execute($params);
         $total = (int) $count->fetchColumn();
         $lastPage = max(1, (int) ceil($total / $perPage));
         $page = min(max(1, (int) ($_GET['page'] ?? 1)), $lastPage);
         $offset = ($page - 1) * $perPage;
 
-        $statement = $pdo->prepare("SELECT p.id,p.name,p.sku,p.product_type,p.status,p.moderation_status,p.platform_paused,p.moderation_reason,p.updated_at,MIN(pv.id) variant_id,MIN(COALESCE(pv.promotional_price,pv.price)) price,COALESCE(SUM(sk.quantity-sk.reserved_quantity),0) stock,(SELECT pm.secure_url FROM product_media pm WHERE pm.product_id=p.id AND pm.resource_type='image' ORDER BY pm.is_cover DESC,pm.sort_order,pm.id LIMIT 1) image_url FROM products p LEFT JOIN product_variants pv ON pv.product_id=p.id LEFT JOIN stocks sk ON sk.product_variant_id=pv.id WHERE p.store_id=:store_id GROUP BY p.id ORDER BY p.updated_at DESC LIMIT :limit OFFSET :offset");
-        $statement->bindValue(':store_id', (int) $store['id'], PDO::PARAM_INT);
-        $statement->bindValue(':limit', $perPage, PDO::PARAM_INT);
-        $statement->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $statement = $pdo->prepare("SELECT p.id,p.name,p.sku,p.product_type,p.status,p.moderation_status,p.platform_paused,p.moderation_reason,p.updated_at,MIN(pv.id) variant_id,MIN(COALESCE(pv.promotional_price,pv.price)) price,COALESCE(SUM(sk.quantity-sk.reserved_quantity),0) stock,(SELECT pm.secure_url FROM product_media pm WHERE pm.product_id=p.id AND pm.resource_type='image' ORDER BY pm.is_cover DESC,pm.sort_order,pm.id LIMIT 1) image_url FROM products p LEFT JOIN product_variants pv ON pv.product_id=p.id LEFT JOIN stocks sk ON sk.product_variant_id=pv.id WHERE {$whereSql} GROUP BY p.id ORDER BY {$sortOptions[$sort]} LIMIT ? OFFSET ?");
+        $bindValues = [...$params, $perPage, $offset];
+        foreach ($bindValues as $index => $value) $statement->bindValue($index + 1, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
         $statement->execute();
+
+        $statusCountsStatement = $pdo->prepare('SELECT status, COUNT(*) amount FROM products WHERE store_id=? GROUP BY status');
+        $statusCountsStatement->execute([(int) $store['id']]);
+        $statusCounts = ['all' => 0, 'active' => 0, 'draft' => 0, 'paused' => 0, 'archived' => 0];
+        foreach ($statusCountsStatement->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $amount = (int) $row['amount'];
+            $statusCounts['all'] += $amount;
+            if (array_key_exists((string)$row['status'], $statusCounts)) $statusCounts[(string)$row['status']] = $amount;
+        }
 
         return $this->page('seller/products/index', 'layouts/seller', [
             'pageTitle' => 'Produtos',
@@ -56,6 +92,8 @@ final class ProductController extends Controller
                 'to' => min($offset + $perPage, $total),
             ],
             'allowedPageSizes' => $allowedPageSizes,
+            'productFilters' => ['status' => $statusFilter, 'type' => $typeFilter, 'stock' => $stockFilter, 'sort' => $sort, 'q' => $search],
+            'statusCounts' => $statusCounts,
             'transferStores' => array_values(array_filter($storeContext->stores(), static fn(array $candidate): bool => (int) $candidate['id'] !== (int) $store['id'])),
             'paymentEnabled' => (new SellerSalesEligibility())->sellerCanSell((int) $store['seller_id']),
         ]);
