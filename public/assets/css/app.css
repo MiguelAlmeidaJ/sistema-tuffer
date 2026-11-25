@@ -25,7 +25,7 @@
 @import url('./seller/commerce-settings.css');
 @import url('./seller/tiny-connector.css?v=20260910-redesign');
 @import url('./seller/product-export.css');
-@import url('./seller/product-list.css');
+@import url('./seller/product-list.css?v=20261125-compact-actions');
 @import url('./seller/orders.css?v=20260806-seller-orders-redesign');
 @import url('./seller/order-fiscal.css?v=20260910-manual-nfe');
 @import url('./seller/order-detail.css?v=20260922-order-tracking');
