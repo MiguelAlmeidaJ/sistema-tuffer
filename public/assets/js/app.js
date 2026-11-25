@@ -445,6 +445,7 @@ document.querySelectorAll('[data-product-editor]').forEach(editor=>{
     const variable=q('[name="product_type"]:checked')?.value==='variable';
     q('[data-variation-builder]')?.toggleAttribute('hidden',!variable);
     q('[data-simple-stock]')?.toggleAttribute('hidden',variable);
+    q('[data-variable-price-note]')?.toggleAttribute('hidden',!variable);
     const separated=q('[name="stock_control"]:checked')?.value==='separate';
     q('[data-separated-stock]')?.toggleAttribute('hidden',!separated);
   };
@@ -460,6 +461,27 @@ document.querySelectorAll('[data-product-editor]').forEach(editor=>{
     updateQuality();updateReview();
   };
   qa('[data-retail-price],[data-promo-price],[data-cost-price]').forEach(field=>field.addEventListener('input',updatePrices));
+
+  // The primary price inputs are shared defaults for variable products.
+  // Propagate only the field the seller actually edits, preserving per-variant
+  // overrides until they intentionally change that base value.
+  const variablePriceFields={
+    '[data-retail-price]':'price',
+    '[data-promo-price]':'promotional_price',
+    '[data-cost-price]':'cost_price',
+    '[data-base-wholesale-price]':'wholesale_price'
+  };
+  Object.entries(variablePriceFields).forEach(([selector,key])=>{
+    q(selector)?.addEventListener('input',event=>{
+      if(q('[name="product_type"]:checked')?.value!=='variable')return;
+      const value=event.currentTarget.value;
+      variants.forEach(row=>{row[key]=value===''?null:value;});
+      const hidden=q('[data-variants-json]');
+      if(hidden)hidden.value=JSON.stringify(variants);
+      renderVariants();
+      updateReview();
+    });
+  });
 
   const renderWholesale=()=>{
     const root=q('[data-wholesale-rows]');if(!root)return;
