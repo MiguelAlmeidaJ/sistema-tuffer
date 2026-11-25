@@ -335,7 +335,7 @@ final class ProductController extends Controller
             'sku' => $sku,
             'description' => rich_text_html($_POST['description'] ?? ''),
             'short_description' => trim((string) ($_POST['short_description'] ?? '')),
-            'product_type' => in_array($_POST['product_type'] ?? '', ['simple', 'variable', 'kit'], true) ? $_POST['product_type'] : 'simple',
+            'product_type' => $this->validatedProductType($productId),
             'status' => $status,
             'featured' => isset($_POST['featured']) ? 1 : 0,
             'retail_enabled' => isset($_POST['retail_enabled']) ? 1 : 0,
@@ -361,6 +361,19 @@ final class ProductController extends Controller
             'combine_shipping' => isset($_POST['combine_shipping']) ? 1 : 0,
             'scheduled_at' => $scheduledTimestamp !== false ? date('Y-m-d H:i:s', $scheduledTimestamp) : null,
         ];
+    }
+
+    private function validatedProductType(?int $productId): string
+    {
+        $type = (string) ($_POST['product_type'] ?? 'simple');
+        if (in_array($type, ['simple', 'variable'], true)) return $type;
+        // Preserve existing legacy kits when edited, but never allow new kits.
+        if ($type === 'kit' && $productId !== null) {
+            $stmt = Database::connection()->prepare('SELECT product_type FROM products WHERE id=? LIMIT 1');
+            $stmt->execute([$productId]);
+            if ($stmt->fetchColumn() === 'kit') return 'kit';
+        }
+        throw new RuntimeException('Selecione um tipo de produto válido.');
     }
 
     private function requestedStatus(): string
