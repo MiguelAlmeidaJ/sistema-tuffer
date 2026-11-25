@@ -414,6 +414,22 @@ final class ProductController extends Controller
                 'wholesale_stock' => $_POST['wholesale_stock'] ?? 0, 'status' => 'active',
             ]];
         }
+        // Enforce price inheritance on the server: hidden form fields and stale
+        // browser scripts cannot cause variable prices to remain out of sync.
+        if (($_POST['product_type'] ?? 'simple') === 'variable' && !isset($_POST['variant_prices_enabled'])) {
+            $basePrice = (float) ($_POST['price'] ?? 0);
+            if ($basePrice <= 0 && $wholesaleEnabled) $basePrice = (float) ($_POST['wholesale_price'] ?? 0);
+            if ($basePrice <= 0) throw new RuntimeException('Informe um preço válido para o produto.');
+            $promo = $_POST['promotional_price'] ?? null;
+            $wholesale = $_POST['wholesale_price'] ?? null;
+            foreach ($variants as &$row) {
+                if (!is_array($row)) continue;
+                $row['price'] = $basePrice;
+                $row['promotional_price'] = $promo;
+                $row['wholesale_price'] = $wholesale;
+            }
+            unset($row);
+        }
         $existing = $pdo->prepare('SELECT id FROM product_variants WHERE product_id=?');
         $existing->execute([$productId]);
         $existingIds = array_map('intval', $existing->fetchAll(PDO::FETCH_COLUMN));
