@@ -462,26 +462,36 @@ document.querySelectorAll('[data-product-editor]').forEach(editor=>{
   };
   qa('[data-retail-price],[data-promo-price],[data-cost-price]').forEach(field=>field.addEventListener('input',updatePrices));
 
-  // The primary price inputs are shared defaults for variable products.
-  // Propagate only the field the seller actually edits, preserving per-variant
-  // overrides until they intentionally change that base value.
-  const variablePriceFields={
-    '[data-retail-price]':'price',
-    '[data-promo-price]':'promotional_price',
-    '[data-cost-price]':'cost_price',
-    '[data-base-wholesale-price]':'wholesale_price'
-  };
-  Object.entries(variablePriceFields).forEach(([selector,key])=>{
-    q(selector)?.addEventListener('input',event=>{
-      if(q('[name="product_type"]:checked')?.value!=='variable')return;
-      const value=event.currentTarget.value;
-      variants.forEach(row=>{row[key]=value===''?null:value;});
-      const hidden=q('[data-variants-json]');
-      if(hidden)hidden.value=JSON.stringify(variants);
-      renderVariants();
-      updateReview();
-    });
+  const variantPriceToggle=q('[data-variant-prices-enabled]');
+  const hasIndividualVariantPrices=()=>!!variantPriceToggle?.checked;
+  const commonVariantPrices=()=>({
+    price:q('[data-retail-price]')?.value??'',
+    promotional_price:q('[data-promo-price]')?.value||null,
+    wholesale_price:q('[data-base-wholesale-price]')?.value||null
   });
+  const updateVariantPriceVisibility=()=>{
+    const enabled=hasIndividualVariantPrices();
+    qa('[data-variant-price-column]').forEach(cell=>cell.hidden=!enabled);
+    q('[data-variant-price-inherited]')?.toggleAttribute('hidden',enabled);
+    qa('[data-variant-price-input]').forEach(input=>input.disabled=!enabled);
+  };
+  // When using the common price, the submitted variant data is always synced
+  // from the product price, even if only one of the fields was edited.
+  const synchronizeCommonPrices=()=>{
+    if(hasIndividualVariantPrices())return;
+    const base=commonVariantPrices();
+    variants.forEach(row=>Object.assign(row,base));
+    const hidden=q('[data-variants-json]');
+    if(hidden)hidden.value=JSON.stringify(variants);
+  };
+  variantPriceToggle?.addEventListener('change',()=>{
+    if(!hasIndividualVariantPrices())synchronizeCommonPrices();
+    renderVariants();
+  });
+  qa('[data-retail-price],[data-promo-price],[data-base-wholesale-price]').forEach(input=>input.addEventListener('input',()=>{
+    if(q('[name="product_type"]:checked')?.value!=='variable'||hasIndividualVariantPrices())return;
+    synchronizeCommonPrices();renderVariants();
+  }));
 
   const renderWholesale=()=>{
     const root=q('[data-wholesale-rows]');if(!root)return;
@@ -509,10 +519,13 @@ document.querySelectorAll('[data-product-editor]').forEach(editor=>{
 
   const renderVariants=()=>{
     const root=q('[data-variant-rows]');if(!root)return;
-    root.innerHTML=variants.map((row,index)=>`<tr data-variant-row="${index}"><td><input value="${escape(row.name)}" data-key="name"></td><td><input value="${escape(row.sku)}" data-key="sku"></td><td><input type="number" min="0.01" step="0.01" value="${escape(row.price)}" data-key="price"></td><td><input type="number" min="0" step="0.01" value="${escape(row.wholesale_price??'')}" data-key="wholesale_price"></td><td><input type="number" min="0" value="${escape(row.stock??0)}" data-key="stock"></td><td><select data-key="status"><option value="active" ${row.status!=='inactive'?'selected':''}>Ativo</option><option value="inactive" ${row.status==='inactive'?'selected':''}>Inativo</option></select></td><td><button type="button" data-remove-variant aria-label="Remover">×</button></td></tr>`).join('');
+    const customPrices=hasIndividualVariantPrices();
+    if(!customPrices)synchronizeCommonPrices();
+    root.innerHTML=variants.map((row,index)=>`<tr data-variant-row="${index}"><td><input aria-label="Nome da variação" value="${escape(row.name)}" data-key="name"></td><td><input aria-label="SKU da variação" value="${escape(row.sku)}" data-key="sku"></td><td data-variant-price-column ${customPrices?'':'hidden'}><input aria-label="Preço de varejo da variação" data-variant-price-input type="number" min="0.01" step="0.01" value="${escape(row.price??'')}" data-key="price" ${customPrices?'':'disabled'}></td><td data-variant-price-column ${customPrices?'':'hidden'}><input aria-label="Preço de atacado da variação" data-variant-price-input type="number" min="0" step="0.01" value="${escape(row.wholesale_price??'')}" data-key="wholesale_price" ${customPrices?'':'disabled'}></td><td><input aria-label="Estoque da variação" type="number" min="0" value="${escape(row.stock??0)}" data-key="stock"></td><td><select aria-label="Status da variação" data-key="status"><option value="active" ${row.status!=='inactive'?'selected':''}>Ativo</option><option value="inactive" ${row.status==='inactive'?'selected':''}>Inativo</option></select></td><td><button type="button" data-remove-variant aria-label="Remover variação">×</button></td></tr>`).join('');
     qa('[data-variant-row]',root).forEach(row=>qa('input,select',row).forEach(input=>input.addEventListener('input',()=>{variants[Number(row.dataset.variantRow)][input.dataset.key]=input.value;q('[data-variants-json]').value=JSON.stringify(variants);updateReview()})));
     qa('[data-remove-variant]',root).forEach(button=>button.addEventListener('click',()=>{variants.splice(Number(button.closest('[data-variant-row]').dataset.variantRow),1);q('[data-variants-json]').value=JSON.stringify(variants);renderVariants()}));
     q('[data-variants-json]').value=JSON.stringify(variants);
+    updateVariantPriceVisibility();
   };
   q('[data-generate-variants]')?.addEventListener('click',()=>{
     const sizes=(q('[data-attribute-sizes]')?.value||'').split(',').map(v=>v.trim()).filter(Boolean);
@@ -825,6 +838,7 @@ document.querySelectorAll('[data-product-editor]').forEach(editor=>{
       openCategoryPicker('primary',trigger?.dataset.categoryParentHint);
       return;
     }
+    synchronizeCommonPrices();
     q('[data-variants-json]').value=JSON.stringify(variants);q('[data-wholesale-json]').value=JSON.stringify(wholesaleRows);q('[data-specifications-json]').value=JSON.stringify(specificationRows);q('[data-shipping-json]').value=JSON.stringify(shippingRows);
     syncMediaState();
     if(readyToSubmit)return;
