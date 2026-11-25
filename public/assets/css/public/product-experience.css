@@ -142,3 +142,12 @@
   .product-mobile-purchase .button{min-width:0;flex:1}
   .product-mobile-purchase>div{flex:0 0 auto}
 }
+
+/* Atalhos objetivos de quantidade na compra */
+.product-quantity-hint{display:block;margin:9px 0 6px;color:#7c877f;font-size:.73rem;font-weight:500}
+.product-quantity-shortcuts{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:7px}
+.product-quantity-shortcuts button{display:inline-flex;align-items:center;justify-content:center;min-width:58px;min-height:36px;padding:7px 12px;border:1px solid #dce3dc;border-radius:9px;background:#fff;color:#243127;font:inherit;font-size:.8rem;font-weight:800;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.product-quantity-shortcuts button:hover:not(:disabled){background:#fceef0;border-color:#e7b7bf;color:#b00a24}
+.product-quantity-shortcuts button:focus-visible{outline:2px solid #cd142c;outline-offset:2px}
+.product-quantity-shortcuts button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:480px){.product-quantity-shortcuts{gap:6px}.product-quantity-shortcuts button{min-width:54px;min-height:38px}}
