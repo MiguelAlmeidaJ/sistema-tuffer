@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="<?= e(asset('css/layouts/order-details-refresh.css')) ?>">
     <style>:root{<?= platform_theme_style($platformSettings) ?>}</style>
     <script defer src="<?= e(asset('js/app.js')) ?>"></script>
+    <?php if (($dashboardArea ?? '') === 'seller'): ?><script defer src="<?= e(asset('js/seller/product-quick-edit.js')) ?>"></script><?php endif; ?>
     <script defer src="<?= e(asset('js/password-modal.js')) ?>"></script>
     <script defer src="<?= e(asset('js/customer-addresses.js')) ?>"></script>
     <script defer src="<?= e(asset('js/commerce-ux.js')) ?>"></script>
