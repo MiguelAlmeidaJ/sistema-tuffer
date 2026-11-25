@@ -3,6 +3,23 @@ $editing = !empty($product);
 $variant = $variants[0] ?? [];
 $value = static fn(string $key, mixed $default = ''): mixed => $product[$key] ?? $default;
 $variantValue = static fn(string $key, mixed $default = ''): mixed => $variant[$key] ?? $default;
+// Existing products with genuinely different variant prices keep that choice
+// enabled, so editing an unrelated field cannot silently overwrite prices.
+$variantPriceDifferences = false;
+if ($editing && count($variants) > 1) {
+    foreach (['price', 'promotional_price', 'wholesale_price'] as $priceKey) {
+        $firstPrice = $variants[0][$priceKey] ?? null;
+        foreach (array_slice($variants, 1) as $existingVariant) {
+            $nextPrice = $existingVariant[$priceKey] ?? null;
+            if (($firstPrice === null || $firstPrice === '') !== ($nextPrice === null || $nextPrice === '')
+                || ($firstPrice !== null && $firstPrice !== '' && abs((float)$firstPrice - (float)$nextPrice) > 0.00001)) {
+                $variantPriceDifferences = true;
+                break 2;
+            }
+        }
+    }
+}
+
 $jsonFlags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
 $status = (string) $value('status', 'draft');
 $imageMedia = array_values(array_filter($media, static fn(array $item): bool => $item['resource_type'] === 'image'));
@@ -115,7 +132,7 @@ if ($seoKeywordsValue === '' && trim((string) $value('name')) !== '') {
                     <label class="sale-mode-card"><input type="checkbox" name="wholesale_enabled" value="1" <?= $value('wholesale_enabled', 0) ? 'checked' : '' ?> data-sale-mode="wholesale"><span><b>Atacado</b><small>Faixas por quantidade</small></span></label>
                 </div>
                 <div class="product-subsection" data-retail-fields><h4>Preço de varejo</h4>
-                  <p class="product-price-variation-note" data-variable-price-note hidden>Para produtos com variações, alterar os valores abaixo atualiza o mesmo campo em todas as variações. Preços individuais podem ser ajustados na etapa <strong>Variações e estoque</strong>.</p>
+                  <p class="product-price-variation-note" data-variable-price-note hidden>Os preços do produto são aplicados a todas as variações, salvo quando você ativar <strong>preços diferentes por variação</strong> na etapa de estoque.</p>
                   <div class="product-form-grid product-form-grid--three">
                     <label class="product-field">Preço normal <span class="money-input"><b>R$</b><input type="number" step="0.01" min="0.01" name="price" value="<?= e($variantValue('price')) ?>" required data-retail-price></span></label>
                     <label class="product-field">Preço promocional <span class="money-input"><b>R$</b><input type="number" step="0.01" min="0" name="promotional_price" value="<?= e($variantValue('promotional_price')) ?>" data-promo-price></span></label>
@@ -132,7 +149,7 @@ if ($seoKeywordsValue === '' && trim((string) $value('name')) !== '') {
                 <header class="product-form-section__header"><span>3</span><div><h3>Variações e estoque</h3><p>Controle disponibilidade geral ou por combinação.</p></div></header>
                 <fieldset class="stock-control"><legend>Controle de estoque</legend><label><input type="radio" name="stock_control" value="shared" <?= $value('stock_control', 'shared') === 'shared' ? 'checked' : '' ?>><span><strong>Estoque compartilhado</strong><small>Varejo e atacado usam o mesmo saldo.</small></span></label><label><input type="radio" name="stock_control" value="separate" <?= $value('stock_control') === 'separate' ? 'checked' : '' ?>><span><strong>Estoques separados</strong><small>Reserve quantidades por canal.</small></span></label></fieldset>
                 <div data-simple-stock><div class="product-form-grid product-form-grid--three"><label class="product-field">Estoque disponível<input type="number" min="0" name="stock" value="<?= e($variantValue('stock', 0)) ?>" data-quality-stock></label><label class="product-field">Estoque mínimo<input type="number" min="0" name="minimum_quantity" value="<?= e($variantValue('minimum_quantity', 5)) ?>"></label><label class="product-check product-check--compact"><input type="checkbox" name="allow_backorder" value="1" <?= $value('allow_backorder') ? 'checked' : '' ?>><span><strong>Vender sem estoque</strong><small>Aceitar encomendas.</small></span></label></div><div class="product-form-grid" data-separated-stock><label class="product-field">Reserva para varejo<input type="number" min="0" name="retail_stock" value="<?= e($variantValue('retail_stock', 0)) ?>"></label><label class="product-field">Reserva para atacado<input type="number" min="0" name="wholesale_stock" value="<?= e($variantValue('wholesale_stock', 0)) ?>"></label></div></div>
-                <div class="product-subsection" data-variation-builder><div class="subsection-heading"><div><h4>Gerador de variações</h4><p>Separe valores por vírgulas e gere as combinações.</p></div><button type="button" class="button button--secondary" data-generate-variants>Gerar variações</button></div><div class="product-form-grid"><label class="product-field">Tamanhos<input data-attribute-sizes placeholder="P, M, G, GG"></label><label class="product-field">Cores<input data-attribute-colors placeholder="Preto, Azul, Cinza"></label></div><div class="variant-table-wrap"><table class="variant-table"><thead><tr><th>Variação</th><th>SKU</th><th>Varejo</th><th>Atacado</th><th>Estoque</th><th>Status</th><th></th></tr></thead><tbody data-variant-rows></tbody></table></div></div>
+                <div class="product-subsection" data-variation-builder><div class="subsection-heading"><div><h4>Gerador de variações</h4><p>Separe valores por vírgulas e gere as combinações.</p></div><button type="button" class="button button--secondary" data-generate-variants>Gerar variações</button></div><div class="product-form-grid"><label class="product-field">Tamanhos<input data-attribute-sizes placeholder="P, M, G, GG"></label><label class="product-field">Cores<input data-attribute-colors placeholder="Preto, Azul, Cinza"></label></div><label class="variant-price-toggle"><input type="checkbox" name="variant_prices_enabled" value="1" data-variant-prices-enabled <?= $variantPriceDifferences ? 'checked' : '' ?>><span><strong>Permitir preços diferentes por variação</strong><small>Desativado: todas as variações seguem os preços definidos em “Preços e venda”. Ative para definir valores individuais.</small></span></label><p class="variant-price-inherited" data-variant-price-inherited>Os preços serão iguais aos do produto. Aqui você define apenas variação, SKU, estoque e status.</p><div class="variant-table-wrap"><table class="variant-table" data-variant-table><thead><tr><th>Variação</th><th>SKU</th><th data-variant-price-column>Varejo</th><th data-variant-price-column>Atacado</th><th>Estoque</th><th>Status</th><th></th></tr></thead><tbody data-variant-rows></tbody></table></div></div>
                 <footer class="product-step-actions"><button type="button" class="text-button" data-previous-product-step>← Voltar</button><button type="button" class="button button--primary" data-next-product-step>Continuar para mídias →</button></footer>
             </section>
 
