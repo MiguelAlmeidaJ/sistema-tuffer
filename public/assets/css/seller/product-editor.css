@@ -40,3 +40,16 @@
 .product-editor .product-price-variation-note{margin:4px 0 19px;padding:13px 16px;border:1px solid #e7e9df;border-radius:11px;background:#f7f8f4;color:#5a675d;font-size:.79rem;font-weight:500;line-height:1.55}
 .product-editor .product-price-variation-note strong{color:#26382b;font-weight:800}
 .product-editor .product-price-variation-note[hidden]{display:none}
+
+/* Pricing is inherited by default; individual prices are explicitly opt-in. */
+.product-editor .variant-price-toggle{display:flex;align-items:flex-start;gap:12px;margin:20px 0 10px;padding:17px 19px;border:1px solid #e3e7e1;border-radius:12px;background:#fff;cursor:pointer}
+.product-editor .variant-price-toggle:has(input:checked){background:#fffafa;border-color:#e9bdc3}
+.product-editor .variant-price-toggle input{flex:0 0 auto;margin-top:3px;accent-color:#c8102e;width:17px;height:17px}
+.product-editor .variant-price-toggle>span{display:grid;gap:6px;min-width:0}
+.product-editor .variant-price-toggle strong{font-size:.83rem;color:#27332b;font-weight:800}
+.product-editor .variant-price-toggle small{color:#78857a;font-size:.74rem;font-weight:500;line-height:1.5}
+.product-editor .variant-price-inherited{margin:8px 0 14px;color:#68796a;font-size:.77rem;line-height:1.55}
+.product-editor .variant-price-inherited[hidden],.product-editor [data-variant-price-column][hidden]{display:none!important}
+.product-editor .variant-table{min-width:0;width:100%}
+.product-editor .variant-table td,.product-editor .variant-table th{min-width:0}
+@media(max-width:680px){.product-editor .variant-price-toggle{padding:14px}.product-editor .variant-table{min-width:560px}}
