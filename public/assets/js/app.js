@@ -225,6 +225,28 @@ const normalizeProductQuantity=value=>{
 document.querySelector('[data-product-quantity-decrease]')?.addEventListener('click',()=>normalizeProductQuantity(Number(document.querySelector('[data-product-quantity]')?.value||1)-1));
 document.querySelector('[data-product-quantity-increase]')?.addEventListener('click',()=>normalizeProductQuantity(Number(document.querySelector('[data-product-quantity]')?.value||1)+1));
 document.querySelector('[data-product-quantity]')?.addEventListener('change',event=>normalizeProductQuantity(event.target.value));
+const quickQuantityButtons=[...document.querySelectorAll('[data-product-quantity-add]')];
+const updateQuickQuantityButtons=()=>{
+  const input=document.querySelector('[data-product-quantity]');
+  if(!input)return;
+  const available=Number(input.max||0);
+  quickQuantityButtons.forEach(button=>{button.disabled=!Number.isFinite(available)||available<1;});
+};
+quickQuantityButtons.forEach(button=>button.addEventListener('click',()=>{
+  const input=document.querySelector('[data-product-quantity]');
+  if(!input)return;
+  const step=Number(button.dataset.productQuantityAdd||0);
+  if(![10,50,100].includes(step))return;
+  const minimum=Math.max(1,Number(input.min||1));
+  const current=Math.max(minimum,Math.trunc(Number(input.value)||minimum));
+  // A primeira ação rápida começa em 10/50/100 no varejo, não 11/51/101.
+  const base=minimum===1&&current===1?0:current;
+  normalizeProductQuantity(base+step);
+  input.dispatchEvent(new Event('input',{bubbles:true}));
+}));
+updateQuickQuantityButtons();
+document.querySelector('[data-variant-select]')?.addEventListener('change',updateQuickQuantityButtons);
+
 document.querySelector('[data-mobile-add]')?.addEventListener('click',()=>{
   const addButton=document.querySelector('[data-add-button]');
   if(addButton&&!addButton.disabled)addButton.click();
