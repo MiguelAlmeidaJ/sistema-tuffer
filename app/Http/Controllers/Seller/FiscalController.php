@@ -24,10 +24,8 @@ final class FiscalController extends Controller
         $context=new SellerStoreContext();$store=$context->current();if(!$store)return Response::redirect('/vendedor');
         $pdo=Database::connection();$stmt=$pdo->prepare('SELECT s.*,u.email user_email FROM sellers s JOIN users u ON u.id=s.user_id WHERE s.id=? AND s.user_id=? LIMIT 1');$stmt->execute([$store['seller_id'],Auth::id()]);$seller=$stmt->fetch();if(!is_array($seller))return Response::redirect('/vendedor');
         $profile=(new StoreFiscalProfileRepository($pdo))->find((int)$store['id'],(int)$seller['id']);
-        $stmt=$pdo->prepare('SELECT p.id,p.name,p.sku,p.status,pfp.* FROM products p LEFT JOIN product_fiscal_profiles pfp ON pfp.product_id=p.id WHERE p.store_id=? ORDER BY p.name LIMIT 250');$stmt->execute([$store['id']]);$products=$stmt->fetchAll();
-        $stmt=$pdo->prepare('SELECT fd.*,so.code seller_order_code,o.code order_code FROM fiscal_documents fd JOIN seller_orders so ON so.id=fd.seller_order_id JOIN orders o ON o.id=so.order_id WHERE fd.store_id=? ORDER BY fd.id DESC LIMIT 50');$stmt->execute([$store['id']]);$documents=$stmt->fetchAll();
         return $this->page('seller/fiscal/index','layouts/seller',[
-            'pageTitle'=>'Fiscal','currentStore'=>$store,'stores'=>$context->stores(),'seller'=>$seller,'profile'=>$profile,'products'=>$products,'documents'=>$documents,
+            'pageTitle'=>'Fiscal','currentStore'=>$store,'stores'=>$context->stores(),'seller'=>$seller,'profile'=>$profile,
             'fiscalMode'=>FiscalIssuanceMode::normalize((string)($profile['issuance_mode']??FiscalIssuanceMode::MANUAL)),
             'fiscalProvider'=>(string)($profile['provider']??'manual'),'fiscalEnvironment'=>(string)($profile['environment']??'production'),
         ]);
