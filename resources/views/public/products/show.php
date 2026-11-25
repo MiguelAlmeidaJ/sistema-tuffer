@@ -116,6 +116,12 @@ if (!empty($product['width']) && !empty($product['height']) && !empty($product['
                             <input type="number" name="quantity" min="<?= $cartMode==='wholesale'?max(1,(int)$product['wholesale_min_quantity']):1 ?>" max="<?= max(1,(int)$selected['available']) ?>" value="<?= $cartMode==='wholesale'?max(1,(int)$product['wholesale_min_quantity']):1 ?>" data-product-quantity>
                             <button type="button" data-product-quantity-increase aria-label="Aumentar quantidade">+</button>
                         </div>
+                        <span class="product-quantity-hint">Adicionar unidades rapidamente</span>
+                        <div class="product-quantity-shortcuts" aria-label="Adicionar mais unidades">
+                          <button type="button" data-product-quantity-add="10" aria-label="Adicionar 10 unidades">+10</button>
+                          <button type="button" data-product-quantity-add="50" aria-label="Adicionar 50 unidades">+50</button>
+                          <button type="button" data-product-quantity-add="100" aria-label="Adicionar 100 unidades">+100</button>
+                        </div>
                     </label>
                     <button class="button button--primary product-add-button" type="submit" <?= (int)$selected['available'] < 1 ? 'disabled' : '' ?> data-add-button>Adicionar ao carrinho</button>
                 </div>
