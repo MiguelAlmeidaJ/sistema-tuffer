@@ -71,3 +71,50 @@
 .product-quick-dialog__actions button:disabled{opacity:.62;cursor:wait}
 @media(max-width:900px){.product-action-buttons{gap:5px}.product-action-buttons .product-action-button{width:34px;min-width:34px;flex-basis:34px}}
 @media(max-width:520px){.product-quick-dialog{padding:19px;border-radius:15px}.product-quick-dialog__head h2{font-size:1.43rem}.product-quick-dialog__fields--grid{grid-template-columns:1fr 1fr}.product-quick-dialog__actions{flex-direction:column-reverse}.product-quick-dialog__actions button{width:100%}}
+
+/* Tabela compacta: sem estoque e com a coluna de ações inteiramente visível. */
+.product-list-panel .product-list-table{width:100%;max-width:100%;overflow-x:auto}
+.product-list-panel .product-list-table table{width:100%;min-width:0;table-layout:fixed}
+.product-list-panel .product-list-table th:nth-child(1){width:48px}
+.product-list-panel .product-list-table th:nth-child(2){width:auto}
+.product-list-panel .product-list-table th:nth-child(3){width:120px}
+.product-list-panel .product-list-table th:nth-child(4){width:115px}
+.product-list-panel .product-list-table th:nth-child(5){width:185px}
+.product-list-panel .product-list-table th:nth-child(6){width:auto}
+.product-list-panel .product-list-table td[data-label="Produto"]{min-width:0;max-width:0}
+.product-list-panel .product-list-identity{width:100%;min-width:0;gap:10px}
+.product-list-panel .product-list-copy{display:block;flex:1;min-width:0;max-width:100%}
+.product-list-panel .product-list-copy>strong{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.product-list-panel .product-list-copy small{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.product-list-panel .product-list-table td[data-label="Ações"]{padding-left:6px;padding-right:12px}
+.product-list-panel .product-action-buttons{display:flex;flex-wrap:nowrap;justify-content:flex-start;gap:6px;min-width:0}
+.product-list-panel .product-action-buttons .product-action-button{width:35px;min-width:35px;flex:0 0 35px;height:36px}
+@media(min-width:821px) and (max-width:1100px){
+  .product-list-panel .product-list-table th:nth-child(3){width:110px}
+  .product-list-panel .product-list-table th:nth-child(4){width:105px}
+  .product-list-panel .product-list-table th:nth-child(5){width:174px}
+  .product-list-panel .product-action-buttons{gap:4px}
+  .product-list-panel .product-list-table th,.product-list-panel .product-list-table td{padding:12px 8px}
+  .product-list-panel .product-list-table td[data-label="Ações"]{padding-right:8px}
+}
+@media(max-width:820px){
+  .product-list-panel .product-list-table{overflow-x:visible}
+  .product-list-panel .product-list-table table{display:block;min-width:0}
+  .product-list-panel .product-list-table tr[data-product-row]{grid-template-columns:minmax(0,1fr) minmax(150px,.6fr)}
+  .product-list-panel .product-list-table tr[data-product-row] td[data-label="Produto"]{max-width:none;min-width:0;grid-column:1/-1}
+  .product-list-panel .product-list-table tr[data-product-row] td[data-label="Preço"]{grid-column:1}
+  .product-list-panel .product-list-table tr[data-product-row] td[data-label="Status"]{grid-column:2}
+  .product-list-panel .product-list-table tr[data-product-row] td[data-label="Ações"]{grid-column:1/-1;justify-content:flex-end;border-top:1px solid #eef0eb;padding-top:12px}
+  .product-list-panel .product-list-copy>strong{max-width:100%}
+  .product-list-panel .product-action-buttons{margin-left:auto}
+  .product-list-panel .product-list-table tr[data-product-row] td[data-label="Ações"]::before{margin-right:auto}
+}
+@media(max-width:520px){
+  .product-list-panel .product-list-table tr[data-product-row]{grid-template-columns:minmax(0,1fr)}
+  .product-list-panel .product-list-table tr[data-product-row] td[data-label="Produto"],
+  .product-list-panel .product-list-table tr[data-product-row] td[data-label="Preço"],
+  .product-list-panel .product-list-table tr[data-product-row] td[data-label="Status"],
+  .product-list-panel .product-list-table tr[data-product-row] td[data-label="Ações"]{grid-column:1}
+  .product-list-panel .product-list-table tr[data-product-row] td[data-label="Status"]{justify-content:space-between}
+  .product-list-panel .product-list-copy>strong{max-width:100%}
+}
