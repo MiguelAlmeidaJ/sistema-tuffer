@@ -1,8 +1,14 @@
 <?php
-$pageUrl = static fn(int $page): string => url('/vendedor/produtos?' . http_build_query([
-    'page' => $page,
+$filterParams = [
+    'status' => $productFilters['status'],
+    'q' => $productFilters['q'],
+    'type' => $productFilters['type'],
+    'stock' => $productFilters['stock'],
+    'sort' => $productFilters['sort'],
     'per_page' => $pagination['perPage'],
-]));
+];
+$pageUrl = static fn(int $page): string => url('/vendedor/produtos?' . http_build_query(array_merge($filterParams, ['page' => $page])));
+$statusUrl = static fn(string $status): string => url('/vendedor/produtos?' . http_build_query(array_merge($filterParams, ['status' => $status])));
 
 $pages = $pagination['lastPage'] <= 7
     ? range(1, $pagination['lastPage'])
@@ -22,6 +28,25 @@ sort($pages);
 </div>
 <?php if (!$paymentEnabled): ?><div class="settings-note"><span>!</span><p>O cadastro e a publicação de produtos estão bloqueados até que o recebedor esteja ativo e o KYC aprovado.</p></div><?php endif; ?>
 
+<nav class="product-filter-tabs" aria-label="Filtrar por situação">
+    <?php foreach(['active'=>'Publicados','all'=>'Todos','draft'=>'Rascunhos','paused'=>'Pausados','archived'=>'Arquivados'] as $value=>$label): ?>
+        <a href="<?=e($statusUrl($value))?>" class="<?= $productFilters['status']===$value?'is-active':'' ?>" <?= $productFilters['status']===$value?'aria-current="page"':'' ?>><?=e($label)?> <span><?= (int)($statusCounts[$value]??0) ?></span></a>
+    <?php endforeach; ?>
+</nav>
+<form class="product-filter-form" method="get" action="<?=e(url('/vendedor/produtos'))?>">
+    <input type="hidden" name="status" value="<?=e($productFilters['status'])?>">
+    <input type="hidden" name="per_page" value="<?= (int)$pagination['perPage'] ?>">
+    <label class="product-filter-search"><span>Buscar produto ou SKU</span><input name="q" type="search" maxlength="100" value="<?=e($productFilters['q'])?>" placeholder="Digite o nome ou código do produto"></label>
+    <label><span>Tipo de produto</span><select name="type">
+        <?php foreach(['all'=>'Todos os tipos','simple'=>'Simples','variable'=>'Com variações','kit'=>'Kit'] as $value=>$label): ?><option value="<?=e($value)?>" <?=$productFilters['type']===$value?'selected':''?>><?=e($label)?></option><?php endforeach;?>
+    </select></label>
+    <label><span>Estoque</span><select name="stock"><option value="all" <?=$productFilters['stock']==='all'?'selected':''?>>Qualquer estoque</option><option value="available" <?=$productFilters['stock']==='available'?'selected':''?>>Com estoque</option><option value="out" <?=$productFilters['stock']==='out'?'selected':''?>>Sem estoque</option></select></label>
+    <label><span>Ordenar por</span><select name="sort">
+    <?php foreach(['recent'=>'Atualizados recentemente','oldest'=>'Mais antigos','name'=>'Nome A–Z','price_asc'=>'Menor preço','price_desc'=>'Maior preço'] as $value=>$label): ?><option value="<?=e($value)?>" <?=$productFilters['sort']===$value?'selected':''?>><?=e($label)?></option><?php endforeach;?>
+    </select></label>
+    <button class="product-filter-apply" type="submit">Filtrar</button>
+    <a class="product-filter-clear" href="<?=e(url('/vendedor/produtos'))?>">Limpar filtros</a>
+</form>
 <?php if ($products): ?>
 <form id="product-bulk-form" class="product-bulk-bar" method="post" action="<?= e(url('/vendedor/produtos/excluir-em-lote')) ?>" data-product-bulk-form hidden>
     <?= csrf_field() ?>
@@ -41,6 +66,7 @@ sort($pages);
     <header class="product-list-toolbar">
         <p>Exibindo <strong><?= (int) $pagination['from'] ?>–<?= (int) $pagination['to'] ?></strong> de <strong><?= (int) $pagination['total'] ?></strong> produtos</p>
         <form method="get" action="<?= e(url('/vendedor/produtos')) ?>">
+            <?php foreach($productFilters as $filterName=>$filterValue): ?><input type="hidden" name="<?=e($filterName)?>" value="<?=e($filterValue)?>"><?php endforeach; ?>
             <label for="products-per-page">Itens por página</label>
             <select id="products-per-page" name="per_page" onchange="this.form.submit()">
                 <?php foreach ($allowedPageSizes as $size): ?><option value="<?= $size ?>" <?= $pagination['perPage'] === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?>
@@ -69,7 +95,7 @@ sort($pages);
             <form method="post" action="<?= e(url('/vendedor/produtos/' . $product['id'])) ?>" onsubmit="return confirm('Excluir este produto?')"><?= csrf_field() ?><input type="hidden" name="_method" value="DELETE"><button class="product-action-button product-action-button--danger" title="Excluir produto" aria-label="Excluir <?= e($product['name']) ?>"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5"/></svg></button></form>
         </div></td>
     </tr><?php endforeach; ?>
-    </tbody></table><?php if (!$products): $emptyTitle='Nenhum produto cadastrado'; $emptyText='Crie o primeiro produto desta loja.'; require dirname(__DIR__, 2) . '/components/dashboard/empty-state.php'; endif; ?></div>
+    </tbody></table><?php if (!$products): ?><div class="product-filter-empty"><h3>Nenhum produto encontrado</h3><p>Não há produtos para os filtros selecionados. Tente outra situação ou limpe a pesquisa.</p><a href="<?=e(url('/vendedor/produtos?status=all'))?>">Ver todos os produtos</a></div><?php endif; ?></div>
 
     <?php if ($pagination['lastPage'] > 1): ?><nav class="product-pagination" aria-label="Paginação dos produtos">
         <?php if ($pagination['page'] > 1): ?><a class="product-pagination__direction" href="<?= e($pageUrl($pagination['page'] - 1)) ?>" rel="prev">← Anterior</a><?php else: ?><span class="product-pagination__direction is-disabled">← Anterior</span><?php endif; ?>
