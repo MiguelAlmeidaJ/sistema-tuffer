@@ -35,3 +35,8 @@
 @media(max-width:1180px){.product-editor__layout{grid-template-columns:190px minmax(0,1fr)}.product-quality{grid-column:1/-1;position:static}}
 @media(max-width:900px){.product-editor__layout{grid-template-columns:1fr}.product-quality{grid-column:auto}.product-editor__steps{position:static}}
 @media(max-width:620px){.product-type-options{grid-template-columns:1fr}.product-form-section{padding:19px}.product-editor__header{gap:12px}.product-form-section__header h3{font-size:1.1rem}}
+
+/* Preço compartilhado: comunicação explícita ao editar variações. */
+.product-editor .product-price-variation-note{margin:4px 0 19px;padding:13px 16px;border:1px solid #e7e9df;border-radius:11px;background:#f7f8f4;color:#5a675d;font-size:.79rem;font-weight:500;line-height:1.55}
+.product-editor .product-price-variation-note strong{color:#26382b;font-weight:800}
+.product-editor .product-price-variation-note[hidden]{display:none}
