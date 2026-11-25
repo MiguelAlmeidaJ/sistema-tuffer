@@ -99,6 +99,104 @@ final class ProductController extends Controller
         ]);
     }
 
+    /**
+     * Quick price edit: a product-wide price is deliberately applied to all
+     * its variants; no stock, SKU, status or other fields are modified.
+     */
+    public function quickPrice(string $id): string
+    {
+        $store = (new SellerStoreContext())->current();
+        $return = $this->productListReturn();
+        $pdo = Database::connection();
+        $parseMoney = static function (string $field, bool $optional = false): ?float {
+            $raw = trim((string) ($_POST[$field] ?? ''));
+            if ($raw === '' && $optional) return null;
+            if (!preg_match('/^\\d{1,8}(?:[.,]\\d{1,2})?$/D', $raw)) throw new RuntimeException('Informe valores monetários válidos, com até duas casas decimais.');
+            $value = (float) str_replace(',', '.', $raw);
+            if ((!$optional && $value <= 0) || $value < 0) throw new RuntimeException('O preço normal deve ser maior que zero.');
+            return $value;
+        };
+        try {
+            $price = $parseMoney('price');
+            $promotion = $parseMoney('promotional_price', true);
+            if ($promotion !== null && ($promotion <= 0 || $promotion >= $price)) {
+                throw new RuntimeException('O preço promocional deve ser maior que zero e menor que o preço normal.');
+            }
+            $pdo->beginTransaction();
+            $check = $pdo->prepare('SELECT id,wholesale_enabled FROM products WHERE id=? AND store_id=? FOR UPDATE');
+            $check->execute([(int) $id, (int) $store['id']]);
+            $product = $check->fetch(PDO::FETCH_ASSOC);
+            if (!$product) throw new RuntimeException('Produto não encontrado nesta loja.');
+            $wholesale = null;
+            if (!empty($product['wholesale_enabled']) && array_key_exists('wholesale_price', $_POST)) {
+                $wholesale = $parseMoney('wholesale_price', true);
+            }
+            $sql = 'UPDATE product_variants SET price=?,promotional_price=?';
+            $params = [$price, $promotion];
+            if (!empty($product['wholesale_enabled']) && array_key_exists('wholesale_price', $_POST)) {
+                $sql .= ',wholesale_price=?';
+                $params[] = $wholesale;
+            }
+            $sql .= ' WHERE product_id=?';
+            $params[] = (int) $id;
+            $statement = $pdo->prepare($sql);
+            $statement->execute($params);
+            // update timestamp for sorting, without touching approval or publication
+            $pdo->prepare('UPDATE products SET updated_at=CURRENT_TIMESTAMP WHERE id=? AND store_id=?')->execute([(int) $id, (int) $store['id']]);
+            $pdo->commit();
+            Session::flash('success', 'Preços atualizados em todas as variações do produto.');
+        } catch (Throwable $exception) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            Session::flash('error', $exception instanceof RuntimeException ? $exception->getMessage() : 'Não foi possível atualizar os preços.');
+        }
+        return Response::redirect($return);
+    }
+
+    /** Update only the single-unit shipping measurements. */
+    public function quickDimensions(string $id): string
+    {
+        $store = (new SellerStoreContext())->current();
+        $return = $this->productListReturn();
+        $pdo = Database::connection();
+        try {
+            $values = [];
+            foreach (['weight', 'width', 'height', 'length'] as $key) {
+                $raw = trim((string) ($_POST[$key] ?? ''));
+                if (!preg_match('/^\\d{1,5}(?:[.,]\\d{1,3})?$/D', $raw)) throw new RuntimeException('Informe peso e dimensões numéricos válidos.');
+                $value = (float) str_replace(',', '.', $raw);
+                $limit = $key === 'weight' ? 30 : 100;
+                $min = $key === 'weight' ? 0.001 : 0;
+                if ($value <= $min && $key !== 'weight' || $key === 'weight' && $value < $min || $value > $limit) {
+                    throw new RuntimeException('Peso deve estar entre 0,001 e 30 kg e as dimensões entre 0 e 100 cm (maiores que zero).');
+                }
+                $values[$key] = $value;
+            }
+            $statement = $pdo->prepare('UPDATE products SET weight=?,width=?,height=?,length=?,piece_weight_grams=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND store_id=?');
+            $statement->execute([$values['weight'], $values['width'], $values['height'], $values['length'], round($values['weight'] * 1000, 3), (int) $id, (int) $store['id']]);
+            if ($statement->rowCount() === 0) {
+                $check = $pdo->prepare('SELECT id FROM products WHERE id=? AND store_id=?');
+                $check->execute([(int)$id, (int)$store['id']]);
+                if (!$check->fetchColumn()) throw new RuntimeException('Produto não encontrado nesta loja.');
+            }
+            Session::flash('success', 'Peso e dimensões atualizados.');
+        } catch (Throwable $exception) {
+            Session::flash('error', $exception instanceof RuntimeException ? $exception->getMessage() : 'Não foi possível atualizar as dimensões.');
+        }
+        return Response::redirect($return);
+    }
+
+    private function productListReturn(): string
+    {
+        $query = trim((string) ($_POST['return_query'] ?? ''));
+        if ($query === '' || strlen($query) > 1200) return '/vendedor/produtos';
+        parse_str(ltrim($query, '?'), $params);
+        $allowed = [];
+        foreach (['status','type','stock','sort','q','per_page','page'] as $key) {
+            if (isset($params[$key]) && is_scalar($params[$key])) $allowed[$key] = mb_substr((string)$params[$key], 0, 100);
+        }
+        return '/vendedor/produtos' . ($allowed ? '?' . http_build_query($allowed) : '');
+    }
+
     public function create(): string { return $this->form(); }
 
     public function store(): string
