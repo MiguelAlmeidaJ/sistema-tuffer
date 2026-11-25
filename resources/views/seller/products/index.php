@@ -99,7 +99,7 @@ sort($pages);
                 data-quick-wholesale="<?=e($product['wholesale_price']??'')?>"
                 data-quick-wholesale-enabled="<?=!empty($product['wholesale_enabled'])?'1':'0'?>"
                 title="Alterar preços rapidamente" aria-label="Alterar preços de <?=e($product['name'])?>">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7V4h18v3M5 12h14M7 17h10M12 3v18"/></svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12.5 12.5 20a2 2 0 0 1-2.8 0l-6.2-6.2a2 2 0 0 1-.6-1.4V4a1 1 0 0 1 1-1h8.4a2 2 0 0 1 1.4.6l6.3 6.1a2 2 0 0 1 0 2.8Z"/><circle cx="8" cy="8" r="1.5"/></svg>
             </button>
             <button type="button" class="product-action-button" data-product-quick-dimensions
                 data-quick-url="<?=e(url('/vendedor/produtos/'.(int)$product['id'].'/dimensoes-rapidas'))?>"
