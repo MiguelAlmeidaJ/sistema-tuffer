@@ -91,6 +91,26 @@ sort($pages);
         </td>
         <td data-label="Status"><?php $status = $product['status']; require dirname(__DIR__, 2) . '/components/dashboard/status-badge.php'; ?><?php if (!empty($product['platform_paused'])): ?><small class="seller-moderation-state is-paused">Pausado pela plataforma</small><?php elseif (($product['moderation_status'] ?? '') === 'changes_requested'): ?><small class="seller-moderation-state">Correção solicitada</small><?php elseif (($product['moderation_status'] ?? '') === 'pending'): ?><small class="seller-moderation-state">Aguardando auditoria</small><?php endif; ?></td>
         <td data-label="Ações"><div class="product-action-buttons">
+            <button type="button" class="product-action-button" data-product-quick-price
+                data-quick-url="<?=e(url('/vendedor/produtos/'.(int)$product['id'].'/preco-rapido'))?>"
+                data-quick-name="<?=e($product['name'])?>"
+                data-quick-price="<?=e($product['regular_price']??'')?>"
+                data-quick-promo="<?=e($product['promotional_price']??'')?>"
+                data-quick-wholesale="<?=e($product['wholesale_price']??'')?>"
+                data-quick-wholesale-enabled="<?=!empty($product['wholesale_enabled'])?'1':'0'?>"
+                title="Alterar preços rapidamente" aria-label="Alterar preços de <?=e($product['name'])?>">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7V4h18v3M5 12h14M7 17h10M12 3v18"/></svg>
+            </button>
+            <button type="button" class="product-action-button" data-product-quick-dimensions
+                data-quick-url="<?=e(url('/vendedor/produtos/'.(int)$product['id'].'/dimensoes-rapidas'))?>"
+                data-quick-name="<?=e($product['name'])?>"
+                data-quick-weight="<?=e($product['weight']??'')?>"
+                data-quick-width="<?=e($product['width']??'')?>"
+                data-quick-height="<?=e($product['height']??'')?>"
+                data-quick-length="<?=e($product['length']??'')?>"
+                title="Alterar peso e dimensões" aria-label="Alterar dimensões de <?=e($product['name'])?>">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8v3m4-3v5m4-5v3m4-3v5M7 17h10"/></svg>
+            </button>
             <a class="product-action-button" href="<?= e(url('/vendedor/produtos/' . $product['id'] . '/editar')) ?>" title="Editar produto" aria-label="Editar <?= e($product['name']) ?>"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l11-11-4-4L4 16v4Zm10-14 4 4m-2-6 2-2 4 4-2 2"/></svg></a>
             <form method="post" action="<?= e(url('/vendedor/produtos/' . $product['id'])) ?>" onsubmit="return confirm('Excluir este produto?')"><?= csrf_field() ?><input type="hidden" name="_method" value="DELETE"><button class="product-action-button product-action-button--danger" title="Excluir produto" aria-label="Excluir <?= e($product['name']) ?>"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5"/></svg></button></form>
         </div></td>
@@ -106,3 +126,34 @@ sort($pages);
         <?php if ($pagination['page'] < $pagination['lastPage']): ?><a class="product-pagination__direction" href="<?= e($pageUrl($pagination['page'] + 1)) ?>" rel="next">Próxima →</a><?php else: ?><span class="product-pagination__direction is-disabled">Próxima →</span><?php endif; ?>
     </nav><?php endif; ?>
 </section>
+
+<?php $productQuickReturnQuery=http_build_query(array_merge($filterParams,['page'=>$pagination['page']])); ?>
+<dialog class="product-quick-dialog" data-product-quick-dialog="price" aria-labelledby="quick-price-title">
+    <div class="product-quick-dialog__head"><div><span>EDIÇÃO RÁPIDA</span><h2 id="quick-price-title">Alterar preços</h2><p data-product-quick-name></p></div><button type="button" data-product-quick-close aria-label="Fechar popup">×</button></div>
+    <form method="post" data-product-quick-form>
+        <?=csrf_field()?>
+        <input type="hidden" name="return_query" value="<?=e($productQuickReturnQuery)?>">
+        <p class="product-quick-dialog__info">Os valores serão aplicados a todas as variações deste produto.</p>
+        <div class="product-quick-dialog__fields">
+            <label>Preço normal (R$)<input name="price" type="number" min="0.01" max="99999999.99" step="0.01" required inputmode="decimal"></label>
+            <label>Preço promocional (R$)<input name="promotional_price" type="number" min="0.01" max="99999999.99" step="0.01" inputmode="decimal" placeholder="Opcional"></label>
+            <label data-product-quick-wholesale-field>Preço de atacado (R$)<input name="wholesale_price" type="number" min="0.01" max="99999999.99" step="0.01" inputmode="decimal" placeholder="Opcional"></label>
+        </div>
+        <div class="product-quick-dialog__actions"><button type="button" data-product-quick-close>Cancelar</button><button type="submit">Salvar preços</button></div>
+    </form>
+</dialog>
+<dialog class="product-quick-dialog" data-product-quick-dialog="dimensions" aria-labelledby="quick-dimensions-title">
+    <div class="product-quick-dialog__head"><div><span>EDIÇÃO RÁPIDA</span><h2 id="quick-dimensions-title">Peso e dimensões</h2><p data-product-quick-name></p></div><button type="button" data-product-quick-close aria-label="Fechar popup">×</button></div>
+    <form method="post" data-product-quick-form>
+        <?=csrf_field()?>
+        <input type="hidden" name="return_query" value="<?=e($productQuickReturnQuery)?>">
+        <p class="product-quick-dialog__info">Informe as medidas de uma unidade do produto, usadas na estimativa do frete.</p>
+        <div class="product-quick-dialog__fields product-quick-dialog__fields--grid">
+            <label>Peso (kg)<input name="weight" type="number" min="0.001" max="30" step="0.001" required inputmode="decimal" placeholder="0,040"></label>
+            <label>Largura (cm)<input name="width" type="number" min="0.001" max="100" step="0.001" required inputmode="decimal"></label>
+            <label>Altura (cm)<input name="height" type="number" min="0.001" max="100" step="0.001" required inputmode="decimal"></label>
+            <label>Comprimento (cm)<input name="length" type="number" min="0.001" max="100" step="0.001" required inputmode="decimal"></label>
+        </div>
+        <div class="product-quick-dialog__actions"><button type="button" data-product-quick-close>Cancelar</button><button type="submit">Salvar dimensões</button></div>
+    </form>
+</dialog>
